@@ -1,3 +1,4 @@
+use crate::infra::item_tracker::ItemChange;
 use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 use gpui::ScrollEvent;
@@ -108,8 +109,8 @@ where
     selected_ids: HashSet<SharedString>,
     active_node_id: Option<SharedString>,
     selection_anchor: Option<SharedString>,
-    hovered_node_id: Option<SharedString>,
-    pub(super) pressed_node_id: Option<SharedString>,
+    /// The hovered and pressed rows, by node id.
+    pub(super) rows_pointer: crate::infra::item_tracker::ItemTracker<SharedString>,
     flat_cache: Vec<FlatNodeWrapper<T>>,
     flat_indices: HashMap<SharedString, usize>,
     row_handlers: RefCell<HashMap<SharedString, TreeViewTemplateHandlers>>,
@@ -197,8 +198,7 @@ where
             selected_ids: HashSet::new(),
             active_node_id: None,
             selection_anchor: None,
-            hovered_node_id: None,
-            pressed_node_id: None,
+            rows_pointer: Default::default(),
             flat_cache: Vec::new(),
             flat_indices: HashMap::new(),
             row_handlers: RefCell::new(HashMap::new()),
@@ -308,8 +308,7 @@ where
         };
         let old_top = self.list_state.logical_scroll_top();
         let top_id = self.flat_cache.get(old_top.item_ix).map(|node| node.id.clone());
-        self.clear_hovered_node_id(cx);
-        self.pressed_node_id = None;
+        self.clear_row_pointer(cx);
         self.selected_ids.retain(|id| preserve && index.nodes.get(id).is_some_and(|info| info.enabled));
         self.active_node_id = active;
         self.expanded_ids = expanded;
@@ -398,8 +397,7 @@ where
         self.focus_subscriptions.reset();
 
         if !enabled {
-            self.clear_hovered_node_id(cx);
-            self.pressed_node_id = None;
+            self.clear_row_pointer(cx);
             self.emit_focus_changed(false, cx);
         }
 
@@ -468,12 +466,8 @@ where
             cx.emit(TreeViewEvent::ActiveNodeChanged { node_id: next_active });
         }
         self.refresh_flat_motion_factors();
-        if self.hovered_node_id.as_ref().is_some_and(|id| !visible.contains(id)) {
-            self.clear_hovered_node_id(cx);
-        }
-        if self.pressed_node_id.as_ref().is_some_and(|id| !visible.contains(id)) {
-            self.pressed_node_id = None;
-        }
+        let changes = self.rows_pointer.retain(|id| visible.contains(id));
+        self.emit_row_changes(changes, cx);
 
         if !self.model.motion_enabled {
             self.rebuild_flat_cache(cx);
@@ -652,20 +646,9 @@ where
                 data: node.data.clone(),
             });
         });
-        if self
-            .hovered_node_id
-            .as_ref()
-            .is_some_and(|id| !flat.iter().any(|node| &node.id == id && node.enabled))
-        {
-            self.clear_hovered_node_id(cx);
-        }
-        if self
-            .pressed_node_id
-            .as_ref()
-            .is_some_and(|id| !flat.iter().any(|node| &node.id == id && node.enabled))
-        {
-            self.pressed_node_id = None;
-        }
+        // Before the cache is replaced, so a row left still reports the index it had.
+        let changes = self.rows_pointer.retain(|id| flat.iter().any(|node| &node.id == id && node.enabled));
+        self.emit_row_changes(changes, cx);
         self.flat_cache = flat;
         self.flat_indices.clear();
         self.flat_indices
@@ -786,8 +769,8 @@ where
         let item_enabled = self.model.enabled && node.enabled;
         let selected = self.selected_ids.contains(&node.id);
         let active = self.active_node_id.as_ref() == Some(&node.id);
-        let hovered = item_enabled && self.hovered_node_id.as_ref() == Some(&node.id);
-        let pressed = item_enabled && self.pressed_node_id.as_ref() == Some(&node.id);
+        let hovered = item_enabled && self.rows_pointer.is_hovered(&node.id);
+        let pressed = item_enabled && self.rows_pointer.is_pressed(&node.id);
 
         let state = CompositeItemState {
             hovered,
@@ -850,26 +833,36 @@ where
     }
 
     fn handle_row_hover(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
-        if !self.model.enabled || !self.flat_cache.get(index).is_some_and(|node| node.enabled) {
+        let Some(node) = self.flat_cache.get(index) else {
+            return;
+        };
+        // Only an enabled row can be entered; any row can be left.
+        if hovered && !(self.model.enabled && node.enabled) {
             return;
         }
+        let changes = self.rows_pointer.hover(node.id.clone(), hovered);
+        self.emit_row_changes(changes, cx);
+    }
 
-        let node_id = self.flat_cache[index].id.clone();
-        if hovered {
-            if self.hovered_node_id.as_ref() != Some(&node_id) {
-                self.clear_hovered_node_id(cx);
-                self.hovered_node_id = Some(node_id.clone());
-                let node_id = self.flat_cache[index].id.clone();
-                cx.emit(TreeViewEvent::RowHoverChanged { node_id, index, hovered: true });
-                cx.notify();
-            }
-        } else if self.hovered_node_id.as_ref() == Some(&node_id) {
-            self.clear_hovered_node_id(cx);
-            if self.pressed_node_id.as_ref() == Some(&node_id) {
-                self.pressed_node_id = None;
-            }
-            cx.notify();
+    /// Report row hover changes, in the order the tracker made them, and redraw. Rows report no press events.
+    pub(super) fn emit_row_changes(&mut self, changes: Vec<ItemChange<SharedString>>, cx: &mut Context<Self>) {
+        if changes.is_empty() {
+            return;
         }
+        for change in changes {
+            if let ItemChange::Hovered { key: node_id, hovered } = change
+                && let Some(index) = self.flat_index_for_id(&node_id)
+            {
+                cx.emit(TreeViewEvent::RowHoverChanged { node_id, index, hovered });
+            }
+        }
+        cx.notify();
+    }
+
+    /// Leave the hovered row and release the pressed one.
+    pub(super) fn clear_row_pointer(&mut self, cx: &mut Context<Self>) {
+        let changes = self.rows_pointer.clear();
+        self.emit_row_changes(changes, cx);
     }
 
     fn template_row_handlers(&self, node_id: SharedString, cx: &mut Context<Self>) -> TreeViewTemplateHandlers {
@@ -908,7 +901,8 @@ where
                 if this.model.enabled && this.flat_cache.get(idx).is_some_and(|node| node.enabled) {
                     this.cancel_position();
                     this.prepare_selection_anchor();
-                    this.pressed_node_id = Some(press_id.clone());
+                    let changes = this.rows_pointer.press(press_id.clone());
+                    this.emit_row_changes(changes, cx);
                     this.set_active_index(Some(idx), false, cx);
                     this.model.pointer_focus.apply(&this.focus_handle, window, cx);
                     this.emit_focus_changed(this.focus_handle.is_focused(window), cx);
@@ -916,8 +910,8 @@ where
                 }
             })),
             mouse_up: Rc::new(cx.listener(move |this, _, _, cx| {
-                this.pressed_node_id = None;
-                cx.notify();
+                let changes = this.rows_pointer.release();
+                this.emit_row_changes(changes, cx);
             })),
             click: Rc::new(cx.listener(move |this, event: &ClickEvent, _, cx| {
                 if event.click_count() != 1 {
@@ -1089,14 +1083,6 @@ where
             self.toggle_node_at_index(idx, cx);
         } else {
             self.handle_node_select(idx, cx);
-        }
-    }
-
-    fn clear_hovered_node_id(&mut self, cx: &mut Context<Self>) {
-        if let Some(node_id) = self.hovered_node_id.take()
-            && let Some(index) = self.flat_index_for_id(&node_id)
-        {
-            cx.emit(TreeViewEvent::RowHoverChanged { node_id, index, hovered: false });
         }
     }
 

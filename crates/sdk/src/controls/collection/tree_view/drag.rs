@@ -255,7 +255,8 @@ pub(super) fn deliver<T: Clone + Send + Sync + 'static>(
     if let Some(event) = mapped {
         let _ = owner.update(cx, |tree, cx| {
             if matches!(event, TreeViewDragEvent::Ended { .. }) {
-                tree.pressed_node_id = None;
+                let changes = tree.rows_pointer.release();
+                tree.emit_row_changes(changes, cx);
             }
             cx.emit(TreeViewEvent::DragDrop(event));
             cx.notify();

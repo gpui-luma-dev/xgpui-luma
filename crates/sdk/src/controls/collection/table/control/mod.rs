@@ -79,8 +79,8 @@ where
     uniform_hint_width: Option<gpui::Pixels>,
     focus_handle: gpui::FocusHandle,
     focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
-    hovered_index: Option<usize>,
-    pressed_index: Option<usize>,
+    /// The hovered and pressed rows, by index.
+    pub(super) rows_pointer: crate::infra::item_tracker::ItemTracker<usize>,
     current_page: usize,
     emitted_scroll_top_index: usize,
     focus_report: crate::infra::focus_report::FocusReport,
@@ -175,8 +175,7 @@ where
             focus_subscriptions: Default::default(),
             model: builder.model,
             drop_layout: Default::default(),
-            hovered_index: None,
-            pressed_index: None,
+            rows_pointer: Default::default(),
             current_page: 0,
             emitted_scroll_top_index: 0,
             focus_report: Default::default(),
@@ -268,8 +267,7 @@ where
             self.selection_anchor = None;
         }
         self.model.items = items;
-        self.hovered_index = None;
-        self.pressed_index = None;
+        self.clear_pointer_interaction(cx);
         self.current_page = clamp_page(self.current_page, self.model.items.len(), self.page_size().unwrap_or(1));
         self.sync_list_state();
         normalize_model(&mut self.model);
@@ -457,8 +455,7 @@ where
         self.focus_subscriptions.reset();
 
         if !enabled {
-            self.clear_hovered_index(cx);
-            self.pressed_index = None;
+            self.clear_pointer_interaction(cx);
             self.emit_focus_changed(false, cx);
         }
 

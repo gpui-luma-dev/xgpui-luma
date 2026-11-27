@@ -135,8 +135,8 @@ fn duplicate_descendants_leave_data_motion_scroll_and_events_untouched() {
         tree.select_node_by_id("x", cx);
         tree.set_motion_enabled(true, cx);
         tree.collapse("a", cx);
-        tree.hovered_node_id = Some("a".into());
-        tree.pressed_node_id = Some("a".into());
+        tree.rows_pointer.hover("a".into(), true);
+        tree.rows_pointer.press("a".into());
     });
     let events = record(&tree, cx);
     tree.update(cx, |tree, cx| {
@@ -164,8 +164,8 @@ fn duplicate_descendants_leave_data_motion_scroll_and_events_untouched() {
                 .collect::<HashMap<_, _>>(),
             motion
         );
-        assert_eq!(tree.hovered_node_id, Some("a".into()));
-        assert_eq!(tree.pressed_node_id, Some("a".into()));
+        assert!(tree.rows_pointer.is_hovered(&"a".into()));
+        assert!(tree.rows_pointer.is_pressed(&"a".into()));
         assert_eq!(tree.list_state.logical_scroll_top().item_ix, old_top.item_ix);
         assert_eq!(tree.list_state.logical_scroll_top().offset_in_item, old_top.offset_in_item);
     });

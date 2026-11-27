@@ -59,11 +59,8 @@ where
     item_focus_subscriptions: Vec<Subscription>,
     item_focus_subscription_keys: Vec<(SharedString, gpui::FocusHandle)>,
     focus_report: crate::infra::focus_report::FocusReport,
-    hovered_item: Option<usize>,
-    pressed_item: Option<usize>,
-    /// The items last reported hovered and pressed (see `sync_item_visual_events`).
-    emitted_hovered: Option<SharedString>,
-    emitted_pressed: Option<SharedString>,
+    /// The hovered and pressed items, by id.
+    items_pointer: crate::infra::item_tracker::ItemTracker<SharedString>,
     item_bounds: Vec<Option<Bounds<Pixels>>>,
     selection_transitions: HashMap<SharedString, VisualTransition>,
     scroll_handle: Option<ScrollHandle>,
@@ -112,10 +109,7 @@ where
             item_focus_subscriptions: Vec::new(),
             item_focus_subscription_keys: Vec::new(),
             focus_report: Default::default(),
-            hovered_item: None,
-            pressed_item: None,
-            emitted_hovered: None,
-            emitted_pressed: None,
+            items_pointer: Default::default(),
             item_bounds: Vec::new(),
             selection_transitions,
             scroll_handle: scrollable.then(ScrollHandle::new),
@@ -222,13 +216,12 @@ where
 
     pub fn set_items(&mut self, items: impl IntoIterator<Item = T>, cx: &mut Context<Self>) {
         self.model.items = items.into_iter().collect();
-        self.hovered_item = None;
-        self.pressed_item = None;
+        let changes = self.items_pointer.clear();
+        self.emit_item_changes(changes, cx);
         self.item_bounds.clear();
         self.clear_item_focus_subscriptions();
         normalize_model(&mut self.model);
         self.sync_selection_transitions();
-        self.sync_item_visual_events(cx);
         cx.notify();
     }
 
@@ -250,11 +243,10 @@ where
         self.clear_item_focus_subscriptions();
 
         if !enabled {
-            self.hovered_item = None;
-            self.pressed_item = None;
+            let changes = self.items_pointer.clear();
+            self.emit_item_changes(changes, cx);
             self.emit_focus_changed(false, cx);
         }
-        self.sync_item_visual_events(cx);
 
         cx.notify();
     }

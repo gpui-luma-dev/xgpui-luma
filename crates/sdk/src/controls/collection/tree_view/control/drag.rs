@@ -23,7 +23,8 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
             self.drop_layout.cancel();
             self.drag_revision = Some(self.revision);
         }
-        self.pressed_node_id = None;
+        let changes = self.rows_pointer.release();
+        self.emit_row_changes(changes, cx);
         if let Some(event) = super::super::drag::project_event(event, None) {
             cx.emit(TreeViewEvent::DragDrop(event));
         }

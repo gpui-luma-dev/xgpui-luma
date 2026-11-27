@@ -11,6 +11,7 @@ pub mod focus_adorner;
 pub mod icon;
 pub mod lock;
 pub(crate) mod focus_report;
+pub(crate) mod item_tracker;
 pub(crate) mod interaction;
 pub mod menu_item;
 pub(crate) mod menu_navigation;

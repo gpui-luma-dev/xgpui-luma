@@ -85,8 +85,8 @@ where
         let enabled = self.model.enabled && self.model.row_is_enabled(item);
         let selected = self.model.selected_indices.binary_search(&index).is_ok();
         let active = self.model.active_index == Some(index);
-        let hovered = enabled && self.hovered_index == Some(index);
-        let pressed = enabled && self.pressed_index == Some(index);
+        let hovered = enabled && self.rows_pointer.is_hovered(&index);
+        let pressed = enabled && self.rows_pointer.is_pressed(&index);
         let keyboard_active = active && focus.focused;
         let state = crate::infra::state::CompositeItemState {
             hovered,

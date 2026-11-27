@@ -1,3 +1,4 @@
+use crate::infra::item_tracker::ItemChange;
 use crate::infra::focus_report::ReportsFocus as _;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -76,8 +77,8 @@ pub struct AccordionControl {
     pub(super) transitions: Vec<DisclosureMotion>,
     pub(super) content_heights_px: Vec<f32>,
     pub(super) focused_item_index: Option<usize>,
-    pub(super) hovered_item_index: Option<usize>,
-    pub(super) pressed_item_index: Option<usize>,
+    /// The hovered and pressed triggers, by item id.
+    pub(super) items_pointer: crate::infra::item_tracker::ItemTracker<SharedString>,
     focus_report: crate::infra::focus_report::FocusReport,
     /// Maps each item's drawn state (`set_item_state_override`).
     item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
@@ -148,8 +149,7 @@ impl AccordionControl {
             transitions,
             content_heights_px,
             focused_item_index: None,
-            hovered_item_index: None,
-            pressed_item_index: None,
+            items_pointer: Default::default(),
             focus_report: Default::default(),
             item_state_override: None,
         }
@@ -192,15 +192,9 @@ impl AccordionControl {
             self.hovered_drag_handle = None;
             self.cancel_drag(cx);
             self.drop_layout.cancel();
-            if let Some(index) = self.hovered_item_index {
-                cx.emit(AccordionEvent::ItemHoverChanged {
-                    item_id: self.model.items[index].id.clone(),
-                    hovered: false,
-                });
-            }
             self.focused_item_index = None;
-            self.hovered_item_index = None;
-            self.set_pressed_item(None, cx);
+            let changes = self.items_pointer.clear();
+            self.emit_item_changes(changes, cx);
             self.emit_focus_changed(false, cx);
         }
         cx.emit(AccordionEvent::EnabledChanged { enabled });
@@ -276,8 +270,8 @@ impl AccordionControl {
                 let content_height_px = self.content_heights_px.get(index).copied().unwrap_or(0.0);
 
                 let state = CompositeItemState {
-                    hovered: item_enabled && self.hovered_item_index == Some(index),
-                    pressed: item_enabled && self.pressed_item_index == Some(index),
+                    hovered: item_enabled && self.items_pointer.is_hovered(&item.id),
+                    pressed: item_enabled && self.items_pointer.is_pressed(&item.id),
                     disabled: !item_enabled,
                     selected: expanded,
                     active: item_enabled && has_keyboard_focus,
@@ -315,44 +309,30 @@ impl AccordionControl {
         }
     }
 
-    /// Press `index` (or none), reporting the trigger released first and then the one pressed.
-    fn set_pressed_item(&mut self, index: Option<usize>, cx: &mut Context<Self>) {
-        if self.pressed_item_index == index {
+    /// Report trigger hover and press changes, in the order the tracker made them, and redraw.
+    pub(super) fn emit_item_changes(&mut self, changes: Vec<ItemChange<SharedString>>, cx: &mut Context<Self>) {
+        if changes.is_empty() {
             return;
         }
-        let id = |index: Option<usize>| index.and_then(|i| self.model.items.get(i)).map(|item| item.id.clone());
-        let (released, pressed) = (id(self.pressed_item_index), id(index));
-        self.pressed_item_index = index;
-        if let Some(item_id) = released {
-            cx.emit(AccordionEvent::ItemPressedChanged { item_id, pressed: false });
+        for change in changes {
+            cx.emit(match change {
+                ItemChange::Hovered { key, hovered } => AccordionEvent::ItemHoverChanged { item_id: key, hovered },
+                ItemChange::Pressed { key, pressed } => AccordionEvent::ItemPressedChanged { item_id: key, pressed },
+            });
         }
-        if let Some(item_id) = pressed {
-            cx.emit(AccordionEvent::ItemPressedChanged { item_id, pressed: true });
-        }
+        cx.notify();
     }
 
     fn handle_item_hover(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
-        if !self.model.enabled || !self.model.items.get(index).is_some_and(|item| item.enabled) {
+        let Some(item) = self.model.items.get(index) else {
+            return;
+        };
+        // Only an enabled trigger can be entered; any trigger can be left.
+        if hovered && !(self.model.enabled && item.enabled) {
             return;
         }
-
-        if hovered {
-            if self.hovered_item_index != Some(index) {
-                self.hovered_item_index = Some(index);
-                cx.emit(AccordionEvent::ItemHoverChanged {
-                    item_id: self.model.items[index].id.clone(),
-                    hovered: true,
-                });
-                cx.notify();
-            }
-        } else if self.hovered_item_index == Some(index) {
-            self.hovered_item_index = None;
-            if self.pressed_item_index == Some(index) {
-                self.set_pressed_item(None, cx);
-            }
-            cx.emit(AccordionEvent::ItemHoverChanged { item_id: self.model.items[index].id.clone(), hovered: false });
-            cx.notify();
-        }
+        let changes = self.items_pointer.hover(item.id.clone(), hovered);
+        self.emit_item_changes(changes, cx);
     }
 
     fn template_handlers(&mut self, cx: &mut Context<Self>) -> AccordionTemplateHandlers {
@@ -369,7 +349,8 @@ impl AccordionControl {
                 .map(|idx| {
                     Box::new(cx.listener(move |this, _, window, cx| {
                         if this.model.enabled && this.model.items[idx].enabled {
-                            this.set_pressed_item(Some(idx), cx);
+                            let changes = this.items_pointer.press(this.model.items[idx].id.clone());
+                            this.emit_item_changes(changes, cx);
                             this.set_focused_item_index(Some(idx), cx);
                             this.focus_handle.focus(window, cx);
                             cx.notify();
@@ -380,9 +361,9 @@ impl AccordionControl {
             trigger_mouse_ups: (0..self.model.items.len())
                 .map(|idx| {
                     Box::new(cx.listener(move |this, _, _, cx| {
-                        if this.pressed_item_index == Some(idx) {
-                            this.set_pressed_item(None, cx);
-                            cx.notify();
+                        if this.model.items.get(idx).is_some_and(|item| this.items_pointer.is_pressed(&item.id)) {
+                            let changes = this.items_pointer.release();
+                            this.emit_item_changes(changes, cx);
                         }
                     })) as _
                 })
@@ -706,31 +687,6 @@ mod tests {
         assert_eq!(expanded.len(), 2);
         assert_eq!(events.len(), 1);
         assert!(matches!(events[0], super::AccordionEvent::ExpandedChanged { expanded: true, .. }));
-    }
-
-    /// Mirrors [`AccordionControl::handle_item_hover`] index bookkeeping.
-    fn apply_accordion_item_hover(hovered_item_index: &mut Option<usize>, index: usize, hovered: bool) {
-        if hovered {
-            if *hovered_item_index != Some(index) {
-                *hovered_item_index = Some(index);
-            }
-        } else if *hovered_item_index == Some(index) {
-            *hovered_item_index = None;
-        }
-    }
-
-    #[test]
-    fn hover_false_only_clears_matching_index() {
-        let mut hovered = Some(1usize);
-
-        apply_accordion_item_hover(&mut hovered, 0, false);
-        assert_eq!(hovered, Some(1));
-
-        apply_accordion_item_hover(&mut hovered, 1, false);
-        assert_eq!(hovered, None);
-
-        apply_accordion_item_hover(&mut hovered, 2, true);
-        assert_eq!(hovered, Some(2));
     }
 }
 
