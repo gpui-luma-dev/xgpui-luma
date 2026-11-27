@@ -10,12 +10,12 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::{
-    ContextMenu, ContextMenuBuilder, ContextMenuEvent, ContextMenuLook, ContextMenuTheme, StyledContextMenuTheme,
+    ContextMenu, ContextMenuBuilder, ContextMenuEvent, ContextMenuTheme, StyledContextMenuTheme,
     ThemedContextMenuTemplate,
 };
 use xgpui_luma::controls::floating_menu::{
     FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
-    default_floating_menu_template, floating_menu_source, styled_floating_menu_look,
+    FloatingMenuLook, default_floating_menu_template, floating_menu_source, styled_floating_menu_look,
 };
 use xgpui_luma::infra::icon::DisclosureIcons;
 use xgpui_luma::infra::menu_item::MenuItem;
@@ -24,7 +24,7 @@ use xgpui_luma::motion::overlay_presence::OverlayPresence;
 use xgpui_luma::controls::popup_menu::{PopupMenu, PopupMenuBuilder, PopupMenuEvent, ThemedPopupMenuTemplate};
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 use xgpui_luma::style::lss::Theme;
-use xgpui_luma::theme::{InteractionState, MetricTokens};
+use xgpui_luma::theme::MetricTokens;
 
 use super::selection_surface::popup_menu_theme;
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
@@ -238,8 +238,20 @@ struct PinnedContextMenuTheme {
 }
 
 impl ContextMenuTheme for PinnedContextMenuTheme {
-    fn resolve(&self, state: InteractionState) -> ContextMenuLook {
-        self.base.resolve(self.pinned.as_ref().map_or(state, StateSet::interaction))
+    /// The base style with the pinned states set in its key (#433), so Design mode draws them however the
+    /// pointer moves.
+    fn style(&self) -> StyleBinding {
+        let base = self.base.style();
+        let Some(pinned) = &self.pinned else {
+            return base;
+        };
+        ["hover", "pressed", "focused", "disabled", "invalid"]
+            .into_iter()
+            .fold(base, |binding, name| binding.state(name, pinned.has(name)))
+    }
+
+    fn menu(&self) -> FloatingMenuLook {
+        self.base.menu()
     }
 
     fn metrics(&self) -> MetricTokens {

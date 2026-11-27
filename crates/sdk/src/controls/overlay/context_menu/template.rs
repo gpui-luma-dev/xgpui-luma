@@ -1,5 +1,6 @@
 use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
+use crate::style::{PartRead, StyleStates};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -116,7 +117,11 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
             item_hovers,
             item_clicks,
         } = handlers;
-        let look = self.theme.resolve(model.state);
+        // Drawn straight from the resolved style (#433); the menu is the floating menu's look.
+        let resolved = self.theme.style().resolve_states(StyleStates::new(model.state), 1.0);
+        let style = resolved.root();
+        let menu_look = self.theme.menu();
+        let window_margin = px(style.number("window_margin"));
         let custom_content = model.target_content.map(|content| content(cx));
         let has_custom_content = custom_content.is_some();
         let mut target = div()
@@ -132,23 +137,24 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
         if let Some(content) = custom_content {
             target = target.items_start().justify_start().w_full().min_h(relative(1.0)).child(content);
         } else {
+            let typography = style.typography(14.0, 20.0);
             target = target
                 .cursor_pointer()
-                .min_w(px(look.target_min_width))
-                .px(px(look.target_padding_x))
-                .py(px(look.target_padding_y))
-                .bg(look.target_background)
-                .text_color(look.target_foreground)
-                .border(px(look.border_width))
-                .border_color(look.target_border)
-                .rounded(px(look.target_radius))
-                .text_size(px(look.target_typography.size))
-                .line_height(px(look.target_typography.line_height))
-                .font_weight(look.target_typography.weight)
+                .min_w(px(style.number("min_width")))
+                .px(px(style.number("padding_x")))
+                .py(px(style.number("padding_y")))
+                .bg(style.color("background"))
+                .text_color(style.color("foreground"))
+                .border(px(style.number("border_width")))
+                .border_color(style.color("border"))
+                .rounded(px(style.number("radius")))
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(model.label.clone());
         }
 
-        target = crate::style::fade(target, look.opacity);
+        target = crate::style::fade(target, style.opacity());
 
         let mut root = div()
             .on_children_prepainted(move |bounds, window, cx| {
@@ -169,14 +175,13 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
                 model.items,
                 model.open_submenu,
                 model.active_path,
-                look.floating_menu.clone(),
+                menu_look.clone(),
                 item_hovers,
                 item_clicks,
                 model.submenu_presence.clone(),
                 model.submenu_transition,
             );
             // At the pointer, opening upward when there is more room above (#433).
-            let menu_look = &look.floating_menu;
             let menu_size =
                 gpui::size(px(menu_look.min_width), px(menu_look.padding * 2.0 + menu_look.rows_height(model.items)));
             let placement = PopupPlacementRequest::new(
@@ -186,10 +191,10 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
             )
             .flip(true)
             .content_size(Some(menu_size))
-            .window_margin(px(look.window_margin))
+            .window_margin(window_margin)
             .resolve();
             let overlay = anchored()
-                .snap_to_window_with_margin(px(look.window_margin))
+                .snap_to_window_with_margin(window_margin)
                 .anchor(placement.anchor)
                 .position(placement.position)
                 // Dismiss relative to the menu surface. Its deferred bounds are
@@ -201,5 +206,58 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
         }
 
         self.modifiers.apply(root, model)
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod resolved_style_tests {
+    use gpui::{MouseMoveEvent, TestAppContext, point, px};
+
+    use crate::controls::context_menu::{ContextMenu, ContextMenuLook, StyledContextMenuTheme};
+    use crate::style::StyleStates;
+    use crate::theme::InteractionState;
+
+    use super::{ContextMenuTheme, ThemedContextMenuTemplate};
+
+    /// The template draws the target straight from the resolved style (#433), with the values the
+    /// `ContextMenuLook` compatibility type reads: the fill, stroke, corner radius and minimum width, at rest
+    /// and disabled.
+    #[test]
+    fn the_target_draws_what_the_look_describes() {
+        for enabled in [true, false] {
+            let theme = StyledContextMenuTheme::sdk();
+            let state = InteractionState { disabled: !enabled, ..Default::default() };
+            let look = ContextMenuLook::from_resolved(
+                &theme.style().resolve_states(StyleStates::new(state), 1.0),
+                theme.menu(),
+            );
+            let mut app = TestAppContext::single();
+            let (_, cx) = app.add_window_view(|_, cx| {
+                ContextMenu::from_builder(
+                    ContextMenu::new("parity")
+                        .label("Target")
+                        .enabled(enabled)
+                        .template(std::sync::Arc::new(ThemedContextMenuTemplate::new(std::sync::Arc::new(theme)))),
+                    cx,
+                )
+            });
+            // Keep the pointer off the target so it draws at rest.
+            cx.simulate_event(MouseMoveEvent { position: point(px(1000.0), px(400.0)), ..Default::default() });
+            cx.run_until_parked();
+            let scale = cx.update(|window, _| window.scale_factor());
+            let quads = cx.update(|window, _| window.painted_quads().to_vec());
+            let fill = quads.iter().find(|quad| quad.background == gpui::Background::from(look.target_background));
+            let fill =
+                fill.unwrap_or_else(|| panic!("the target is filled with the look's background (enabled {enabled})"));
+            assert_eq!(fill.corner_radii.top_left, px(look.target_radius).scale(scale), "radius (enabled {enabled})");
+            assert!(
+                fill.bounds.size.width >= px(look.target_min_width).scale(scale),
+                "minimum width (enabled {enabled})"
+            );
+            assert!(
+                quads.iter().any(|quad| quad.border_color == look.target_border && quad.bounds == fill.bounds),
+                "the target is stroked with the look's border (enabled {enabled})"
+            );
+        }
     }
 }

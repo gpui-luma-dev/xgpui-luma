@@ -1,13 +1,9 @@
 //! The context-menu target read from `.lss` (issue #285): `context_menu.lss`. The menu is supplied
 //! separately (a floating menu, which has its own `.lss`).
 
-use crate::style::StyleStates;
-use crate::style::PartRead;
-
-use super::theme::{ContextMenuLook, ContextMenuTheme};
+use super::theme::ContextMenuTheme;
 use crate::controls::popup_menu::MenuSource;
 use crate::style::{StyleBinding, ThemeSource};
-use crate::theme::InteractionState;
 
 /// A context-menu theme whose target is read from `.lss`.
 #[derive(Clone)]
@@ -37,23 +33,11 @@ impl StyledContextMenuTheme {
 }
 
 impl ContextMenuTheme for StyledContextMenuTheme {
-    fn resolve(&self, state: InteractionState) -> ContextMenuLook {
-        let states = StyleStates::new(state);
-        let resolved = self.binding.resolve_states(states, 1.0);
-        let root = resolved.root();
-        ContextMenuLook {
-            border_width: root.number("border_width"),
-            opacity: root.opacity(),
-            window_margin: root.number("window_margin"),
-            target_background: root.color("background"),
-            target_foreground: root.color("foreground"),
-            target_border: root.color("border"),
-            target_typography: root.typography(14.0, 20.0),
-            target_radius: root.number("radius"),
-            target_padding_x: root.number("padding_x"),
-            target_padding_y: root.number("padding_y"),
-            target_min_width: root.number("min_width"),
-            floating_menu: (self.menu)(),
-        }
+    fn style(&self) -> StyleBinding {
+        self.binding.clone()
+    }
+
+    fn menu(&self) -> crate::controls::floating_menu::FloatingMenuLook {
+        (self.menu)()
     }
 }
