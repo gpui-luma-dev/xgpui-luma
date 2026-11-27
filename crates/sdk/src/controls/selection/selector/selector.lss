@@ -1,15 +1,17 @@
 // SDK selector trigger. Layer: sdk. Read by the `.lss` selector theme (styled.rs); the popup panel comes
 // from the selector items panel look. A trigger is a button: the trigger style sets the outline or ghost
-// variant, which the looks define (#287); here every style draws the base trigger.
+// variant, which the looks define (#287); here every style draws the base trigger. It extends the trigger button
+// (#430): its chevron is `icon`, muted here and dimmed when disabled.
 
 /// The button that opens a selector's list.
-selector extends button {
+selector extends trigger_button {
   /// Space between the trigger and its popup.
   menu_offset_y: length = gap / 2
-  /// The chevron.
-  icon: color = palette.app.muted_foreground
 
   part root {
+    // A muted chevron, dimmed with the label when disabled.
+    icon = palette.app.muted_foreground
+    :disabled { icon = palette.state.disabled.foreground }
     font_size   = typography.text.body.size
     line_height = font_size * typography.text.label.line_height / typography.text.label.size
     // Validation is a state, not a visual variant: every trigger style shows it.

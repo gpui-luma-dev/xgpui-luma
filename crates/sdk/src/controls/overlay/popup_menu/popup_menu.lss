@@ -1,9 +1,10 @@
 // SDK popup-menu trigger. Layer: sdk. Read by the `.lss` popup-menu theme (styled.rs); the menu itself is
 // the floating menu. A trigger is a button: the trigger style sets the secondary, outline or ghost
-// variant, which the looks define (#287); here every style draws the base trigger.
+// variant, which the looks define (#287); here every style draws the base trigger. It extends the trigger button
+// (#430): its chevron is `icon`, the label color.
 
 /// The button that opens a popup menu.
-popup_menu extends button {
+popup_menu extends trigger_button {
   /// Space between the trigger and its menu.
   menu_offset_y: length = gap / 2
 

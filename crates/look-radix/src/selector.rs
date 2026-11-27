@@ -214,6 +214,7 @@ mod lss_tests {
         assert_close(disabled.trigger_background, look.resolve_role(SemanticRole::Surface).hsla());
         assert_close(disabled.trigger_foreground, look.resolve_role(SemanticRole::MutedForeground).hsla());
         assert_close(disabled.trigger_icon, disabled.trigger_foreground);
+        assert_eq!(disabled.trigger_opacity, 1.0, "Radix draws disabled colors and does not fade");
         let small = selector_theme(&look.with_size(crate::RadixSize::One));
         let small = small.resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false);
         assert_eq!((small.trigger_height, small.trigger_typography.size, small.menu_offset_y), (24.0, 14.0, 2.0));
