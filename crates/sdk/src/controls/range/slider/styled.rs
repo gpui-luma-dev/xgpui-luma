@@ -1,19 +1,11 @@
 //! The slider read from `.lss` (issue #285): `slider.lss`.
 
-use gpui::Hsla;
-use xgpui_luma_style::{PartId, PartView, Value, box_shadows};
+use crate::style::PartRead;
+use xgpui_luma_style::PartId;
 
 use super::theme::{SliderDecoration, SliderLook, SliderTheme};
 use crate::style::StyleBinding;
 use crate::theme::InteractionState;
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
 
 /// The slider for `binding` (the `slider` control) in `state`.
 pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> SliderLook {
@@ -31,25 +23,25 @@ pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> Sl
         resolved.part(PartId::new("thumb")),
     );
     SliderLook {
-        thumb_border_width: number(thumb, "border_width"),
+        thumb_border_width: thumb.number("border_width"),
         decoration: SliderDecoration {
-            dial_size: number(root, "dial_size"),
-            track_radius: number(root, "dial_track_radius"),
+            dial_size: root.number("dial_size"),
+            track_radius: root.number("dial_track_radius"),
         },
-        track_opacity: crate::style::part_opacity(track),
-        fill_opacity: crate::style::part_opacity(fill),
-        track_background: color(track, "background"),
-        track_border: color(track, "border"),
-        track_border_width: number(track, "border_width"),
-        fill_background: color(fill, "background"),
-        thumb_background: color(thumb, "background"),
-        thumb_border: color(thumb, "border"),
-        thumb_shadow: thumb.shadow().map(|layers| box_shadows(&layers)).unwrap_or_default(),
-        width: number(root, "width"),
-        height: number(root, "height"),
-        track_height: number(root, "track_height"),
-        thumb_size: number(root, "thumb_size"),
-        radius: number(root, "radius"),
+        track_opacity: track.opacity(),
+        fill_opacity: fill.opacity(),
+        track_background: track.color("background"),
+        track_border: track.color("border"),
+        track_border_width: track.number("border_width"),
+        fill_background: fill.color("background"),
+        thumb_background: thumb.color("background"),
+        thumb_border: thumb.color("border"),
+        thumb_shadow: thumb.box_shadow(),
+        width: root.number("width"),
+        height: root.number("height"),
+        track_height: root.number("track_height"),
+        thumb_size: root.number("thumb_size"),
+        radius: root.number("radius"),
     }
 }
 

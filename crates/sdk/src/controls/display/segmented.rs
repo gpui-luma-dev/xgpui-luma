@@ -1,8 +1,9 @@
 //! The segmented choice read from `.lss` (issue #285): `segmented.lss`. Looks render the track and
 //! segments from [`SegmentedLook`] and [`SegmentLook`].
 
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::{PartId, PartView, Value};
+use xgpui_luma_style::PartId;
 
 use crate::style::StyleBinding;
 
@@ -25,14 +26,6 @@ pub struct SegmentLook {
     pub padding_x: f32,
     pub font_size: f32,
     pub line_height: f32,
-}
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
 }
 
 /// A segment's states.
@@ -64,7 +57,7 @@ impl StyledSegmented {
     pub fn track(&self) -> SegmentedLook {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
-        SegmentedLook { background: color(root, "background"), radius: number(root, "radius") }
+        SegmentedLook { background: root.color("background"), radius: root.number("radius") }
     }
 
     pub fn segment(&self, state: SegmentState) -> SegmentLook {
@@ -77,16 +70,16 @@ impl StyledSegmented {
         let resolved = self.binding.resolve(&states, 1.0);
         let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
         SegmentLook {
-            background: color(item, "background"),
-            foreground: color(item, "foreground"),
+            background: item.color("background"),
+            foreground: item.color("foreground"),
             border: if state.focus_visible {
-                color(root, "focus_border")
+                root.color("focus_border")
             } else {
-                color(item, "border")
+                item.color("border")
             },
-            radius: number(item, "radius"),
-            height: number(item, "height"),
-            padding_x: number(item, "padding_x"),
+            radius: item.number("radius"),
+            height: item.number("height"),
+            padding_x: item.number("padding_x"),
             font_size: item.font_size().unwrap_or(14.0),
             line_height: item.line_height().unwrap_or(20.0),
         }

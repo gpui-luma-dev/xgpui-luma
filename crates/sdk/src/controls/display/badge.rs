@@ -1,7 +1,7 @@
 //! The badge read from `.lss` (issue #285): `badge.lss`. Looks render the element from [`BadgeLook`].
 
+use crate::style::PartRead;
 use gpui::{Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use xgpui_luma_style::{PartView, Value};
 
 use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
@@ -24,14 +24,6 @@ pub struct BadgeLook {
     pub font_family: SharedString,
 }
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 /// The badge's `.lss` values for one binding (the `badge` control, with the look's variant and size).
 #[derive(Clone)]
 pub struct StyledBadge {
@@ -52,24 +44,20 @@ impl StyledBadge {
     pub fn look(&self) -> BadgeLook {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
-        let border = color(root, "border");
+        let border = root.color("border");
         BadgeLook {
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
             border: (border.a > 0.0).then_some(border),
-            border_width: number(root, "border_width"),
-            radius: number(root, "radius"),
-            min_height: number(root, "min_height"),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
-            gap: number(root, "gap"),
-            icon_size: number(root, "icon_size"),
-            typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(12.0),
-                line_height: root.line_height().unwrap_or(16.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            font_family: root.font_family().unwrap_or("").to_string().into(),
+            border_width: root.number("border_width"),
+            radius: root.number("radius"),
+            min_height: root.number("min_height"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.number("gap"),
+            icon_size: root.number("icon_size"),
+            typography: root.typography(12.0, 16.0),
+            font_family: root.font_family_name(),
         }
     }
 }

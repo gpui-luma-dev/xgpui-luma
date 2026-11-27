@@ -1,20 +1,11 @@
 //! The accordion's trigger, content and layout read from `.lss` (issue #285): `accordion.lss`. Looks keep
 //! their own drag preview, handle icon and tooltip, and delegate the rest to [`StyledAccordion`].
 
-use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
+use crate::style::PartRead;
 
 use super::theme::{AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme};
 use crate::style::StyleBinding;
-use crate::theme::{InteractionState, LumaTextStyle, MetricTokens};
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
+use crate::theme::{InteractionState, MetricTokens};
 
 /// The accordion's `.lss` values for one binding (the `accordion` control).
 #[derive(Clone)]
@@ -42,28 +33,24 @@ impl StyledAccordion {
         ];
         let resolved = self.binding.resolve(&states, 1.0);
         let root = resolved.root();
-        let background = color(root, "background");
-        let foreground = color(root, "foreground");
+        let background = root.color("background");
+        let foreground = root.color("foreground");
         AccordionPalette {
             background: (background.a > 0.0).then_some(background),
             foreground,
-            border_color: color(root, "border"),
+            border_color: root.color("border"),
             icon_color: foreground,
-            chevron_color: color(root, "chevron"),
-            typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(14.0),
-                line_height: root.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            font_family: root.font_family().unwrap_or("").to_string().into(),
-            opacity: crate::style::part_opacity(root),
+            chevron_color: root.color("chevron"),
+            typography: root.typography(14.0, 20.0),
+            font_family: root.font_family_name(),
+            opacity: root.opacity(),
         }
     }
 
     /// The content's colors.
     pub fn content(&self) -> AccordionContentPalette {
         let resolved = self.binding.resolve(&[], 1.0);
-        AccordionContentPalette { background: None, foreground: color(resolved.root(), "content_foreground") }
+        AccordionContentPalette { background: None, foreground: resolved.root().color("content_foreground") }
     }
 
     /// The row layout at `scale_factor` device pixels per pixel.
@@ -71,16 +58,16 @@ impl StyledAccordion {
         let resolved = self.binding.resolve(&[], scale_factor);
         let root = resolved.root();
         AccordionScale {
-            drag_handle_padding: number(root, "drag_handle_padding"),
-            trigger_height: number(root, "height"),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
-            content_padding_y: number(root, "content_padding_y"),
-            radius: number(root, "radius"),
-            item_gap: number(root, "item_gap"),
-            inner_gap: number(root, "inner_gap"),
-            icon_size: number(root, "icon_size"),
-            chevron_size: number(root, "chevron_size"),
+            drag_handle_padding: root.number("drag_handle_padding"),
+            trigger_height: root.number("height"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            content_padding_y: root.number("content_padding_y"),
+            radius: root.number("radius"),
+            item_gap: root.number("item_gap"),
+            inner_gap: root.number("inner_gap"),
+            icon_size: root.number("icon_size"),
+            chevron_size: root.number("chevron_size"),
         }
     }
 }

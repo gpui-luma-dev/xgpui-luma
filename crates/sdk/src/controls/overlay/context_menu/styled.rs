@@ -1,21 +1,12 @@
 //! The context-menu target read from `.lss` (issue #285): `context_menu.lss`. The menu is supplied
 //! separately (a floating menu, which has its own `.lss`).
 
-use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
+use crate::style::PartRead;
 
 use super::theme::{ContextMenuLook, ContextMenuTheme};
 use crate::controls::popup_menu::MenuSource;
 use crate::style::{StyleBinding, ThemeSource};
-use crate::theme::{InteractionState, LumaTextStyle};
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
+use crate::theme::InteractionState;
 
 /// A context-menu theme whose target is read from `.lss`.
 #[derive(Clone)]
@@ -55,21 +46,17 @@ impl ContextMenuTheme for StyledContextMenuTheme {
         let resolved = self.binding.resolve(&states, 1.0);
         let root = resolved.root();
         ContextMenuLook {
-            border_width: number(root, "border_width"),
-            opacity: crate::style::part_opacity(root),
-            window_margin: number(root, "window_margin"),
-            target_background: color(root, "background"),
-            target_foreground: color(root, "foreground"),
-            target_border: color(root, "border"),
-            target_typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(14.0),
-                line_height: root.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            target_radius: number(root, "radius"),
-            target_padding_x: number(root, "padding_x"),
-            target_padding_y: number(root, "padding_y"),
-            target_min_width: number(root, "min_width"),
+            border_width: root.number("border_width"),
+            opacity: root.opacity(),
+            window_margin: root.number("window_margin"),
+            target_background: root.color("background"),
+            target_foreground: root.color("foreground"),
+            target_border: root.color("border"),
+            target_typography: root.typography(14.0, 20.0),
+            target_radius: root.number("radius"),
+            target_padding_x: root.number("padding_x"),
+            target_padding_y: root.number("padding_y"),
+            target_min_width: root.number("min_width"),
             floating_menu: (self.menu)(),
         }
     }

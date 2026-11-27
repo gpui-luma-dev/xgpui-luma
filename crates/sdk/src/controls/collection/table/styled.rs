@@ -1,28 +1,16 @@
 //! The table read from `.lss` (issue #285): `table.lss`. Looks keep their drag preview (the shared
 //! `drag_preview`) and delegate the frame, header and rows to [`StyledTable`].
 
-use gpui::Hsla;
-use xgpui_luma_style::{PartId, PartView, Value};
+use crate::style::PartRead;
+use xgpui_luma_style::{PartId, PartView};
 
 use super::theme::{TableDragLook, TableGeometry, TableLook, TableRowLook, TableRowPalette, TableTheme};
 use crate::infra::drag_drop::DragDropLook;
 use crate::style::StyleBinding;
 use crate::theme::{InteractionState, ListRowScale, LumaTextStyle, MetricTokens};
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 fn typography(part: PartView<'_>) -> LumaTextStyle {
-    LumaTextStyle {
-        size: part.font_size().unwrap_or(14.0),
-        line_height: part.line_height().unwrap_or(20.0),
-        weight: gpui::FontWeight(number(part, "font_weight").max(100.0)),
-    }
+    part.typography(14.0, 20.0)
 }
 
 /// The table's drag preview and insertion feedback: the shared drag preview's colors and radius with the
@@ -59,22 +47,22 @@ impl StyledTable {
         let resolved = self.binding.resolve(&[("disabled", !enabled), ("focused", focused && enabled)], 1.0);
         let (root, header) = (resolved.root(), resolved.part(PartId::new("header")));
         TableLook {
-            row_divider_width: number(root, "row_divider_width"),
-            column_padding_x: number(root, "column_padding_x"),
-            column_resize_hit_width: number(root, "column_resize_hit_width"),
-            column_resize_line_width: number(root, "column_resize_line_width"),
-            column_resize_vertical_extension: number(root, "column_resize_vertical_extension"),
-            background: color(root, "background"),
-            border: color(root, "border"),
-            border_width: number(root, "border_width"),
-            header_divider_width: number(root, "header_divider_width"),
-            header_padding_bottom_scale: number(root, "header_padding_bottom_scale"),
-            header_background: color(header, "background"),
-            header_label_color: color(header, "foreground"),
+            row_divider_width: root.number("row_divider_width"),
+            column_padding_x: root.number("column_padding_x"),
+            column_resize_hit_width: root.number("column_resize_hit_width"),
+            column_resize_line_width: root.number("column_resize_line_width"),
+            column_resize_vertical_extension: root.number("column_resize_vertical_extension"),
+            background: root.color("background"),
+            border: root.color("border"),
+            border_width: root.number("border_width"),
+            header_divider_width: root.number("header_divider_width"),
+            header_padding_bottom_scale: root.number("header_padding_bottom_scale"),
+            header_background: header.color("background"),
+            header_label_color: header.color("foreground"),
             header_typography: typography(header),
-            radius: number(root, "radius"),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
+            radius: root.number("radius"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
         }
     }
 
@@ -94,12 +82,12 @@ impl StyledTable {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
         TableGeometry {
-            drag_offset: number(root, "drag_offset"),
-            drag_width: number(root, "drag_width"),
-            drag_padding_x: number(root, "drag_padding_x"),
-            drag_padding_y: number(root, "drag_padding_y"),
-            drag_border_width: number(root, "drag_border_width"),
-            drag_marker_width: number(root, "drag_marker_width"),
+            drag_offset: root.number("drag_offset"),
+            drag_width: root.number("drag_width"),
+            drag_padding_x: root.number("drag_padding_x"),
+            drag_padding_y: root.number("drag_padding_y"),
+            drag_border_width: root.number("drag_border_width"),
+            drag_marker_width: root.number("drag_marker_width"),
         }
     }
 
@@ -108,9 +96,9 @@ impl StyledTable {
         let resolved = self.resolve_row(selected, state);
         let row = resolved.part(PartId::new("row"));
         TableRowPalette {
-            background: color(row, "background"),
-            label_color: color(row, "foreground"),
-            divider: color(row, "border"),
+            background: row.color("background"),
+            label_color: row.color("foreground"),
+            divider: row.color("border"),
             label_typography: typography(row),
         }
     }
@@ -120,20 +108,20 @@ impl StyledTable {
         let resolved = self.resolve_row(selected, state);
         let (root, row) = (resolved.root(), resolved.part(PartId::new("row")));
         TableRowLook {
-            column_emphasis_weight: gpui::FontWeight(number(root, "column_emphasis_weight").max(100.0)),
-            row_divider_width: number(root, "row_divider_width"),
-            column_padding_x: number(root, "column_padding_x"),
-            column_muted_opacity: number(root, "column_muted_opacity"),
-            opacity: crate::style::part_opacity(row),
-            background: color(row, "background"),
-            label_color: color(row, "foreground"),
-            divider: color(row, "border"),
+            column_emphasis_weight: gpui::FontWeight(root.number("column_emphasis_weight").max(100.0)),
+            row_divider_width: root.number("row_divider_width"),
+            column_padding_x: root.number("column_padding_x"),
+            column_muted_opacity: root.number("column_muted_opacity"),
+            opacity: row.opacity(),
+            background: row.color("background"),
+            label_color: row.color("foreground"),
+            divider: row.color("border"),
             label_typography: typography(row),
-            radius: number(row, "radius"),
+            radius: row.number("radius"),
             padding_x: scale.padding_x,
             padding_y: scale.padding_y,
             min_height: scale.min_height,
-            label_baseline_shift: number(root, "label_baseline_shift"),
+            label_baseline_shift: root.number("label_baseline_shift"),
         }
     }
 }

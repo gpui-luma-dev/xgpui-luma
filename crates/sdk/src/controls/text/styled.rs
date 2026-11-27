@@ -1,21 +1,14 @@
 //! Text-field and textarea themes read from `.lss` (issue #285): `textfield.lss`, and `textarea`, which
 //! extends it. They plug into the existing templates and every control that takes a text-input theme.
 
-use gpui::{Hsla, SharedString};
-use xgpui_luma_style::{PartView, Resolved, Value, box_shadows};
+use crate::style::PartRead;
+use gpui::SharedString;
+use xgpui_luma_style::{PartView, Resolved};
 
 use crate::controls::textarea::{TextAreaLook, TextAreaPalette, TextAreaState, TextAreaTheme};
 use crate::controls::textfield::{TextFieldLook, TextFieldPalette, TextFieldState, TextFieldTheme};
 use crate::style::{StyleBinding, ThemeSource};
 use crate::theme::{FocusMetricTokens, LumaTextStyle, MetricTokens, StandardBoxScale};
-
-fn color(root: PartView<'_>, name: &str) -> Hsla {
-    root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(root: PartView<'_>, name: &str) -> f32 {
-    root.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
 
 /// The values both inputs share, resolved for one state.
 struct Input {
@@ -35,30 +28,26 @@ impl Input {
 
     fn typography(&self) -> LumaTextStyle {
         let root = self.root();
-        LumaTextStyle {
-            size: root.font_size().unwrap_or(14.0),
-            line_height: root.line_height().unwrap_or(20.0),
-            weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-        }
+        root.typography(14.0, 20.0)
     }
 
     fn font_family(&self) -> SharedString {
-        self.root().font_family().unwrap_or("").to_string().into()
+        self.root().font_family_name()
     }
 
     fn shadow(&self) -> Option<Vec<gpui::BoxShadow>> {
-        self.root().shadow().filter(|layers| !layers.is_empty()).map(|layers| box_shadows(&layers))
+        self.root().box_shadow_opt()
     }
 
     /// The focus geometry and border width, for templates that read them from the theme's metrics.
     fn metrics(&self) -> MetricTokens {
         let root = self.root();
         MetricTokens {
-            border_width: number(root, "border_width"),
+            border_width: root.number("border_width"),
             focus: FocusMetricTokens {
-                gap: number(root, "focus_gap"),
-                width: number(root, "focus_width"),
-                offset: number(root, "focus_offset"),
+                gap: root.number("focus_gap"),
+                width: root.number("focus_width"),
+                offset: root.number("focus_offset"),
             },
             ..MetricTokens::default()
         }
@@ -97,15 +86,15 @@ impl TextFieldTheme for StyledTextFieldTheme {
         let input = self.input(state, enabled);
         let root = input.root();
         TextFieldPalette {
-            focus_border: color(root, "focus_border"),
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
-            border: color(root, "border"),
-            placeholder: color(root, "placeholder"),
-            icon: color(root, "icon"),
-            selection_background: color(root, "selection_background"),
-            selection_foreground: color(root, "selection_foreground"),
-            caret: color(root, "caret"),
+            focus_border: root.color("focus_border"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            placeholder: root.color("placeholder"),
+            icon: root.color("icon"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
             shadow: input.shadow(),
             typography: input.typography(),
             font_family: input.font_family(),
@@ -121,28 +110,28 @@ impl TextFieldTheme for StyledTextFieldTheme {
         let root = input.root();
         TextFieldLook {
             helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
-            caret_width: number(root, "caret_width"),
-            caret_height_extra: number(root, "caret_height_extra"),
-            opacity: crate::style::part_opacity(root),
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
-            border: color(root, "border"),
-            focus_border: color(root, "focus_border"),
-            placeholder: color(root, "placeholder"),
-            icon: color(root, "icon"),
-            selection_background: color(root, "selection_background"),
-            selection_foreground: color(root, "selection_foreground"),
-            caret: color(root, "caret"),
+            caret_width: root.number("caret_width"),
+            caret_height_extra: root.number("caret_height_extra"),
+            opacity: root.opacity(),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            focus_border: root.color("focus_border"),
+            placeholder: root.color("placeholder"),
+            icon: root.color("icon"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
             shadow: input.shadow(),
             typography: input.typography(),
             font_family: input.font_family(),
             min_height: root.height().unwrap_or(0.0),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
             gap: root.gap().unwrap_or(0.0),
             radius: root.radius().unwrap_or(0.0),
-            border_width: number(root, "border_width"),
-            icon_size: number(root, "icon_size"),
+            border_width: root.number("border_width"),
+            icon_size: root.number("icon_size"),
         }
     }
 }
@@ -179,14 +168,14 @@ impl TextAreaTheme for StyledTextAreaTheme {
         let input = self.input(state, enabled);
         let root = input.root();
         TextAreaPalette {
-            focus_border: color(root, "focus_border"),
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
-            border: color(root, "border"),
-            placeholder: color(root, "placeholder"),
-            selection_background: color(root, "selection_background"),
-            selection_foreground: color(root, "selection_foreground"),
-            caret: color(root, "caret"),
+            focus_border: root.color("focus_border"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            placeholder: root.color("placeholder"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
             shadow: input.shadow(),
             typography: input.typography(),
             font_family: input.font_family().to_string(),
@@ -202,25 +191,25 @@ impl TextAreaTheme for StyledTextAreaTheme {
         let root = input.root();
         TextAreaLook {
             helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
-            caret_width: number(root, "caret_width"),
-            caret_height_extra: number(root, "caret_height_extra"),
-            opacity: crate::style::part_opacity(root),
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
-            border: color(root, "border"),
-            focus_border: color(root, "focus_border"),
-            placeholder: color(root, "placeholder"),
-            selection_background: color(root, "selection_background"),
-            selection_foreground: color(root, "selection_foreground"),
-            caret: color(root, "caret"),
+            caret_width: root.number("caret_width"),
+            caret_height_extra: root.number("caret_height_extra"),
+            opacity: root.opacity(),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            focus_border: root.color("focus_border"),
+            placeholder: root.color("placeholder"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
             shadow: input.shadow(),
             typography: input.typography(),
             font_family: input.font_family().to_string(),
             min_height: root.height().unwrap_or(0.0),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
             radius: root.radius().unwrap_or(0.0),
-            border_width: number(root, "border_width"),
+            border_width: root.number("border_width"),
         }
     }
 }

@@ -2,6 +2,7 @@
 //! layout, typography roles, section font features and drag preview, and delegate the rows to
 //! [`StyledSidebar`].
 
+use crate::style::PartRead;
 use gpui::Hsla;
 use xgpui_luma_style::{PartId, PartView, Value};
 
@@ -9,24 +10,8 @@ use super::theme::{SidebarItemLook, SidebarSectionLook, SidebarTheme};
 use crate::style::StyleBinding;
 use crate::theme::{InteractionState, LumaTextStyle};
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn painted(part: PartView<'_>, name: &str) -> Option<Hsla> {
-    Some(color(part, name)).filter(|color| color.a > 0.0)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 fn typography(part: PartView<'_>) -> LumaTextStyle {
-    LumaTextStyle {
-        size: part.font_size().unwrap_or(12.5),
-        line_height: part.line_height().unwrap_or(18.0),
-        weight: gpui::FontWeight(number(part, "font_weight").max(100.0)),
-    }
+    part.typography(12.5, 18.0)
 }
 
 /// The sidebar's `.lss` values for one binding (the `sidebar` control).
@@ -50,15 +35,15 @@ impl StyledSidebar {
         let resolved = self.binding.resolve(&[], 1.0);
         let section = resolved.part(PartId::new("section"));
         SidebarSectionLook {
-            label_color: color(section, "foreground"),
+            label_color: section.color("foreground"),
             typography: typography(section),
-            height: number(section, "height"),
+            height: section.number("height"),
         }
     }
 
     /// The rows' text color at rest.
     pub fn foreground(&self) -> Hsla {
-        color(self.binding.resolve(&[], 1.0).part(PartId::new("item")), "foreground")
+        self.binding.resolve(&[], 1.0).part(PartId::new("item")).color("foreground")
     }
 
     /// A row, selected (the current page) or not, in `state`.
@@ -73,19 +58,19 @@ impl StyledSidebar {
         ];
         let resolved = self.binding.resolve(&states, 1.0);
         let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
-        let foreground = color(item, "foreground");
+        let foreground = item.color("foreground");
         SidebarItemLook {
-            background: painted(item, "background"),
-            focus_border: painted(item, "focus_border"),
+            background: item.painted("background"),
+            focus_border: item.painted("focus_border"),
             foreground,
             icon_color: foreground,
             typography: typography(item),
-            radius: number(item, "radius"),
-            height: number(item, "height"),
-            padding_x: number(item, "padding_x"),
-            gap: number(item, "gap"),
-            icon_size: number(root, "item_icon_size"),
-            opacity: crate::style::part_opacity(item),
+            radius: item.number("radius"),
+            height: item.number("height"),
+            padding_x: item.number("padding_x"),
+            gap: item.number("gap"),
+            icon_size: root.number("item_icon_size"),
+            opacity: item.opacity(),
         }
     }
 
