@@ -4,8 +4,6 @@
 // are variants. The textarea extends the text field, so it draws the same.
 
 textfield {
-  /// shadcn fades a disabled input (`disabled:opacity-50`-like).
-  disabled_opacity = 0.6
   part root {
     background           := shadcn.field_background
     foreground           := css.foreground
@@ -21,14 +19,8 @@ textfield {
     font_size             = shadcn.control_font_size
     line_height           = font_size * typography.text.body.line_height / typography.text.body.size
     :invalid  { border = css.destructive  focus_border = transparent }
-    :disabled {
-      background           = css.muted
-      foreground           = css.muted_foreground
-      border               = css.border
-      selection_background = css.muted_foreground
-      selection_foreground = css.muted_foreground
-      caret                = css.muted_foreground
-    }
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { opacity = 0.6 }
     :disabled:invalid { border = css.border }
   }
 
@@ -38,7 +30,6 @@ textfield {
     part root {
       background := css.background
       shadow     := first(css.shadow_xs, [])
-      :disabled { background = css.muted }
     }
   }
 

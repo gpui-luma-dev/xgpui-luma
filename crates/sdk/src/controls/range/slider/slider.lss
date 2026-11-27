@@ -5,10 +5,9 @@ slider {
   /// Track thickness and thumb diameter.
   track_height: length = exact(max(metrics.control.gap - 2, 2))
   thumb_size: length = exact(16)
-  /// The radial (dial and ring) templates' size and track radius, and disabled opacity.
+  /// The radial (dial and ring) templates' size and track radius.
   dial_size: length = exact(200)
   dial_track_radius: length = exact(72)
-  disabled_opacity: number = 1
 
   /// The whole control.
   part root {

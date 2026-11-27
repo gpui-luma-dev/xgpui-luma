@@ -152,7 +152,7 @@ mod lss_tests {
                     assert!(0.0 < ghost.thumb_thickness && ghost.thumb_thickness <= ghost.thickness);
                     assert!(ghost.min_thumb_length > ghost.thumb_thickness);
                     assert!(ghost.radius >= ghost.thickness / 2.0, "a pill");
-                    assert!(0.0 < ghost.disabled_opacity && ghost.disabled_opacity <= 1.0);
+                    assert_eq!(ghost.opacity, 1.0, "Radix draws disabled colors without fading");
                 }
                 previous_thickness = scrollbar
                     .resolve(InteractionState::default(), ScrollbarOrientation::Horizontal, ScrollbarStyle::Ghost)
@@ -171,11 +171,7 @@ mod lss_tests {
                     };
                     assert_close(got.grip_emphasis, role(emphasis));
                     assert!(got.border_width > 0.0 && got.divider_width > 0.0);
-                    if disabled {
-                        assert!(0.0 < got.disabled_opacity && got.disabled_opacity < 1.0);
-                    } else {
-                        assert_eq!(got.disabled_opacity, 1.0);
-                    }
+                    assert_eq!(got.opacity, 1.0, "Radix draws disabled colors without fading");
                 }
 
                 let (dock, split) = (crate::dock_splitter_theme(&look), crate::split_view_theme(&look));

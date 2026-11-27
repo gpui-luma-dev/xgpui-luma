@@ -409,14 +409,28 @@ fn look_defines_the_visual_variants() {
 #[test]
 fn disabled_controls_fade_over_resting_colors() {
     let look = ShadcnLook::built_in();
-    for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
-        for variant in [None, Some("secondary"), Some("outline"), Some("ghost")] {
+    use xgpui_luma::style::lss::props::OPACITY;
+    for control in [
+        "button",
+        "toggle",
+        "popup_menu",
+        "selector",
+        "checkbox",
+        "radio",
+        "switch",
+        "textfield",
+        "textarea",
+        "scrollbar",
+        "slider",
+        "resizable_panels",
+    ] {
+        for variant in [None, Some("secondary"), Some("outline"), Some("ghost"), Some("soft")] {
             let attrs: Vec<(&str, &str)> = variant.map(|v| ("variant", v)).into_iter().collect();
             let resting = resolve(control, &look, &attrs, &[]);
             let disabled = resolve(control, &look, &attrs, &["disabled"]);
-            let opacity = disabled.root().get(xgpui_luma::style::lss::props::OPACITY);
-            assert!(opacity.is_some_and(|value| value < 1.0), "{control} {variant:?}: {opacity:?}");
-            for part in disabled.parts() {
+            let faded = |part| disabled.part(part).get(OPACITY).is_some_and(|value| value < 1.0);
+            assert!(disabled.parts().any(faded), "{control} {variant:?}: no part fades");
+            for part in disabled.parts().filter(|part| faded(*part)) {
                 assert_eq!(
                     disabled.part(part).background(),
                     resting.part(part).background(),
@@ -431,16 +445,7 @@ fn disabled_controls_fade_over_resting_colors() {
 #[test]
 fn disabled_controls_keep_the_shadcn_fade() {
     let look = ShadcnLook::built_in();
-    for control in [
-        "textfield",
-        "textarea",
-        "control_group",
-        "context_menu",
-        "scrollbar",
-        "slider",
-        "resizable_panels",
-        "radio_group",
-    ] {
+    for control in ["control_group", "context_menu", "radio_group"] {
         let opacity = resolve(control, &look, &[], &[]).root().value("disabled_opacity").and_then(Value::as_number);
         assert!(opacity.is_some_and(|value| value < 1.0), "{control}: {opacity:?}");
     }

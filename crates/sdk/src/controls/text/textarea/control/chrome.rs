@@ -185,7 +185,8 @@ impl Render for TextArea {
             .font_weight(look.typography.weight)
             .when(self.model.full_width, |root| root.w_full())
             .when(self.model.enabled, |root| root.cursor_text())
-            .when(!self.model.enabled, |root| root.cursor_not_allowed().opacity(look.disabled_opacity))
+            .when(!self.model.enabled, |root| root.cursor_not_allowed())
+            .map(|root| crate::style::fade(root, look.opacity))
             .child(
                 div()
                     .relative()

@@ -14,7 +14,8 @@ pub struct ResizablePanelsLook {
     pub divider: Hsla,
     pub grip: Hsla,
     pub grip_emphasis: Hsla,
-    pub disabled_opacity: f32,
+    /// The resize handles' fade in this state: the root's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
+    pub opacity: f32,
 }
 
 pub trait ResizablePanelsTheme: Send + Sync {

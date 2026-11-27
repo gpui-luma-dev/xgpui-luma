@@ -392,7 +392,20 @@ fn radio_group_layout_comes_from_the_look_lss() {
 #[test]
 fn disabled_controls_draw_colors_without_fading() {
     let theme = Look::built_in().style_theme();
-    for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
+    for control in [
+        "button",
+        "toggle",
+        "popup_menu",
+        "selector",
+        "checkbox",
+        "radio",
+        "switch",
+        "textfield",
+        "textarea",
+        "scrollbar",
+        "slider",
+        "resizable_panels",
+    ] {
         let key = theme.key_named(control, &[], &["disabled"]).expect("key");
         let resolved = theme.resolve(&key);
         for part in resolved.parts() {
@@ -410,8 +423,7 @@ fn disabled_controls_keep_the_radix_fade() {
         let key = theme.key_named(control, &[], &[]).expect("key");
         theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number)
     };
-    for control in ["textfield", "textarea", "control_group", "context_menu", "scrollbar", "slider", "resizable_panels"]
-    {
+    for control in ["control_group", "context_menu"] {
         assert!(opacity(control).is_some_and(|value| value < 1.0), "{control}: {:?}", opacity(control));
     }
 }

@@ -1399,7 +1399,7 @@ impl Render for ParleyTextField {
             .text_size(px(look.typography.size))
             .line_height(line_height)
             .when(enabled, |control| control.cursor_text())
-            .when(!enabled, |control| control.cursor_not_allowed().opacity(look.disabled_opacity))
+            .when(!enabled, |control| control.cursor_not_allowed().opacity(look.opacity))
             .when_some(look.shadow.clone().filter(|shadows| !shadows.is_empty()), |control, shadows| {
                 control.shadow(shadows)
             })
@@ -1520,7 +1520,7 @@ impl ParleyTextField {
             .pr(inset)
             .flex()
             .items_center()
-            .when(!self.enabled, |overlay| overlay.opacity(look.disabled_opacity))
+            .when(!self.enabled, |overlay| overlay.opacity(look.opacity))
             .child(div().w_full().h(line_height).child(text));
         div()
             .id(SharedString::from(format!("{}-parley", self.id)))

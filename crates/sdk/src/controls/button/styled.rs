@@ -408,24 +408,31 @@ mod disabled_opacity_tests {
     #[test]
     fn sdk_disabled_controls_do_not_fade() {
         let theme = default_theme();
-        for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
+        for control in [
+            "button",
+            "toggle",
+            "popup_menu",
+            "selector",
+            "checkbox",
+            "radio",
+            "switch",
+            "textfield",
+            "textarea",
+            "scrollbar",
+            "slider",
+            "resizable_panels",
+        ] {
             let sheet = theme.stylesheet();
             let id = sheet.control(control).expect("declared");
             assert!(sheet.prop::<f32>(id, "disabled_opacity").is_err(), "{control}: no separate fade property");
             let key = theme.key_named(control, &[], &["disabled"]).expect("key");
-            assert_eq!(part_opacity(theme.resolve(&key).root()), 1.0, "{control}");
+            let resolved = theme.resolve(&key);
+            for part in resolved.parts() {
+                assert_eq!(part_opacity(resolved.part(part)), 1.0, "{control} {part:?}");
+            }
         }
         // Not yet moved to `:disabled { opacity }`.
-        for control in [
-            "textfield",
-            "textarea",
-            "control_group",
-            "context_menu",
-            "scrollbar",
-            "slider",
-            "resizable_panels",
-            "radio_group",
-        ] {
+        for control in ["control_group", "context_menu", "radio_group"] {
             let key = theme.key_named(control, &[], &[]).expect("key");
             let opacity = theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number);
             assert_eq!(opacity, Some(1.0), "{control}");
