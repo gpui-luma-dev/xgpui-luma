@@ -1,3 +1,4 @@
+use crate::infra::trigger::{TriggerToggle, toggle_on_click, toggle_on_press};
 use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use std::sync::Arc;
@@ -496,18 +497,21 @@ where
     }
 
     fn handle_trigger_click(&mut self, event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if event.is_keyboard() {
-            return;
-        }
+        let toggle = toggle_on_click(self.model.open_on, event, self.model.enabled, self.open);
+        self.apply_trigger_toggle(toggle, cx);
+    }
 
-        if self.model.enabled {
-            if self.open {
-                self.close_menu_with_event(true, cx);
-            } else {
+    fn apply_trigger_toggle(&mut self, toggle: Option<TriggerToggle>, cx: &mut Context<Self>) {
+        match toggle {
+            Some(TriggerToggle::Open) => {
                 self.open_with_default_active(cx);
             }
-            cx.notify();
+            Some(TriggerToggle::Close) => {
+                self.close_menu_with_event(true, cx);
+            }
+            None => return,
         }
+        cx.notify();
     }
 
     fn handle_item_click(&mut self, index: usize, event: &ClickEvent, cx: &mut Context<Self>) {
@@ -547,6 +551,8 @@ where
         if self.interaction.handle_mouse_down(self.model.enabled, window, cx) {
             cx.notify();
         }
+        let toggle = toggle_on_press(self.model.open_on, self.model.enabled, self.open);
+        self.apply_trigger_toggle(toggle, cx);
     }
 
     fn handle_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {

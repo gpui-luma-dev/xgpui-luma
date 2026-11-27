@@ -1,3 +1,4 @@
+use crate::infra::trigger::{TriggerOpenOn, TriggerToggle, toggle_on_click};
 use std::sync::Arc;
 
 use gpui::{
@@ -13,7 +14,7 @@ pub struct PopoverButton<D = ()> {
     data: Arc<D>,
     trigger: PopoverTrigger<D>,
     panel: Entity<PopoverPanel>,
-    trigger_on_pointer_down: bool,
+    open_on: crate::infra::trigger::TriggerOpenOn,
     measure_trigger: bool,
     /// The builder set these explicitly, so [`Self::set_geometry`] leaves them alone.
     explicit_offset_y: bool,
@@ -73,7 +74,7 @@ impl<D: Default + 'static> PopoverButton<D> {
             data,
             trigger: builder.trigger,
             panel,
-            trigger_on_pointer_down: builder.trigger_on_pointer_down,
+            open_on: builder.open_on,
             measure_trigger,
             explicit_offset_y: builder.explicit_offset_y,
             explicit_window_margin: builder.explicit_window_margin,
@@ -123,15 +124,23 @@ impl<D: 'static> Render for PopoverButton<D> {
         let trigger = (self.trigger)(&model, cx);
         let panel_for_bounds = self.panel.clone();
         let panel_for_trigger = self.panel.clone();
-        let trigger = if self.trigger_on_pointer_down {
-            div()
-                .id((self.id.clone(), 0usize))
-                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                    panel_for_trigger.update(cx, |panel, cx| panel.toggle_guarded(cx));
-                })
-                .child(trigger)
-        } else {
-            div().id((self.id.clone(), 0usize)).child(trigger)
+        let open_on = self.open_on;
+        let trigger = div().id((self.id.clone(), 0usize)).child(trigger);
+        let trigger = match open_on {
+            TriggerOpenOn::Press => trigger.on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                // Guarded: the same press must not count as a click outside the panel.
+                panel_for_trigger.update(cx, |panel, cx| panel.toggle_guarded(cx));
+            }),
+            TriggerOpenOn::Click => trigger.on_click(move |event, _, cx| {
+                panel_for_trigger.update(cx, |panel, cx| {
+                    match toggle_on_click(open_on, event, true, panel.is_open()) {
+                        Some(TriggerToggle::Open) => panel.open(cx),
+                        Some(TriggerToggle::Close) => panel.dismiss(cx),
+                        None => {}
+                    }
+                });
+            }),
+            TriggerOpenOn::Never => trigger,
         };
         let mut root = div().relative().child(trigger);
         if self.measure_trigger {

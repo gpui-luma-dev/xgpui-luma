@@ -58,6 +58,7 @@ where
     pub(crate) tab_stop: bool,
     pub(crate) placement: SelectorPlacement,
     pub(crate) dismiss: crate::infra::popup_dismiss::PopupDismiss,
+    pub(crate) open_on: crate::infra::trigger::TriggerOpenOn,
     pub(crate) opening_mode: SelectorOpeningMode,
     pub(crate) trigger_style: SelectorTriggerStyle,
     pub(crate) icons_explicit: bool,
@@ -218,6 +219,7 @@ where
                 tab_stop: true,
                 placement: SelectorPlacement::Smart,
                 dismiss: crate::infra::popup_dismiss::PopupDismiss::LIGHT,
+                open_on: crate::infra::trigger::TriggerOpenOn::Click,
                 opening_mode: SelectorOpeningMode::default(),
                 trigger_style: SelectorTriggerStyle::default(),
                 icons_explicit: false,
@@ -322,6 +324,12 @@ where
     /// What closes the popup: an outside click, focus loss or Escape by default.
     pub fn dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
         self.model.dismiss = dismiss;
+        self
+    }
+
+    /// What on the trigger opens the menu: a click by default.
+    pub fn open_on(mut self, open_on: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.model.open_on = open_on;
         self
     }
 

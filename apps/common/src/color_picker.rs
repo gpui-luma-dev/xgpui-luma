@@ -208,7 +208,7 @@ impl ColorPickerPopover {
             .dismiss(PopupDismiss::CLICK_OUTSIDE)
             .offset_y(px(0.0))
             .initial_content_size(size(px(260.0), px(254.0)))
-            .trigger_on_pointer_down(false)
+            .open_on(xgpui_luma::infra::trigger::TriggerOpenOn::Never)
             .on_open_changed(cx, |picker: &mut Self, open, cx| {
                 picker.button.update(cx, |button, cx| {
                     let mut data = button.data().clone();

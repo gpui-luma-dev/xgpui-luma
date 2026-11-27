@@ -1,3 +1,4 @@
+use crate::infra::trigger::{TriggerOpenOn, TriggerToggle, toggle_on_click};
 use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
@@ -470,18 +471,15 @@ impl SearchSelectorControl {
 
     fn handle_trigger_click(&mut self, event: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
         self.trigger_toggle_pending = false;
-        if !self.model.enabled || event.is_keyboard() {
-            return;
+        // Always on click: opening moves focus into the popup's search field.
+        match toggle_on_click(TriggerOpenOn::Click, event, self.model.enabled, self.behavior.state.open) {
+            Some(TriggerToggle::Close) => self.close_popup(cx),
+            Some(TriggerToggle::Open) => {
+                self.open_popup_with_all_items(cx);
+                self.focus_popup_search(window, cx);
+            }
+            None => return,
         }
-
-        if self.behavior.state.open {
-            self.close_popup(cx);
-            cx.stop_propagation();
-            return;
-        }
-
-        self.open_popup_with_all_items(cx);
-        self.focus_popup_search(window, cx);
         cx.stop_propagation();
     }
 
