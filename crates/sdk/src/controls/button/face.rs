@@ -30,6 +30,30 @@ pub(crate) struct FaceLook {
     pub opacity: f32,
 }
 
+impl FaceLook {
+    /// The face a resolved root part describes (#433): the one reader every button-like trigger draws from, so
+    /// border width and focus geometry are read in the face's own state.
+    pub(crate) fn from_part(root: xgpui_luma_style::PartView<'_>) -> Self {
+        use crate::style::PartRead;
+        Self {
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color_opt("border"),
+            border_width: root.number("border_width"),
+            shadow: root.box_shadow_opt(),
+            typography: root.typography(14.0, 20.0),
+            font_family: root.font_family_name(),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.number("gap"),
+            height: root.number("height"),
+            focus: crate::controls::choice::styled::focus_adorner(root),
+            focus_border: root.color("focus_border"),
+            opacity: root.opacity(),
+        }
+    }
+}
+
 /// How the face box is sized.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum FaceShape {

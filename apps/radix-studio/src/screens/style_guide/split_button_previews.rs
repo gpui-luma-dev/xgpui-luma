@@ -3,7 +3,7 @@ use xgpui_luma_look_radix::RadixSize;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::{
-    popup_menu::{PopupMenuPlacement, PopupMenuTriggerMetrics, PopupMenuTriggerStyle},
+    popup_menu::{PopupMenuPlacement, PopupMenuTriggerStyle},
     split_button::*,
     tabs::Tabs,
 };
@@ -162,27 +162,28 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
     };
     let content = if cell.face == Face::Icon {
         // GPUI SVGs need an explicit foreground; the SDK icon presenter supplies none.
-        let resolved = radix::split_button_theme(look, cell.style.menu, Tone::Accent).resolve_look(
+        let theme = radix::split_button_theme(look, cell.style.menu, Tone::Accent);
+        let trigger = xgpui_luma::controls::popup_menu::resolve_popup_menu_trigger(
+            &theme.style(),
             cell.style.trigger,
-            PopupMenuTriggerMetrics::default(),
             primary,
+            false,
             window.scale_factor(),
-            cx,
         );
+        let (icon_size, foreground) = {
+            use xgpui_luma::style::PartRead as _;
+            (trigger.root().number("icon_size"), trigger.root().color("foreground"))
+        };
         let selector = format!("{id}-icon");
         Arc::new(move |_: &SplitButtonTriggerModel, _: &mut App| {
             div()
-                .size(px(resolved.trigger_icon_size))
+                .size(px(icon_size))
                 .flex_none()
                 .debug_selector({
                     let selector = selector.clone();
                     move || selector.clone()
                 })
-                .child(xgpui_luma::infra::icon::lucide_icon(
-                    lucide_svg_static::Icon::Save,
-                    resolved.trigger_foreground,
-                    resolved.trigger_icon_size,
-                ))
+                .child(xgpui_luma::infra::icon::lucide_icon(lucide_svg_static::Icon::Save, foreground, icon_size))
                 .into_any_element()
         }) as _
     } else {
