@@ -192,14 +192,9 @@ where
         if !self.model.enabled && self.focus_handle.contains_focused(window, cx) {
             window.blur(cx);
         }
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let policy = self.model.scroll_interaction;
         if !self.model.enabled

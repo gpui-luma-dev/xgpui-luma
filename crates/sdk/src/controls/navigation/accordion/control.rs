@@ -1,9 +1,10 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use gpui::{
     App, Context, EventEmitter, FocusOutEvent, Focusable, FocusHandle, IntoElement, KeyDownEvent, Render, SharedString,
-    Subscription, Window, div, prelude::*,
+    Window, div, prelude::*,
 };
 
 use super::{
@@ -70,15 +71,14 @@ pub struct AccordionControl {
     pub(super) drag_scroll_pending: std::rc::Rc<std::cell::Cell<bool>>,
     pub(super) model: AccordionModel,
     focus_handle: FocusHandle,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
     expanded_ids: HashSet<SharedString>,
     pub(super) transitions: Vec<DisclosureMotion>,
     pub(super) content_heights_px: Vec<f32>,
     pub(super) focused_item_index: Option<usize>,
     pub(super) hovered_item_index: Option<usize>,
     pub(super) pressed_item_index: Option<usize>,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     /// Maps each item's drawn state (`set_item_state_override`).
     item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
@@ -143,15 +143,14 @@ impl AccordionControl {
             drag_scroll_pending: Default::default(),
             model: builder.model,
             focus_handle: cx.focus_handle().tab_stop(enabled),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
             expanded_ids,
             transitions,
             content_heights_px,
             focused_item_index: None,
             hovered_item_index: None,
             pressed_item_index: None,
-            emitted_focused: false,
+            focus_report: Default::default(),
             item_state_override: None,
         }
     }
@@ -187,8 +186,7 @@ impl AccordionControl {
 
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.drag_tooltips.clear();
             self.hovered_drag_handle = None;
@@ -504,16 +502,6 @@ impl AccordionControl {
             cx.emit(AccordionEvent::ItemFocused { item_id: self.model.items[index].id.clone() });
         }
     }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(AccordionEvent::FocusChanged { focused });
-        true
-    }
 }
 
 impl Focusable for AccordionControl {
@@ -536,14 +524,10 @@ impl Render for AccordionControl {
             cx.notify();
         }
 
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let handlers = self.template_handlers(cx);
         let model = self.render_model(window);
@@ -788,5 +772,21 @@ mod item_state_override_tests {
                 assert!(!a.state.hovered, "a as it is");
             });
         });
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for AccordionControl {
+    type FocusEvent = AccordionEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> AccordionEvent {
+        AccordionEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

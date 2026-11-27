@@ -150,13 +150,15 @@ where
             }
         }
 
-        if self.focus_in_subscription.is_none() {
-            self.focus_in_subscription = Some(cx.on_focus(&self.focus_handle, window, Self::handle_group_focus_entry));
-        }
-        if self.focus_out_subscription.is_none() {
-            self.focus_out_subscription =
-                Some(cx.on_focus_out(&self.focus_handle, window, Self::handle_group_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+
+        self.focus_subscriptions.ensure(
+            &focus_handle,
+            window,
+            cx,
+            Self::handle_group_focus_entry,
+            Self::handle_group_focus_out,
+        );
         self.ensure_item_focus_subscriptions(window, cx);
 
         if self.model.focus_strategy == ControlGroupFocusStrategy::RovingItemFocus

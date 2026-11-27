@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{ClickEvent, Context, FocusOutEvent, MouseDownEvent, MouseUpEvent, ScrollEvent, TouchPhase, Window, px};
 
 use super::selection::{TableDirection, next_enabled_index};
@@ -331,15 +332,5 @@ where
         if self.emit_focus_changed(false, cx) {
             cx.notify();
         }
-    }
-
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(TableEvent::FocusChanged { focused });
-        true
     }
 }

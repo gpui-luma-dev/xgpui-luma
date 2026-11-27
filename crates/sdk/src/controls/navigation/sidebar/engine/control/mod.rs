@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 mod input;
 mod nodes;
 mod render;
@@ -55,7 +56,7 @@ pub struct SidebarPanelEngine {
     visible_focus_nodes: Vec<(NavigationFocusTarget, FocusHandle)>,
     focus_subscriptions: Vec<Subscription>,
     focus_subscription_keys: Vec<(NavigationFocusTarget, FocusHandle)>,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     _subscriptions: Vec<Subscription>,
     branch_transitions: HashMap<SharedString, VisualTransition>,
     branch_heights_px: HashMap<SharedString, f32>,
@@ -164,7 +165,7 @@ impl SidebarPanelEngine {
             visible_focus_nodes: Vec::new(),
             focus_subscriptions: Vec::new(),
             focus_subscription_keys: Vec::new(),
-            emitted_focused: false,
+            focus_report: Default::default(),
             _subscriptions: subscriptions,
             branch_transitions: HashMap::new(),
             branch_heights_px: HashMap::new(),
@@ -361,5 +362,21 @@ impl SidebarPanelEngine {
         self.set_branch_target(&node_id, expanded);
         cx.emit(SidebarPanelEngineEvent::BranchExpandedChanged { node_id, expanded });
         cx.notify();
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for SidebarPanelEngine {
+    type FocusEvent = SidebarPanelEngineEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SidebarPanelEngineEvent {
+        SidebarPanelEngineEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     Bounds, Context, DragMoveEvent, FocusOutEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Window,
 };
@@ -343,16 +344,6 @@ impl SliderControl {
         if let Some(thumb_id) = self.active_thumb_id {
             self.remove_thumb(thumb_id, cx);
         }
-    }
-
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(SliderEvent::FocusChanged { focused });
-        true
     }
 
     pub(super) fn emit_drag_start_if_needed(

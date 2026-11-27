@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
@@ -55,6 +56,7 @@ pub struct SearchSelectorControl {
     trigger_bounds: Option<Bounds<Pixels>>,
     presence: OverlayPresence,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     trigger_toggle_pending: bool,
@@ -138,6 +140,7 @@ impl SearchSelectorControl {
             trigger_bounds: None,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             committed_selection,
             trigger_toggle_pending: false,
@@ -211,10 +214,9 @@ impl SearchSelectorControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 if self.behavior.state.query.trim().is_empty() {
                     self.open_popup_with_all_items(cx);
@@ -225,7 +227,6 @@ impl SearchSelectorControl {
                 }
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 if self.trigger_toggle_pending && was_open {
                     // Trigger mouse-down moves focus away from the popup before the
@@ -235,7 +236,7 @@ impl SearchSelectorControl {
                 } else {
                     self.behavior.apply(SelectionEvent::Blur, &self.model.items);
                 }
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 if was_open && !self.trigger_toggle_pending {
                     self.emit_open_changed_if_needed(was_open, true, cx);
                 }
@@ -688,15 +689,6 @@ impl SearchSelectorControl {
         true
     }
 
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(SearchSelectorEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
-
     fn restore_trigger_focus(&self, window: &mut Window, cx: &mut Context<Self>) {
         if self.model.enabled && self.popup_search_textfield.read(cx).focus_handle(cx).is_focused(window) {
             self.interaction.focus_handle().focus(window, cx);
@@ -1006,5 +998,21 @@ impl AttachmentTarget for SearchSelectorControl {
     }
     fn attachment_anchor(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
         self.trigger_bounds.unwrap_or(bounds)
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for SearchSelectorControl {
+    type FocusEvent = SearchSelectorEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SearchSelectorEvent {
+        SearchSelectorEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }
