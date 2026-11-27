@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -57,6 +58,10 @@ pub trait PopupMenuTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn PopupMenuTemplate {
+    type Model<'a> = PopupMenuRenderModel<'a>;
+}
+
 pub struct ThemedPopupMenuTemplate {
     theme: Arc<dyn PopupMenuTheme>,
     modifiers: Vec<PopupMenuTemplateModifier>,
@@ -83,29 +88,6 @@ impl ThemedPopupMenuTemplate {
     }
 }
 
-struct ModifiedPopupMenuTemplate {
-    base: Arc<dyn PopupMenuTemplate>,
-    modifiers: Vec<PopupMenuTemplateModifier>,
-}
-
-impl ModifiedPopupMenuTemplate {
-    fn new(base: Arc<dyn PopupMenuTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: PopupMenuTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PopupMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_popup_menu_template() -> Arc<dyn PopupMenuTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn PopupMenuTemplate>> = OnceLock::new();
 
@@ -119,10 +101,10 @@ pub(super) fn modified_popup_menu_template<F>(
 where
     F: Fn(Stateful<Div>, &PopupMenuRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedPopupMenuTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl PopupMenuTemplate for ModifiedPopupMenuTemplate {
+impl PopupMenuTemplate for ModifiedTemplate<dyn PopupMenuTemplate> {
     fn render(
         &self,
         model: &PopupMenuRenderModel<'_>,
@@ -131,7 +113,7 @@ impl PopupMenuTemplate for ModifiedPopupMenuTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

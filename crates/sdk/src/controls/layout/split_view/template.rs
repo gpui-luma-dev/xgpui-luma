@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -40,6 +41,10 @@ pub trait SplitViewTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn SplitViewTemplate {
+    type Model<'a> = SplitViewRenderModel<'a>;
+}
+
 pub struct ThemedSplitViewTemplate {
     modifiers: Vec<SplitViewTemplateModifier>,
 }
@@ -77,29 +82,6 @@ pub fn default_split_view_template() -> Arc<dyn SplitViewTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedSplitViewTemplate::new())).clone()
 }
 
-struct ModifiedSplitViewTemplate {
-    base: Arc<dyn SplitViewTemplate>,
-    modifiers: Vec<SplitViewTemplateModifier>,
-}
-
-impl ModifiedSplitViewTemplate {
-    fn new(base: Arc<dyn SplitViewTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SplitViewTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SplitViewRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn modified_split_view_template<F>(
     template: Arc<dyn SplitViewTemplate>,
     modifier: F,
@@ -107,10 +89,10 @@ pub(super) fn modified_split_view_template<F>(
 where
     F: Fn(Stateful<Div>, &SplitViewRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSplitViewTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl SplitViewTemplate for ModifiedSplitViewTemplate {
+impl SplitViewTemplate for ModifiedTemplate<dyn SplitViewTemplate> {
     fn render(
         &self,
         model: &SplitViewRenderModel<'_>,
@@ -121,7 +103,7 @@ impl SplitViewTemplate for ModifiedSplitViewTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, sidebar, content, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

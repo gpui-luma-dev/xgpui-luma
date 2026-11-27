@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -41,6 +42,10 @@ pub trait ContextMenuTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn ContextMenuTemplate {
+    type Model<'a> = ContextMenuRenderModel<'a>;
+}
+
 pub struct ThemedContextMenuTemplate {
     theme: Arc<dyn ContextMenuTheme>,
     modifiers: Vec<ContextMenuTemplateModifier>,
@@ -67,29 +72,6 @@ impl ThemedContextMenuTemplate {
     }
 }
 
-struct ModifiedContextMenuTemplate {
-    base: Arc<dyn ContextMenuTemplate>,
-    modifiers: Vec<ContextMenuTemplateModifier>,
-}
-
-impl ModifiedContextMenuTemplate {
-    fn new(base: Arc<dyn ContextMenuTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ContextMenuTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ContextMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_context_menu_template() -> Arc<dyn ContextMenuTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn ContextMenuTemplate>> = OnceLock::new();
 
@@ -105,10 +87,10 @@ pub(super) fn modified_context_menu_template<F>(
 where
     F: Fn(Stateful<Div>, &ContextMenuRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedContextMenuTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl ContextMenuTemplate for ModifiedContextMenuTemplate {
+impl ContextMenuTemplate for ModifiedTemplate<dyn ContextMenuTemplate> {
     fn render(
         &self,
         model: &ContextMenuRenderModel<'_>,
@@ -117,7 +99,7 @@ impl ContextMenuTemplate for ModifiedContextMenuTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

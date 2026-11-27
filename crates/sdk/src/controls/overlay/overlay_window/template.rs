@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, Stateful, Window, div, px, prelude::*};
@@ -37,6 +38,10 @@ pub trait OverlayWindowTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn OverlayWindowTemplate {
+    type Model<'a> = OverlayWindowRenderModel<'a>;
+}
+
 pub struct ThemedOverlayWindowTemplate {
     theme: Arc<dyn OverlayWindowTheme>,
     modifiers: Vec<OverlayWindowTemplateModifier>,
@@ -63,29 +68,6 @@ impl ThemedOverlayWindowTemplate {
     }
 }
 
-struct ModifiedOverlayWindowTemplate {
-    base: Arc<dyn OverlayWindowTemplate>,
-    modifiers: Vec<OverlayWindowTemplateModifier>,
-}
-
-impl ModifiedOverlayWindowTemplate {
-    fn new(base: Arc<dyn OverlayWindowTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: OverlayWindowTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &OverlayWindowRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_overlay_window_template() -> Arc<dyn OverlayWindowTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn OverlayWindowTemplate>> = OnceLock::new();
 
@@ -101,10 +83,10 @@ pub(super) fn modified_overlay_window_template<F>(
 where
     F: Fn(Stateful<Div>, &OverlayWindowRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedOverlayWindowTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl OverlayWindowTemplate for ModifiedOverlayWindowTemplate {
+impl OverlayWindowTemplate for ModifiedTemplate<dyn OverlayWindowTemplate> {
     fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
         self.base.resolve_look(mode)
     }
@@ -117,7 +99,7 @@ impl OverlayWindowTemplate for ModifiedOverlayWindowTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, look, parts, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

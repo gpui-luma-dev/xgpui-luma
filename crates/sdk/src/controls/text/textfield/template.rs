@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -66,6 +67,10 @@ pub trait TextFieldTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TextFieldTemplate {
+    type Model<'a> = TextFieldRenderModel<'a>;
+}
+
 pub struct ThemedTextFieldTemplate {
     theme: Arc<dyn TextFieldTheme>,
     modifiers: Vec<TextFieldTemplateModifier>,
@@ -92,29 +97,6 @@ impl ThemedTextFieldTemplate {
     }
 }
 
-struct ModifiedTextFieldTemplate {
-    base: Arc<dyn TextFieldTemplate>,
-    modifiers: Vec<TextFieldTemplateModifier>,
-}
-
-impl ModifiedTextFieldTemplate {
-    fn new(base: Arc<dyn TextFieldTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TextFieldTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextFieldRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_textfield_template() -> Arc<dyn TextFieldTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn TextFieldTemplate>> = OnceLock::new();
 
@@ -125,10 +107,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn TextFieldTemplate>, mo
 where
     F: Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTextFieldTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl TextFieldTemplate for ModifiedTextFieldTemplate {
+impl TextFieldTemplate for ModifiedTemplate<dyn TextFieldTemplate> {
     fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
         self.base.resolve_look(state, enabled)
     }
@@ -151,7 +133,7 @@ impl TextFieldTemplate for ModifiedTextFieldTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
 use gpui::{
@@ -166,6 +167,13 @@ where
     ) -> Stateful<Div>;
 }
 
+impl<T> RenderModel for dyn SelectorItemsTemplate<T>
+where
+    T: SelectorItemLike + 'static,
+{
+    type Model<'a> = SelectorItemsRenderModel<'a, T>;
+}
+
 pub type SelectorItemsTemplateModifier<T> =
     Box<dyn for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static>;
 
@@ -173,14 +181,6 @@ pub struct DefaultSelectorItemsTemplate<T>
 where
     T: SelectorItemLike + 'static,
 {
-    modifiers: Vec<SelectorItemsTemplateModifier<T>>,
-}
-
-struct ModifiedSelectorItemsTemplate<T>
-where
-    T: SelectorItemLike + 'static,
-{
-    base: Arc<dyn SelectorItemsTemplate<T>>,
     modifiers: Vec<SelectorItemsTemplateModifier<T>>,
 }
 
@@ -214,30 +214,6 @@ where
 {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<T> ModifiedSelectorItemsTemplate<T>
-where
-    T: SelectorItemLike + 'static,
-{
-    fn new(base: Arc<dyn SelectorItemsTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorItemsRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -402,7 +378,7 @@ where
     }
 }
 
-impl<T> SelectorItemsTemplate<T> for ModifiedSelectorItemsTemplate<T>
+impl<T> SelectorItemsTemplate<T> for ModifiedTemplate<dyn SelectorItemsTemplate<T>>
 where
     T: SelectorItemLike + 'static,
 {
@@ -413,7 +389,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -432,7 +408,7 @@ where
     T: SelectorItemLike + 'static,
     F: for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSelectorItemsTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 fn render_selection_checkmark(selected: bool, color: gpui::Hsla, size: f32, icon: &IconSource) -> AnyElement {

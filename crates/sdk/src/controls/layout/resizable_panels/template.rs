@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, Context, Div, FocusHandle, Hsla, Pixels, Stateful, Window, div, prelude::*, px};
@@ -24,6 +25,10 @@ pub trait ResizablePanelsTemplate: Send + Sync {
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
     ) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn ResizablePanelsTemplate {
+    type Model<'a> = ResizablePanelsRenderModel<'a>;
 }
 
 pub struct ThemedResizablePanelsTemplate {
@@ -63,29 +68,6 @@ pub fn default_resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedResizablePanelsTemplate::new())).clone()
 }
 
-struct ModifiedResizablePanelsTemplate {
-    base: Arc<dyn ResizablePanelsTemplate>,
-    modifiers: Vec<ResizablePanelsTemplateModifier>,
-}
-
-impl ModifiedResizablePanelsTemplate {
-    fn new(base: Arc<dyn ResizablePanelsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ResizablePanelsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ResizablePanelsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn modified_resizable_panels_template<F>(
     template: Arc<dyn ResizablePanelsTemplate>,
     modifier: F,
@@ -93,10 +75,10 @@ pub(super) fn modified_resizable_panels_template<F>(
 where
     F: Fn(Stateful<Div>, &ResizablePanelsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedResizablePanelsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl ResizablePanelsTemplate for ModifiedResizablePanelsTemplate {
+impl ResizablePanelsTemplate for ModifiedTemplate<dyn ResizablePanelsTemplate> {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
@@ -106,7 +88,7 @@ impl ResizablePanelsTemplate for ModifiedResizablePanelsTemplate {
         cx: &mut Context<ResizablePanels>,
     ) -> Stateful<Div> {
         let root = self.base.render(model, look, handle_focuses, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

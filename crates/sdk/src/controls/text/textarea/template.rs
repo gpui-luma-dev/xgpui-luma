@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -49,6 +50,10 @@ pub trait TextAreaTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TextAreaTemplate {
+    type Model<'a> = TextAreaRenderModel<'a>;
+}
+
 pub struct ThemedTextAreaTemplate {
     theme: Arc<dyn TextAreaTheme>,
     modifiers: Vec<TextAreaTemplateModifier>,
@@ -75,29 +80,6 @@ impl ThemedTextAreaTemplate {
     }
 }
 
-struct ModifiedTextAreaTemplate {
-    base: Arc<dyn TextAreaTemplate>,
-    modifiers: Vec<TextAreaTemplateModifier>,
-}
-
-impl ModifiedTextAreaTemplate {
-    fn new(base: Arc<dyn TextAreaTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TextAreaTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextAreaRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_textarea_template() -> Arc<dyn TextAreaTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn TextAreaTemplate>> = OnceLock::new();
 
@@ -108,10 +90,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn TextAreaTemplate>, mod
 where
     F: Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTextAreaTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl TextAreaTemplate for ModifiedTextAreaTemplate {
+impl TextAreaTemplate for ModifiedTemplate<dyn TextAreaTemplate> {
     fn theme(&self) -> Option<Arc<dyn TextAreaTheme>> {
         self.base.theme()
     }
@@ -124,7 +106,7 @@ impl TextAreaTemplate for ModifiedTextAreaTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

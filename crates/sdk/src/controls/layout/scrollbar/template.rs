@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -46,6 +47,10 @@ pub trait ScrollbarTemplate: Send + Sync {
     }
 }
 
+impl RenderModel for dyn ScrollbarTemplate {
+    type Model<'a> = ScrollbarRenderModel<'a>;
+}
+
 pub struct ThemedScrollbarTemplate {
     theme: Arc<dyn ScrollbarTheme>,
     modifiers: Vec<ScrollbarTemplateModifier>,
@@ -72,29 +77,6 @@ impl ThemedScrollbarTemplate {
     }
 }
 
-struct ModifiedScrollbarTemplate {
-    base: Arc<dyn ScrollbarTemplate>,
-    modifiers: Vec<ScrollbarTemplateModifier>,
-}
-
-impl ModifiedScrollbarTemplate {
-    fn new(base: Arc<dyn ScrollbarTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ScrollbarTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ScrollbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_scrollbar_template() -> Arc<dyn ScrollbarTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn ScrollbarTemplate>> = OnceLock::new();
 
@@ -105,10 +87,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn ScrollbarTemplate>, mo
 where
     F: Fn(Stateful<Div>, &ScrollbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedScrollbarTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl ScrollbarTemplate for ModifiedScrollbarTemplate {
+impl ScrollbarTemplate for ModifiedTemplate<dyn ScrollbarTemplate> {
     fn render(
         &self,
         model: &ScrollbarRenderModel<'_>,
@@ -117,7 +99,7 @@ impl ScrollbarTemplate for ModifiedScrollbarTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 
     fn min_thumb_length(&self, orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {

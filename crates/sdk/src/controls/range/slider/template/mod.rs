@@ -2,6 +2,7 @@ mod angular_dial;
 mod circular_ring;
 mod linear;
 
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 use std::f32::consts::FRAC_PI_2;
 
@@ -85,37 +86,18 @@ pub trait SliderTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
-struct ModifiedSliderTemplate {
-    base: Arc<dyn SliderTemplate>,
-    modifiers: Vec<SliderTemplateModifier>,
-}
-
-impl ModifiedSliderTemplate {
-    fn new(base: Arc<dyn SliderTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SliderTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SliderRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
+impl RenderModel for dyn SliderTemplate {
+    type Model<'a> = SliderRenderModel<'a>;
 }
 
 pub(super) fn modified_slider_template<F>(template: Arc<dyn SliderTemplate>, modifier: F) -> Arc<dyn SliderTemplate>
 where
     F: Fn(Stateful<Div>, &SliderRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSliderTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl SliderTemplate for ModifiedSliderTemplate {
+impl SliderTemplate for ModifiedTemplate<dyn SliderTemplate> {
     fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
         self.base.resolve_look(state)
     }
@@ -129,7 +111,7 @@ impl SliderTemplate for ModifiedSliderTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, primary_thumb_id, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
