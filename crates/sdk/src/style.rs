@@ -130,6 +130,40 @@ pub(crate) fn fade<E: gpui::Styled>(element: E, opacity: f32) -> E {
     }
 }
 
+/// Disabled parts that both fade and change their fill, which lets whatever is behind the control show through
+/// a fill it doesn't normally have (#413). For every control in `theme`, every combination of the non-exclusive
+/// SDK states is resolved with and without `disabled`. A part whose disabled `opacity` is below 1 must keep its
+/// non-disabled background; a missing background and a transparent one count as the same. Returns one line per
+/// problem, so looks can assert it is empty in their tests.
+pub fn disabled_fade_problems(theme: &Theme) -> Vec<String> {
+    use xgpui_luma_style::Value;
+    const STATES: [&str; 7] = ["focused", "checked", "selected", "active", "expanded", "open", "invalid"];
+    let fill = |part: xgpui_luma_style::PartView<'_>| {
+        part.value("background").and_then(Value::as_color).filter(|color| color.alpha > 0.0)
+    };
+    let mut problems = Vec::new();
+    for control in theme.stylesheet().controls() {
+        for mask in 0u32..(1 << STATES.len()) {
+            let states: Vec<&str> =
+                STATES.iter().enumerate().filter(|(i, _)| mask & (1 << i) != 0).map(|(_, s)| *s).collect();
+            let disabled_states: Vec<&str> = states.iter().copied().chain(["disabled"]).collect();
+            let (Ok(resting), Ok(disabled)) = (
+                theme.key_named(control.name(), &[], &states),
+                theme.key_named(control.name(), &[], &disabled_states),
+            ) else {
+                continue;
+            };
+            let (resting, disabled) = (theme.resolve(&resting), theme.resolve(&disabled));
+            for part in disabled.parts() {
+                if part_opacity(disabled.part(part)) < 1.0 && fill(disabled.part(part)) != fill(resting.part(part)) {
+                    problems.push(format!("{control} {part:?} {disabled_states:?}: fades and changes its fill"));
+                }
+            }
+        }
+    }
+    problems
+}
+
 /// A number from a control's own properties in the SDK's `.lss` (light mode, no attributes or states),
 /// for default trait paths of themes that supply only colors. Zero when the control or property is
 /// missing.

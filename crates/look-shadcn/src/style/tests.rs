@@ -448,3 +448,23 @@ fn disabled_controls_fade_over_resting_colors() {
         }
     }
 }
+
+/// No Shadcn control, in any catalog or state, both fades and changes its fill when disabled (#413).
+#[test]
+fn no_disabled_part_fades_a_changed_fill() {
+    std::thread::scope(|scope| {
+        let runs: Vec<_> = catalogs()
+            .into_iter()
+            .map(|(name, css)| {
+                scope.spawn(move || {
+                    let look = ShadcnLook::from_css_str(&css).expect("catalog");
+                    let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
+                    let problems = xgpui_luma::style::disabled_fade_problems(&theme);
+                    problems.into_iter().map(|p| format!("{name}: {p}")).collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        let problems: Vec<String> = runs.into_iter().flat_map(|run| run.join().expect("no panic")).collect();
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    });
+}
