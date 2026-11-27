@@ -8,7 +8,7 @@ use crate::controls::button::StyledButtonTemplate;
 use crate::controls::popup_menu::{PopupMenu, StyledPopupMenuTheme, ThemedPopupMenuTemplate};
 use crate::controls::selector::{Selector, SelectorItem, StyledSelectorTheme, ThemedSelectorTemplate};
 use crate::controls::trigger_button::{self, TriggerData};
-use crate::style::ThemeSource;
+use crate::style::{PartRead as _, ThemeSource};
 
 /// The SDK with every trigger faded to half when disabled, and its fill made opaque so the fade is measurable.
 fn faded_theme() -> crate::style::lss::Theme {
@@ -171,7 +171,7 @@ fn the_open_state_reaches_every_trigger(cx: &mut TestAppContext) {
     assert!(close(open_fill, red()), "an open trigger button: {open_fill:?}");
     assert!(!close(fill(false, cx), red()), "a closed trigger button");
 
-    use crate::controls::popup_menu::{PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+    use crate::controls::popup_menu::PopupMenuTriggerStyle;
     use crate::controls::selector::{SelectorTheme, SelectorTriggerStyle, SelectorVisualState};
     use crate::theme::{InteractionState, StandardBoxScale};
     let panel = Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default()));
@@ -188,27 +188,43 @@ fn the_open_state_reaches_every_trigger(cx: &mut TestAppContext) {
 
     let menu = Arc::new(|| crate::style::StyleBinding::sdk("floating_menu"));
     let popup = StyledPopupMenuTheme::new(ThemeSource::Fixed(open_theme()), menu);
-    let open = PopupMenuTriggerMetrics { open: true, ..Default::default() };
-    // The template draws an open popup menu hovered.
+    // The template draws an open popup menu hovered, from the resolved trigger style (#433).
     let hovered = InteractionState { hovered: true, ..Default::default() };
-    let look = |metrics| cx.update(|cx| popup.resolve_look(PopupMenuTriggerStyle::Outline, metrics, hovered, 1.0, cx));
-    let (open_look, closed_look) = (look(open), look(PopupMenuTriggerMetrics::default()));
-    assert!(close(open_look.trigger_background, red()), "an open popup menu");
-    assert!(!close(closed_look.trigger_background, red()), "a closed popup menu");
-    assert!(close(closed_look.trigger_icon, gpui::rgb(0x00ff00).into()), "the popup chevron is `icon`");
+    let trigger = |open| {
+        crate::controls::popup_menu::styled::resolve_trigger(
+            &crate::controls::popup_menu::PopupMenuTheme::style(&popup),
+            PopupMenuTriggerStyle::Outline,
+            hovered,
+            open,
+            1.0,
+        )
+    };
+    let (open_trigger, closed_trigger) = (trigger(true), trigger(false));
+    assert!(close(open_trigger.root().color("background"), red()), "an open popup menu");
+    assert!(!close(closed_trigger.root().color("background"), red()), "a closed popup menu");
+    assert!(
+        close(closed_trigger.root().color("icon"), gpui::rgb(0x00ff00).into()),
+        "the popup chevron is `icon`"
+    );
 }
 
 /// The popup menu's chevron is the label color unless a look changes `icon`, as before (#430).
 #[gpui::test]
-fn the_sdk_popup_chevron_is_the_label_color(cx: &mut TestAppContext) {
-    use crate::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle, default_popup_menu_theme};
+fn the_sdk_popup_chevron_is_the_label_color(_cx: &mut TestAppContext) {
+    use crate::controls::popup_menu::{PopupMenuTriggerStyle, default_popup_menu_theme};
     use crate::theme::InteractionState;
     let theme = default_popup_menu_theme();
     for disabled in [false, true] {
         let state = InteractionState { disabled, ..Default::default() };
-        let look = cx.update(|cx| {
-            theme.resolve_look(PopupMenuTriggerStyle::Outline, PopupMenuTriggerMetrics::default(), state, 1.0, cx)
-        });
-        assert_eq!(look.trigger_icon, look.trigger_foreground, "disabled {disabled}");
+        let resolved = crate::controls::popup_menu::styled::resolve_trigger(
+            &theme.style(),
+            PopupMenuTriggerStyle::Outline,
+            state,
+            false,
+            1.0,
+        );
+        let root = resolved.root();
+        let icon = root.color_opt("icon").unwrap_or(root.color("foreground"));
+        assert_eq!(icon, root.color("foreground"), "disabled {disabled}");
     }
 }

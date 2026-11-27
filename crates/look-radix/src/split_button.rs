@@ -52,17 +52,19 @@ pub fn split_button_builder(
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
-    use xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics;
+    use xgpui_luma::controls::popup_menu::resolve_popup_menu_trigger;
+    use xgpui_luma::style::PartRead as _;
     use xgpui_luma::theme::{InteractionState, ThemeMode};
     #[test]
     fn split_faces_and_menu_follow_the_bound_look() {
         let base = Look::built_in();
         let fork = base.fork();
-        let before = split_button_theme(&base, PopupMenuVariant::Solid, Tone::Accent).resolve(
-            PopupMenuTriggerStyle::Primary,
-            Default::default(),
-            Default::default(),
-        );
+        let background = |theme: &std::sync::Arc<dyn xgpui_luma::controls::split_button::SplitButtonTheme>| {
+            resolve_popup_menu_trigger(&theme.style(), PopupMenuTriggerStyle::Primary, Default::default(), false, 1.0)
+                .root()
+                .color("background")
+        };
+        let before = background(&split_button_theme(&base, PopupMenuVariant::Solid, Tone::Accent));
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             fork.set_mode(mode);
             for accent in [Accent::Blue, Accent::Lime] {
@@ -77,21 +79,24 @@ mod tests {
                             disabled: bits & 8 != 0,
                             ..Default::default()
                         };
-                        let palette =
-                            theme.resolve(PopupMenuTriggerStyle::Primary, PopupMenuTriggerMetrics::default(), state);
+                        let resolved = resolve_popup_menu_trigger(
+                            &theme.style(),
+                            PopupMenuTriggerStyle::Primary,
+                            state,
+                            false,
+                            1.0,
+                        );
+                        let foreground = resolved.root().color("foreground");
                         if state.disabled {
                             crate::control_group::assert_close(
-                                palette.trigger_foreground,
+                                foreground,
                                 fork.resolve_role(SemanticRole::MutedForeground).hsla(),
                             );
                         } else {
-                            crate::control_group::assert_close(
-                                palette.trigger_foreground,
-                                Tone::Accent.contrast(&fork),
-                            );
+                            crate::control_group::assert_close(foreground, Tone::Accent.contrast(&fork));
                         }
                         crate::control_group::assert_close(
-                            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&palette.floating_menu)
+                            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&theme.menu())
                                 .item_hover_background,
                             Tone::Accent.step(&fork, 9),
                         );
@@ -99,12 +104,8 @@ mod tests {
                 }
             }
         }
-        let unchanged = split_button_theme(&base, PopupMenuVariant::Solid, Tone::Accent).resolve(
-            PopupMenuTriggerStyle::Primary,
-            Default::default(),
-            Default::default(),
-        );
-        assert_eq!(unchanged.trigger_background, before.trigger_background);
+        let unchanged = background(&split_button_theme(&base, PopupMenuVariant::Solid, Tone::Accent));
+        assert_eq!(unchanged, before);
     }
 }
 

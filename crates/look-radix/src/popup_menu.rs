@@ -122,32 +122,36 @@ mod tests {
     use super::*;
     use crate::control_group::assert_close;
     use crate::semantic::SemanticRole;
-    use xgpui_luma::controls::popup_menu::{PopupMenuPalette, PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+    use xgpui_luma::controls::popup_menu::{PopupMenuTriggerStyle, resolve_popup_menu_trigger};
+    use xgpui_luma::style::PartRead as _;
     use xgpui_luma::theme::InteractionState;
 
-    fn trigger_palette(look: &Look, tone: Tone) -> PopupMenuPalette {
-        popup_menu_theme(look, PopupMenuVariant::default(), tone).resolve(
+    fn trigger_background(look: &Look, tone: Tone) -> gpui::Hsla {
+        let theme = popup_menu_theme(look, PopupMenuVariant::default(), tone);
+        resolve_popup_menu_trigger(
+            &theme.style(),
             PopupMenuTriggerStyle::Primary,
-            PopupMenuTriggerMetrics::default(),
             InteractionState::default(),
+            false,
+            1.0,
         )
+        .root()
+        .color("background")
     }
 
     #[test]
     fn primary_trigger_uses_accent() {
         let look = Look::built_in();
-        let palette = trigger_palette(&look, Tone::Accent);
-
-        assert_close(palette.trigger_background, look.resolve_role(SemanticRole::Primary).hsla());
+        assert_close(trigger_background(&look, Tone::Accent), look.resolve_role(SemanticRole::Primary).hsla());
     }
 
     #[test]
     fn gray_tone_locks_the_trigger_to_the_neutral_scale() {
         let look = Look::built_in();
-        let gray = trigger_palette(&look, Tone::Gray);
+        let gray = trigger_background(&look, Tone::Gray);
 
-        assert_close(gray.trigger_background, Tone::Gray.step(&look, 9));
-        assert_ne!(gray.trigger_background, trigger_palette(&look, Tone::Accent).trigger_background);
+        assert_close(gray, Tone::Gray.step(&look, 9));
+        assert_ne!(gray, trigger_background(&look, Tone::Accent));
     }
 
     #[test]

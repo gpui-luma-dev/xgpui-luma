@@ -17,10 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::MenuItem;
-use xgpui_luma::controls::popup_menu::{
-    PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
-    StyledPopupMenuTheme,
-};
+use xgpui_luma::controls::popup_menu::{PopupMenuTheme, StyledPopupMenuTheme};
 use xgpui_luma::controls::selector::{
     Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorLook, SelectorPalette, SelectorTheme,
     SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme, ThemedSelectorTemplate,
@@ -28,7 +25,7 @@ use xgpui_luma::controls::selector::{
 use xgpui_luma::controls::split_button::{SplitButton, SplitButtonBuilder, SplitButtonEvent, ThemedSplitButtonTemplate};
 use xgpui_luma::controls::floating_menu::floating_menu_source;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, selector_list};
-use xgpui_luma::style::ThemeSource;
+use xgpui_luma::style::{StyleBinding, ThemeSource};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
 
@@ -202,28 +199,24 @@ struct PinnedPopupMenuTheme {
 }
 
 impl PopupMenuTheme for PinnedPopupMenuTheme {
-    fn resolve(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-    ) -> PopupMenuPalette {
-        self.base.resolve(style, metrics, pin(&self.pinned, state))
+    /// The base style with the pinned states set in its key (#433), so Design mode draws them however the
+    /// pointer moves.
+    fn style(&self) -> StyleBinding {
+        let base = self.base.style();
+        let Some(pinned) = &self.pinned else {
+            return base;
+        };
+        ["hover", "pressed", "focused", "disabled", "invalid"]
+            .into_iter()
+            .fold(base, |binding, name| binding.state(name, pinned.has(name)))
+    }
+
+    fn menu(&self) -> StyleBinding {
+        self.base.menu()
     }
 
     fn metrics(&self) -> MetricTokens {
         self.base.metrics()
-    }
-
-    fn resolve_look(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-        scale_factor: f32,
-        cx: &mut App,
-    ) -> PopupMenuLook {
-        self.base.resolve_look(style, metrics, pin(&self.pinned, state), scale_factor, cx)
     }
 }
 
@@ -804,13 +797,9 @@ mod tests {
         );
         assert_ne!(want.background, sdk.background, "the dark menu differs from the SDK's");
 
-        let popup = popup_menu_theme(dark.clone(), None).resolve(
-            PopupMenuTriggerStyle::default(),
-            PopupMenuTriggerMetrics::default(),
-            InteractionState::default(),
-        );
+        let popup = popup_menu_theme(dark.clone(), None);
         assert_eq!(
-            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&popup.floating_menu).background,
+            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&popup.menu()).background,
             want.background,
             "popup menu and split button"
         );
