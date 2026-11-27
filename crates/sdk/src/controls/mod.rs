@@ -14,6 +14,7 @@ pub mod text;
 pub use button::icon_button;
 pub use button::family as button_family;
 pub use button::split_button;
+pub use button::trigger_button;
 
 pub use choice::{checkbox, control_group, icon_group, radio_button, radio_group, switch, toggle, toolbar};
 

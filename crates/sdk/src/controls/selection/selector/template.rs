@@ -8,7 +8,7 @@ use gpui::{
 use super::{SelectorOpeningMode, SelectorPlacement, SelectorRenderModel};
 use super::item_template::render_item_content;
 
-use crate::controls::button_family::button_family_effective_border;
+use crate::controls::button::face::{Face, FaceShape};
 use crate::infra::ElementExt;
 use crate::controls::selector_list::{
     SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
@@ -16,7 +16,7 @@ use crate::controls::selector_list::{
 };
 use crate::theme::{StandardBoxScale, snap_to_pixel};
 
-use super::theme::{SelectorLook, SelectorTheme, default_selector_theme};
+use super::theme::{SelectorLook, SelectorTheme, default_selector_theme, selector_face_look};
 
 pub type SelectorBoundsHandler = Box<dyn Fn(&Bounds<Pixels>, &mut Window, &mut App) + 'static>;
 pub type SelectorClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -223,32 +223,32 @@ where
             on_item_click,
         } = handlers;
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        let mut look =
+        let metrics = self.theme.metrics();
+        let scale = StandardBoxScale::compute(&metrics, scale_factor);
+        let look =
             self.theme
                 .resolve_visual_look(model.trigger_style, model.visual_state, &scale, model.without_elevation);
-        let focused = model.visual_state.interaction.focused
-            && !model.visual_state.interaction.disabled
-            && !model.visual_state.invalid;
         let trigger_icon_size = snap_to_pixel(look.trigger_icon_size, scale_factor);
-        let border = button_family_effective_border(look.trigger_border);
-        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
-        let focus_extent = focus.extent();
+        // The trigger is a button face (#430): its fill, border, shadow, focus ring and fade come from one place.
+        let face = Face {
+            id: "trigger".into(),
+            shape: FaceShape::Padded,
+            radius: look.trigger_radius,
+            full_width: true,
+            min_height: false,
+            focused: model.visual_state.interaction.focused
+                && !model.visual_state.interaction.disabled
+                && !model.visual_state.invalid,
+            disabled: model.state.disabled,
+            elevation: !model.without_elevation,
+            compact: false,
+        };
+        let face_look = selector_face_look(&look, &metrics);
         let trigger_content = render_item_content(model, &look, cx);
-        let mut trigger = div()
-            .id("trigger")
-            .flex()
-            .items_center()
-            .justify_between()
-            .gap(px(look.trigger_gap))
-            .px(px(look.trigger_padding_x))
-            .py(px(look.trigger_padding_y))
-            .h(px(look.trigger_height))
-            .w_full()
-            .bg(look.trigger_background)
-            .rounded(px(look.trigger_radius))
-            .cursor_pointer()
-            .relative()
+        let chevron =
+            crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size);
+        let trigger = face
+            .control(&face_look, trigger_content, Some(chevron))
             .on_prepaint(move |bounds, window, cx| {
                 trigger_bounds(&bounds, window, cx);
             })
@@ -256,42 +256,10 @@ where
             .on_mouse_down(MouseButton::Left, trigger_mouse_down)
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
-            .on_click(trigger_click)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(look.trigger_gap))
-                    .min_w(px(0.0))
-                    .flex_1()
-                    .text_color(look.trigger_foreground)
-                    .text_size(px(look.trigger_typography.size))
-                    .line_height(px(look.trigger_typography.line_height))
-                    .font_weight(look.trigger_typography.weight)
-                    .child(trigger_content),
-            )
-            .child(div().flex().items_center().justify_center().flex_shrink_0().text_color(look.trigger_icon).child(
-                crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
-            ));
-
-        trigger = trigger.border(px(self.theme.metrics().border_width)).border_color(border);
-
-        if !model.state.disabled
-            && !model.without_elevation
-            && let Some(shadows) = look.trigger_shadow.take().filter(|shadows| !shadows.is_empty())
-        {
-            trigger = trigger.shadow(shadows);
-        }
-
-        let trigger = self.apply_modifiers(trigger, model);
-        let mut root = div().id(model.id.clone()).w_full().relative().on_mouse_down_out(root_mouse_down_out);
-        if focus_extent > 0.0 {
-            root = root.p(px(focus_extent)).child(trigger);
-        } else {
-            root = root.child(trigger);
-        }
-
-        root = root.child(focus.overlay(look.trigger_focus_border, focused, look.trigger_radius, false));
+            .on_click(trigger_click);
+        let trigger = face.root(self.apply_modifiers(trigger, model), &face_look);
+        let mut root =
+            div().id(model.id.clone()).w_full().relative().on_mouse_down_out(root_mouse_down_out).child(trigger);
 
         if model.presence.should_paint() {
             let mut popup_metrics = resolve_selector_popup_metrics(

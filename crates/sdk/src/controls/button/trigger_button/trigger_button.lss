@@ -1,0 +1,11 @@
+// SDK trigger button. Layer: sdk. A button that opens something (a list, a menu): drawn by the button
+// template (controls/button/styled.rs) with its content, a trailing chevron in `icon`, and an `open` state.
+// The selector and popup menu extend it and draw their triggers with the same face (#430).
+
+/// A button that opens a popup: its content and a chevron.
+trigger_button extends button {
+  /// The chevron: the label color in every state (so it dims with a disabled label). The selector mutes it.
+  icon: color = foreground
+  // An open trigger draws hovered and also sets `open`. Hover outranks `open` (an interaction state), so an
+  // open-only style is written `:hover:open`.
+}

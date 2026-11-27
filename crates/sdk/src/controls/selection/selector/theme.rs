@@ -20,7 +20,9 @@ pub struct SelectorPalette {
     pub items_panel: SelectorItemsPanelLook,
 }
 
+/// Build one with a theme's `resolve_look`; it may gain fields.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct SelectorLook {
     pub trigger_background: Hsla,
     pub trigger_foreground: Hsla,
@@ -36,6 +38,8 @@ pub struct SelectorLook {
     pub trigger_icon_size: f32,
     /// Independent adorner paint; transparent retains focus space.
     pub trigger_focus_border: Hsla,
+    /// The trigger's fade in this state: the root part's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
+    pub trigger_opacity: f32,
     pub menu_offset_y: f32,
     pub items_panel: SelectorItemsPanelLook,
 }
@@ -99,6 +103,29 @@ pub fn default_selector_theme() -> Arc<dyn SelectorTheme> {
     THEME.get_or_init(|| Arc::new(super::styled::StyledSelectorTheme::sdk())).clone()
 }
 
+/// The trigger's button face (#430): a selector look with its theme's border width and focus geometry.
+pub(crate) fn selector_face_look(
+    look: &SelectorLook,
+    metrics: &MetricTokens,
+) -> crate::controls::button::face::FaceLook {
+    crate::controls::button::face::FaceLook {
+        background: look.trigger_background,
+        foreground: look.trigger_foreground,
+        border: look.trigger_border,
+        border_width: metrics.border_width,
+        shadow: look.trigger_shadow.clone(),
+        typography: look.trigger_typography,
+        font_family: gpui::SharedString::default(),
+        padding_x: look.trigger_padding_x,
+        padding_y: look.trigger_padding_y,
+        gap: look.trigger_gap,
+        height: look.trigger_height,
+        focus: crate::infra::focus_adorner::FocusAdorner::new(metrics.focus),
+        focus_border: look.trigger_focus_border,
+        opacity: look.trigger_opacity,
+    }
+}
+
 /// A selector look from a palette at a box scale (themes that resolve colors only).
 pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardBoxScale) -> SelectorLook {
     SelectorLook {
@@ -115,6 +142,8 @@ pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardB
         trigger_height: scale.height,
         trigger_icon_size: scale.icon_size,
         trigger_focus_border: palette.trigger_focus_border,
+        // Palette themes draw their own disabled colors; only `.lss` themes fade.
+        trigger_opacity: 1.0,
         // The SDK `.lss` offset as a share of its gap, applied to this theme's gap.
         menu_offset_y: scale.gap * crate::style::sdk_menu_offset_share("selector"),
         items_panel: palette.items_panel.clone(),

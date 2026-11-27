@@ -59,6 +59,7 @@ sdk_sources! {
     "theme/palette.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss",
         "controls/choice/switch/switch.lss",
         "controls/button/button.lss",
+        "controls/button/trigger_button/trigger_button.lss",
         "controls/choice/toggle/toggle.lss",
         "controls/choice/control_group/control_group.lss",
         "controls/choice/radio_group/radio_group.lss",

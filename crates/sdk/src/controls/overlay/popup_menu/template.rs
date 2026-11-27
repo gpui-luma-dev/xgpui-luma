@@ -7,7 +7,8 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTriggerModel};
-use crate::controls::button_family::button_family_effective_border;
+use crate::controls::button::face::{Face, FaceLook, FaceShape};
+use crate::infra::ElementExt;
 use crate::controls::floating_menu::render_floating_menu_with_submenu_hovers_and_icons_and_transition;
 use crate::infra::icon::render_disclosure_icon;
 use crate::controls::popup_menu::{PopupMenuLook, PopupMenuTheme, PopupMenuTriggerMetrics, default_popup_menu_theme};
@@ -160,18 +161,19 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             without_elevation: model.without_elevation,
             icon_only: model.icon_only,
             trigger_radius_override: model.trigger_radius_override,
+            open: model.open,
         };
         // The outer split frame owns focus; each face owns its hover/pressed paint.
+        // An open trigger draws hovered, like the selector and trigger button (#430); the disclosure face of a
+        // split trigger is the one that opens.
         let state = if model.split {
             InteractionState { hovered: false, pressed: false, ..model.state }
         } else {
-            model.state
+            InteractionState { hovered: model.state.hovered || model.open, ..model.state }
         };
-        let mut look = self.theme.resolve_look(model.trigger_style, metrics, state, scale_factor, _cx);
-        let focused = model.state.focused && !model.state.disabled;
-        let border = button_family_effective_border(look.trigger_border);
-        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
-        let focus_extent = focus.extent();
+        let look = self.theme.resolve_look(model.trigger_style, metrics, state, scale_factor, _cx);
+        let theme_metrics = self.theme.metrics();
+        let face_look = popup_menu_face_look(&look, &theme_metrics);
         let trigger_model = PopupMenuTriggerModel {
             id: model.id.clone(),
             label: model.label.clone(),
@@ -187,27 +189,45 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 model.state
             },
         };
-        let face = (model.content)(&trigger_model, _cx);
-        let mut trigger = div()
-            .id("trigger")
-            .relative()
-            .flex()
-            .items_center()
-            .cursor_pointer()
-            .on_hover(trigger_hover)
-            .on_mouse_down(MouseButton::Left, trigger_mouse_down)
-            .on_mouse_up(MouseButton::Left, trigger_mouse_up)
-            .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
-            .bg(look.trigger_background)
-            .text_color(look.trigger_foreground)
-            .rounded(px(look.trigger_radius));
+        let face_content = (model.content)(&trigger_model, _cx);
+        // The trigger is a button face (#430): its fill, border, shadow, focus ring and fade come from one place.
+        let face = Face {
+            id: "trigger".into(),
+            shape: if model.split {
+                FaceShape::Bare
+            } else if model.icon_only {
+                FaceShape::Square
+            } else {
+                FaceShape::Padded
+            },
+            radius: look.trigger_radius,
+            full_width: model.full_width,
+            min_height: !model.split && !model.icon_only,
+            focused: model.state.focused && !model.state.disabled,
+            disabled: model.state.disabled,
+            elevation: !model.without_elevation,
+            compact: false,
+        };
 
-        if model.split {
-            let primary_look =
-                self.theme.resolve_look(model.trigger_style, metrics, model.split_state.primary, scale_factor, _cx);
-            let disclosure_look =
-                self.theme
-                    .resolve_look(model.trigger_style, metrics, model.split_state.disclosure, scale_factor, _cx);
+        let mut trigger = if model.split {
+            let primary_look = self.theme.resolve_look(
+                model.trigger_style,
+                // The menu opens from the disclosure face; the action face never looks open.
+                PopupMenuTriggerMetrics { open: false, ..metrics },
+                model.split_state.primary,
+                scale_factor,
+                _cx,
+            );
+            let disclosure_look = self.theme.resolve_look(
+                model.trigger_style,
+                metrics,
+                InteractionState {
+                    hovered: model.split_state.disclosure.hovered || model.open,
+                    ..model.split_state.disclosure
+                },
+                scale_factor,
+                _cx,
+            );
             let mut action_face = div()
                 .id("action-face")
                 .role(gpui::Role::Button)
@@ -229,11 +249,8 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .px(px(look.trigger_padding_x))
                 .py(px(look.trigger_padding_y))
                 .text_color(primary_look.trigger_foreground)
-                .text_size(px(look.trigger_typography.size))
-                .line_height(px(look.trigger_typography.line_height))
-                .font_weight(look.trigger_typography.weight)
                 .on_click(action_click)
-                .child(face)
+                .child(face_content)
                 .when_some(model.end_icon, |face, icon| {
                     face.gap(px(look.trigger_gap)).child(render_lucide_icon(
                         icon,
@@ -263,7 +280,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .child(render_disclosure_icon(
                     model.disclosure_icons,
                     model.disclosure_progress,
-                    disclosure_look.trigger_foreground,
+                    disclosure_look.trigger_icon,
                     look.trigger_icon_size,
                 ))
                 .on_click(trigger_click);
@@ -283,79 +300,50 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             if model.enabled {
                 action_face = crate::style::fade(action_face, primary_look.trigger_opacity);
             }
-            trigger = trigger
-                .overflow_hidden()
-                .border(px(self.theme.metrics().border_width))
-                .border_color(border)
-                .h(px(look.trigger_height))
+            let faces = div()
+                .flex()
+                .size_full()
                 .child(action_face)
                 .child(
                     div()
                         .h_full()
-                        .border_l(px(self.theme.metrics().border_width))
+                        .border_l(px(theme_metrics.border_width))
                         .border_color(look.trigger_foreground)
                         .child(secondary),
-                );
+                )
+                .into_any_element();
+            face.control(&face_look, faces, None)
         } else if model.icon_only {
             let icon_face = model
                 .icon
                 .map(|icon| render_lucide_icon(icon, look.trigger_foreground, look.trigger_icon_size))
-                .unwrap_or(face);
-            trigger = trigger
-                .justify_center()
-                .size(px(look.trigger_height))
+                .unwrap_or(face_content);
+            face.control(&face_look, icon_face, None)
                 .text_size(px(look.trigger_icon_size))
                 .line_height(px(look.trigger_icon_size))
-                .child(icon_face)
-                .on_click(trigger_click);
+                .on_click(trigger_click)
         } else {
-            trigger = trigger
-                .justify_between()
-                .gap(px(look.trigger_gap))
-                .px(px(look.trigger_padding_x))
-                .py(px(look.trigger_padding_y))
-                .min_h(px(look.trigger_height))
-                .text_size(px(look.trigger_typography.size))
-                .line_height(px(look.trigger_typography.line_height))
-                .font_weight(look.trigger_typography.weight)
-                .child(face)
-                .child(if let Some(end_icon) = model.end_icon {
-                    render_lucide_icon(end_icon, look.trigger_foreground, look.trigger_icon_size)
-                } else {
-                    render_disclosure_icon(
-                        model.disclosure_icons,
-                        model.disclosure_progress,
-                        look.trigger_foreground,
-                        look.trigger_icon_size,
-                    )
-                })
-                .on_click(trigger_click);
-
-            if model.full_width {
-                trigger = trigger.w_full();
-            }
-        }
-
-        if model.full_width {
-            trigger = trigger.w_full();
-        }
-
-        if !model.split {
-            trigger = trigger.border(px(self.theme.metrics().border_width)).border_color(border);
-        }
-
-        if let Some(shadows) = look.trigger_shadow.take().filter(|shadows| !shadows.is_empty()) {
-            trigger = trigger.shadow(shadows);
-        }
-
-        trigger = crate::style::fade(trigger, look.trigger_opacity);
+            let trailing = if let Some(end_icon) = model.end_icon {
+                render_lucide_icon(end_icon, look.trigger_icon, look.trigger_icon_size)
+            } else {
+                render_disclosure_icon(
+                    model.disclosure_icons,
+                    model.disclosure_progress,
+                    look.trigger_icon,
+                    look.trigger_icon_size,
+                )
+            };
+            face.control(&face_look, face_content, Some(trailing)).on_click(trigger_click)
+        };
+        trigger = trigger
+            .on_prepaint(move |bounds, window, cx| trigger_bounds(&bounds, window, cx))
+            .on_hover(trigger_hover)
+            .on_mouse_down(MouseButton::Left, trigger_mouse_down)
+            .on_mouse_up(MouseButton::Left, trigger_mouse_up)
+            .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out);
+        let trigger = face.root(trigger, &face_look);
 
         let mut root = div()
-            .on_children_prepainted(move |bounds, window, cx| {
-                if let Some(bounds) = bounds.first() {
-                    trigger_bounds(bounds, window, cx);
-                }
-            })
             .id(model.id.clone())
             .flex()
             .flex_col()
@@ -366,15 +354,8 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                     "Enter or Space activates the primary action; Down or Up Arrow opens the menu; Escape dismisses",
                 )
             })
-            .on_mouse_down_out(root_mouse_down_out);
-
-        let oversize_extent = focus_extent;
-        if oversize_extent > 0.0 {
-            root = root.p(px(oversize_extent)).child(trigger);
-        } else {
-            root = root.child(trigger);
-        }
-        root = root.child(focus.overlay(look.trigger_focus_border, focused, look.trigger_radius, false));
+            .on_mouse_down_out(root_mouse_down_out)
+            .child(trigger);
 
         if model.presence.should_paint() {
             let placement = resolve_popup_menu_placement(
@@ -645,5 +626,25 @@ mod tests {
         assert_eq!(placement.anchor, Anchor::BottomLeft);
         assert_eq!(placement.position, point(trigger.right(), trigger.bottom()));
         assert_eq!(placement.offset, point(px(look.menu_offset_y), px(0.0)));
+    }
+}
+
+/// The trigger's button face (#430): a popup menu look with its theme's border width and focus geometry.
+fn popup_menu_face_look(look: &PopupMenuLook, metrics: &crate::theme::MetricTokens) -> FaceLook {
+    FaceLook {
+        background: look.trigger_background,
+        foreground: look.trigger_foreground,
+        border: look.trigger_border,
+        border_width: metrics.border_width,
+        shadow: look.trigger_shadow.clone(),
+        typography: look.trigger_typography,
+        font_family: gpui::SharedString::default(),
+        padding_x: look.trigger_padding_x,
+        padding_y: look.trigger_padding_y,
+        gap: look.trigger_gap,
+        height: look.trigger_height,
+        focus: crate::infra::focus_adorner::FocusAdorner::new(metrics.focus),
+        focus_border: look.trigger_focus_border,
+        opacity: look.trigger_opacity,
     }
 }

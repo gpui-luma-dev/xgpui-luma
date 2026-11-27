@@ -414,6 +414,7 @@ fn disabled_controls_fade_over_resting_colors() {
         "button",
         "toggle",
         "popup_menu",
+        "trigger_button",
         "selector",
         "checkbox",
         "radio",

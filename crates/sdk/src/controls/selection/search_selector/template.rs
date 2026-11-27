@@ -5,8 +5,9 @@ use gpui::{
     SharedString, Stateful, Window, div, prelude::*, px,
 };
 
-use crate::controls::button_family::button_family_effective_border;
+use crate::controls::button::face::{Face, FaceShape};
 use crate::controls::selector::SelectorLook;
+use crate::controls::selector::theme::selector_face_look;
 use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 
@@ -142,86 +143,60 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             trigger_look.trigger_typography = typography;
             trigger_look.trigger_icon_size = typography.size;
         }
-        let border = button_family_effective_border(trigger_look.trigger_border);
         let label_color = if model.trigger_label_is_placeholder {
             trigger_look.trigger_icon
         } else {
             trigger_look.trigger_foreground
         };
 
-        let mut trigger = div()
-            .id("trigger")
-            .relative()
-            .w_full()
-            .h(px(trigger_look.trigger_height))
-            .px(px(trigger_look.trigger_padding_x))
-            .py(px(trigger_look.trigger_padding_y))
-            .rounded(px(trigger_look.trigger_radius))
-            .bg(trigger_look.trigger_background)
-            .text_size(px(trigger_look.trigger_typography.size))
-            .line_height(px(trigger_look.trigger_typography.line_height))
-            .font_weight(trigger_look.trigger_typography.weight)
-            .when(model.enabled, |row| row.cursor_pointer())
+        // The trigger is a button face (#430), dense: its focus ring paints inside the edge so focusing never
+        // changes the trigger's size (the selector reserves room around its trigger; this one never has).
+        let face = Face {
+            id: "trigger".into(),
+            shape: FaceShape::Padded,
+            radius: trigger_look.trigger_radius,
+            full_width: true,
+            min_height: false,
+            focused: model.trigger_state.focus_visible && model.enabled && !model.trigger_state.invalid,
+            disabled: !model.enabled,
+            elevation: true,
+            compact: true,
+        };
+        // Border visibility changes paint only; invalid/disabled ghost triggers keep the same label and icon geometry.
+        let metrics = crate::theme::MetricTokens {
+            border_width: model.geometry.border_width,
+            ..crate::theme::MetricTokens::default()
+        };
+        let face_look = selector_face_look(&trigger_look, &metrics);
+        let label = div()
+            .debug_selector(|| "search-selector-label".into())
+            .min_w(px(0.0))
+            .truncate()
+            .text_color(label_color)
+            .child(model.trigger_label)
+            .into_any_element();
+        let icon = div()
+            .id("icon")
+            .debug_selector(|| "search-selector-icon".into())
+            .w(px(model.geometry.search_icon_width))
+            .flex()
+            .items_center()
+            .justify_center()
+            .text_color(trigger_look.trigger_icon)
+            .child(crate::infra::icon::render_icon_source(
+                &model.icons.resolve(crate::theme::stylesheet::IconRole::Search),
+                trigger_look.trigger_icon,
+                model.geometry.search_icon_size,
+            ))
+            .into_any_element();
+        let trigger = face
+            .control(&face_look, label, Some(icon))
             .on_hover(trigger_hover)
             .on_mouse_down(MouseButton::Left, trigger_mouse_down)
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
-            .on_click(trigger_click)
-            .child(
-                div()
-                    .h_full()
-                    .w_full()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(trigger_look.trigger_gap))
-                    .child(
-                        div()
-                            .debug_selector(|| "search-selector-label".into())
-                            .min_w(px(0.0))
-                            .truncate()
-                            .text_color(label_color)
-                            .child(model.trigger_label),
-                    )
-                    .child(
-                        div()
-                            .id("icon")
-                            .debug_selector(|| "search-selector-icon".into())
-                            .w(px(model.geometry.search_icon_width))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(trigger_look.trigger_icon)
-                            .child(crate::infra::icon::render_icon_source(
-                                &model.icons.resolve(crate::theme::stylesheet::IconRole::Search),
-                                trigger_look.trigger_icon,
-                                model.geometry.search_icon_size,
-                            )),
-                    ),
-            );
-
-        // Border visibility changes paint only; invalid/disabled ghost triggers
-        // must retain the same label and icon geometry.
-        trigger = trigger.border(px(model.geometry.border_width)).border_color(border);
-
-        let has_elevation = trigger_look.trigger_shadow.as_ref().is_some_and(|shadows| !shadows.is_empty());
-        if model.enabled
-            && has_elevation
-            && let Some(shadows) = trigger_look.trigger_shadow.take()
-        {
-            trigger = trigger.shadow(shadows);
-        }
-
-        // The focus ring, like the selector's, but inset inside the trigger's edge so focusing never changes
-        // the trigger's size (the selector reserves room around its trigger; this one never has).
-        let focused = model.trigger_state.focus_visible && model.enabled && !model.trigger_state.invalid;
-        let focus = crate::infra::focus_adorner::FocusAdorner::new(crate::theme::MetricTokens::default().focus);
-        let trigger_chrome = div().id("trigger").relative().w_full().child(trigger).child(focus.overlay(
-            trigger_look.trigger_focus_border,
-            focused,
-            trigger_look.trigger_radius,
-            true,
-        ));
+            .on_click(trigger_click);
+        let trigger_chrome = face.root(trigger, &face_look);
 
         div()
             .id((model.id.clone(), 0usize))

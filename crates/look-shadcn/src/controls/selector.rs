@@ -44,6 +44,19 @@ mod tests {
         assert_eq!(outline.trigger_padding_x, look.mode_tokens().control_sizes.md.padding_x, "the md control padding");
     }
 
+    /// shadcn fades a disabled trigger over its resting colors, chevron included (#430).
+    #[test]
+    fn disabled_fades_over_the_resting_trigger_and_chevron() {
+        let look = look();
+        let style = SelectorTriggerStyle::Outline;
+        let rest = trigger(&look, style, Default::default(), false);
+        let disabled = trigger(&look, style, with(InteractionState { disabled: true, ..Default::default() }), false);
+        assert!(disabled.trigger_opacity < 1.0, "{}", disabled.trigger_opacity);
+        assert!(close(disabled.trigger_icon, rest.trigger_icon));
+        assert!(close(disabled.trigger_foreground, rest.trigger_foreground));
+        assert_eq!(rest.trigger_opacity, 1.0);
+    }
+
     #[test]
     fn ghost_has_no_face_edge_or_shadow() {
         let look = look();

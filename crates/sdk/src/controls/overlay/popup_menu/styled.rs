@@ -53,6 +53,7 @@ impl StyledPopupMenuTheme {
         &self,
         style: PopupMenuTriggerStyle,
         state: InteractionState,
+        open: bool,
         scale: f32,
     ) -> Arc<xgpui_luma_style::Resolved> {
         let variant: &[(&str, &str)] = match style {
@@ -67,6 +68,7 @@ impl StyledPopupMenuTheme {
             ("focused", state.focused),
             ("disabled", state.disabled),
             ("invalid", state.invalid),
+            ("open", open),
         ];
         self.binding.resolve_for(variant, &states, scale)
     }
@@ -79,7 +81,7 @@ impl PopupMenuTheme for StyledPopupMenuTheme {
         metrics: PopupMenuTriggerMetrics,
         state: InteractionState,
     ) -> PopupMenuPalette {
-        let resolved = self.resolve_root(style, state, 1.0);
+        let resolved = self.resolve_root(style, state, metrics.open, 1.0);
         let root = resolved.root();
         let transparent = gpui::transparent_black();
         PopupMenuPalette {
@@ -103,7 +105,7 @@ impl PopupMenuTheme for StyledPopupMenuTheme {
 
     /// The focus geometry and border width, for templates that read them from the theme's metrics.
     fn metrics(&self) -> MetricTokens {
-        let resolved = self.resolve_root(PopupMenuTriggerStyle::Outline, InteractionState::default(), 1.0);
+        let resolved = self.resolve_root(PopupMenuTriggerStyle::Outline, InteractionState::default(), false, 1.0);
         let root = resolved.root();
         MetricTokens {
             border_width: number(root, "border_width"),
@@ -125,12 +127,13 @@ impl PopupMenuTheme for StyledPopupMenuTheme {
         _cx: &mut gpui::App,
     ) -> PopupMenuLook {
         let palette = self.resolve(style, metrics, state);
-        let resolved = self.resolve_root(style, state, scale_factor);
+        let resolved = self.resolve_root(style, state, metrics.open, scale_factor);
         let root = resolved.root();
         PopupMenuLook {
             trigger_focus_border: palette.trigger_focus_border,
             trigger_background: palette.trigger_background,
             trigger_foreground: palette.trigger_foreground,
+            trigger_icon: color(root, "icon").unwrap_or(palette.trigger_foreground),
             trigger_border: palette.trigger_border,
             trigger_shadow: palette.trigger_shadow,
             trigger_typography: palette.trigger_typography,

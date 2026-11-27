@@ -7,7 +7,7 @@ use gpui::Hsla;
 use xgpui_luma_style::{PartView, Value, box_shadows};
 
 use super::model::SelectorTriggerStyle;
-use super::theme::{SelectorLook, SelectorPalette, SelectorTheme};
+use super::theme::{SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState};
 use crate::controls::selector_list::SelectorItemsPanelLook;
 use crate::style::{StyleBinding, ThemeSource};
 use crate::theme::{FocusMetricTokens, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
@@ -51,7 +51,13 @@ impl StyledSelectorTheme {
         Self { binding: f(self.binding), ..self }
     }
 
-    fn resolve_root(&self, style: SelectorTriggerStyle, state: InteractionState) -> Arc<xgpui_luma_style::Resolved> {
+    /// The trigger in `state`; `open` sets the `open` state (the trigger styles of `trigger_button.lss`).
+    fn resolve_root(
+        &self,
+        style: SelectorTriggerStyle,
+        state: InteractionState,
+        open: bool,
+    ) -> Arc<xgpui_luma_style::Resolved> {
         let variant = match style {
             SelectorTriggerStyle::Outline => "outline",
             SelectorTriggerStyle::Ghost => "ghost",
@@ -62,6 +68,7 @@ impl StyledSelectorTheme {
             ("focused", state.focused),
             ("disabled", state.disabled),
             ("invalid", state.invalid),
+            ("open", open),
         ];
         self.binding.resolve_for(&[("variant", variant)], &states, 1.0)
     }
@@ -89,7 +96,7 @@ impl SelectorTheme for StyledSelectorTheme {
 
     /// The focus geometry and border width, for templates that read them from the theme's metrics.
     fn metrics(&self) -> MetricTokens {
-        let resolved = self.resolve_root(SelectorTriggerStyle::Outline, InteractionState::default());
+        let resolved = self.resolve_root(SelectorTriggerStyle::Outline, InteractionState::default(), false);
         let root = resolved.root();
         MetricTokens {
             border_width: number(root, "border_width"),
@@ -109,7 +116,30 @@ impl SelectorTheme for StyledSelectorTheme {
         _scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        let resolved = self.resolve_root(style, state);
+        self.trigger_look(style, state, false, without_elevation)
+    }
+
+    /// The trigger as drawn: open looks hovered and sets the `open` state.
+    fn resolve_visual_look(
+        &self,
+        style: SelectorTriggerStyle,
+        visual: SelectorVisualState,
+        _scale: &StandardBoxScale,
+        without_elevation: bool,
+    ) -> SelectorLook {
+        self.trigger_look(style, visual.resolved_interaction(), visual.open, without_elevation)
+    }
+}
+
+impl StyledSelectorTheme {
+    fn trigger_look(
+        &self,
+        style: SelectorTriggerStyle,
+        state: InteractionState,
+        open: bool,
+        without_elevation: bool,
+    ) -> SelectorLook {
+        let resolved = self.resolve_root(style, state, open);
         let root = resolved.root();
         let transparent = gpui::transparent_black();
         SelectorLook {
@@ -134,6 +164,7 @@ impl SelectorTheme for StyledSelectorTheme {
             trigger_height: root.height().unwrap_or(0.0),
             trigger_icon_size: number(root, "icon_size"),
             trigger_focus_border: color(root, "focus_border").unwrap_or(transparent),
+            trigger_opacity: crate::style::part_opacity(root),
             menu_offset_y: number(root, "menu_offset_y"),
             items_panel: (self.items_panel)(),
         }
