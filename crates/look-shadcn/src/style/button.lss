@@ -4,8 +4,6 @@
 
 button {
   padding_x      = 16
-  /// shadcn fades a disabled button (`disabled:opacity-50`-like).
-  disabled_opacity = metrics.disabled_opacity
   text_icon_size = icon_size
   muted_foreground = css.muted_foreground
   size sm { padding_x = 12 }
@@ -27,7 +25,8 @@ button {
     line_height  = font_size * typography.text.label.line_height / typography.text.label.size
     :hover    { background = css.primary_hover }
     :pressed  { background = css.primary_pressed }
-    :disabled { background = css.muted  foreground = css.muted_foreground }
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { opacity = metrics.disabled_opacity }
   }
 
   variant secondary {
@@ -36,7 +35,6 @@ button {
       foreground := css.secondary_foreground
       :hover    { background = css.secondary_hover }
       :pressed  { background = css.secondary_pressed }
-      :disabled { background = css.muted  foreground = css.muted_foreground }
     }
   }
 
@@ -49,7 +47,6 @@ button {
       :selected { background = css.accent  foreground = css.accent_foreground }
       :hover    { background = shadcn.outline_active  foreground = css.accent_foreground }
       :pressed  { background = shadcn.outline_active  foreground = css.accent_foreground }
-      :disabled { background = transparent  foreground = css.muted_foreground  border = css.border }
     }
   }
 
@@ -61,7 +58,6 @@ button {
       :selected { background = css.accent  foreground = css.accent_foreground }
       :hover    { background = shadcn.ghost_active  foreground = css.accent_foreground }
       :pressed  { background = shadcn.ghost_active  foreground = css.accent_foreground }
-      :disabled { background = transparent  foreground = css.muted_foreground }
     }
   }
 

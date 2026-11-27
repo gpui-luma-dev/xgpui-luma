@@ -411,9 +411,8 @@ pub(crate) fn render_indicator<D: IndicatorChoice>(
         .border_color(hsl(animated_root.border()).unwrap_or_else(transparent));
 
     let mut root_element = template.apply_modifiers(control, model);
-    if model.state.disabled {
-        root_element = root_element.opacity(root.value("disabled_opacity").and_then(Value::as_number).unwrap_or(1.0));
-    } else {
+    root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+    if !model.state.disabled {
         root_element = root_element.cursor_pointer();
     }
     root_element

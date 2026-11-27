@@ -280,8 +280,8 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 action_face = action_face.debug_selector(move || format!("{primary_id}/primary"));
                 secondary = secondary.debug_selector(move || format!("{disclosure_id}/disclosure"));
             }
-            if model.split_state.primary.disabled && model.enabled {
-                action_face = action_face.opacity(self.theme.metrics().disabled_opacity);
+            if model.enabled {
+                action_face = crate::style::fade(action_face, primary_look.trigger_opacity);
             }
             trigger = trigger
                 .overflow_hidden()
@@ -348,9 +348,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             trigger = trigger.shadow(shadows);
         }
 
-        if model.state.disabled {
-            trigger = trigger.opacity(self.theme.metrics().disabled_opacity);
-        }
+        trigger = crate::style::fade(trigger, look.trigger_opacity);
 
         let mut root = div()
             .on_children_prepainted(move |bounds, window, cx| {

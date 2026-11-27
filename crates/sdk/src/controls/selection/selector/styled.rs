@@ -98,7 +98,6 @@ impl SelectorTheme for StyledSelectorTheme {
                 width: number(root, "focus_width"),
                 offset: number(root, "focus_offset"),
             },
-            disabled_opacity: number(root, "disabled_opacity"),
             ..MetricTokens::default()
         }
     }

@@ -7,7 +7,6 @@
 // keeps the resting fill, only hover changes the checked fill.
 
 checkbox {
-  disabled_opacity = metrics.disabled_opacity
   gap              = 8
   indicator_size   = 16   // --checkbox-size
   glyph_size       = 10   // --checkbox-indicator-size

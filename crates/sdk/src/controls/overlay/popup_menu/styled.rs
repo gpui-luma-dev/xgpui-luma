@@ -112,7 +112,6 @@ impl PopupMenuTheme for StyledPopupMenuTheme {
                 width: number(root, "focus_width"),
                 offset: number(root, "focus_offset"),
             },
-            disabled_opacity: number(root, "disabled_opacity"),
             ..MetricTokens::default()
         }
     }
@@ -142,6 +141,7 @@ impl PopupMenuTheme for StyledPopupMenuTheme {
             trigger_height: root.height().unwrap_or(0.0),
             trigger_icon_size: number(root, "icon_size"),
             menu_offset_y: number(root, "menu_offset_y"),
+            trigger_opacity: crate::style::part_opacity(root),
             floating_menu: palette.floating_menu,
         }
     }

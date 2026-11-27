@@ -4,7 +4,6 @@
 // SDK; press keeps the resting fill, only hover changes the selected fill.
 
 radio {
-  disabled_opacity = metrics.disabled_opacity
   gap                  = 8
   indicator_size       = 16   // --radio-size
   dot_size             = 6.4  // the indicator scaled by 0.4

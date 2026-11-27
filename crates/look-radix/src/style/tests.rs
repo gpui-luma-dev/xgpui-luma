@@ -388,8 +388,21 @@ fn radio_group_layout_comes_from_the_look_lss() {
     assert_eq!((geometry.vertical_gap, geometry.item_gap), (sdk.vertical_gap, sdk.item_gap));
 }
 
-/// The SDK's button family draws `:disabled` without fading; Radix keeps its fade on every control that
-/// extends the button, the text field, the choices, groups and bars (#397).
+/// Radix draws gray `:disabled` colors and does not fade, so they are never see-through (#413).
+#[test]
+fn disabled_controls_draw_colors_without_fading() {
+    let theme = Look::built_in().style_theme();
+    for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
+        let key = theme.key_named(control, &[], &["disabled"]).expect("key");
+        let resolved = theme.resolve(&key);
+        for part in resolved.parts() {
+            let opacity = resolved.part(part).get(xgpui_luma::style::lss::props::OPACITY);
+            assert!(opacity.is_none_or(|value| value >= 1.0), "{control} {part:?}: {opacity:?}");
+        }
+    }
+}
+
+/// Not yet moved to `:disabled { opacity }` (#413): Radix still pins the separate fade.
 #[test]
 fn disabled_controls_keep_the_radix_fade() {
     let theme = Look::built_in().style_theme();
@@ -397,22 +410,8 @@ fn disabled_controls_keep_the_radix_fade() {
         let key = theme.key_named(control, &[], &[]).expect("key");
         theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number)
     };
-    for control in [
-        "button",
-        "toggle",
-        "popup_menu",
-        "selector",
-        "textfield",
-        "textarea",
-        "checkbox",
-        "radio",
-        "switch",
-        "control_group",
-        "context_menu",
-        "scrollbar",
-        "slider",
-        "resizable_panels",
-    ] {
+    for control in ["textfield", "textarea", "control_group", "context_menu", "scrollbar", "slider", "resizable_panels"]
+    {
         assert!(opacity(control).is_some_and(|value| value < 1.0), "{control}: {:?}", opacity(control));
     }
 }

@@ -18,8 +18,7 @@ toggle {
     :selected          { background = css.primary  foreground = css.primary_foreground  border = background }
     :selected:hover    { background = css.primary_hover  foreground = css.primary_foreground  border = background }
     :selected:pressed  { background = css.primary_pressed  foreground = css.primary_foreground  border = background }
-    :disabled          { background = transparent  foreground = css.muted_foreground  border = css.border  shadow = none }
-    :selected:disabled { background = css.muted  foreground = css.muted_foreground  border = background }
+    :disabled          { shadow = none }
   }
 
   variant secondary {
@@ -33,8 +32,7 @@ toggle {
       :selected          { background = css.secondary  foreground = css.secondary_foreground  border = background }
       :selected:hover    { background = css.secondary_hover  foreground = css.secondary_foreground  border = background }
       :selected:pressed  { background = css.secondary_pressed  foreground = css.secondary_foreground  border = background }
-      :disabled          { background = transparent  foreground = css.muted_foreground  border = css.border  shadow = none }
-      :selected:disabled { background = css.muted  foreground = css.muted_foreground  border = background }
+      :disabled          { shadow = none }
     }
   }
 
