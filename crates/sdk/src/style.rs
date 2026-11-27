@@ -114,6 +114,22 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
+/// The fade a part draws at in its resolved state: its `opacity` (`:disabled { opacity = … }`), or 1 when
+/// unset. Templates apply this once instead of a separate disabled fade (#413).
+pub(crate) fn part_opacity(part: xgpui_luma_style::PartView<'_>) -> f32 {
+    part.get(xgpui_luma_style::props::OPACITY).map_or(1.0, |o| o.clamp(0.0, 1.0))
+}
+
+/// Applies a resolved part opacity ([`part_opacity`]) to `element`, leaving it untouched when opaque. The one
+/// place templates apply a state fade.
+pub(crate) fn fade<E: gpui::Styled>(element: E, opacity: f32) -> E {
+    if opacity < 1.0 {
+        element.opacity(opacity)
+    } else {
+        element
+    }
+}
+
 /// A number from a control's own properties in the SDK's `.lss` (light mode, no attributes or states),
 /// for default trait paths of themes that supply only colors. Zero when the control or property is
 /// missing.

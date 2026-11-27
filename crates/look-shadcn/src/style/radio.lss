@@ -3,12 +3,13 @@
 // Indicator, dot and label colors ignore hover and pressed, so they own their property (`:=`).
 
 radio {
-  disabled_opacity = metrics.disabled_opacity
   size sm { indicator_scale = 0.45 }
   size lg { indicator_scale = 0.55 }
 
   part root {
     focus_border = first(css.ring, shadcn.fallback_foreground)
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { opacity = metrics.disabled_opacity }
   }
 
   part indicator {
@@ -16,19 +17,17 @@ radio {
     border     := first(css.border, shadcn.fallback_foreground)
     shadow     := first(css.shadow_xs, [])
     :selected { background = action_layer(primary, default)  border = action_layer(primary, default) }
-    :disabled { background = css.muted  border = first(css.border, shadcn.fallback_foreground)  shadow = none }
+    :disabled { shadow = none }
   }
 
   part dot {
     foreground := css.foreground
     :selected { foreground = action_foreground(primary) }
-    :disabled { foreground = css.muted_foreground }
   }
 
   part label {
     foreground := css.foreground
     font_size   = shadcn.control_font_size
-    :disabled { foreground = css.muted_foreground }
   }
 
   // Ring styles: an outline face with the style's color as the ring and the dot.

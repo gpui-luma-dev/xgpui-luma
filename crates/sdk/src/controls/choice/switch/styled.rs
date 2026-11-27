@@ -4,7 +4,7 @@
 //! size, the extra track length, the orientation and the radius.
 
 use gpui::{App, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, px};
-use xgpui_luma_style::{PartId, PartView, Value, box_shadows};
+use xgpui_luma_style::{PartId, PartView, box_shadows};
 
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
@@ -194,10 +194,8 @@ impl ChoiceData for SwitchData {
         }
 
         let mut root_element = template.apply_modifiers(control, model);
-        if model.state.disabled {
-            root_element =
-                root_element.opacity(root.value("disabled_opacity").and_then(Value::as_number).unwrap_or(1.0));
-        } else {
+        root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+        if !model.state.disabled {
             root_element = root_element.cursor_pointer();
         }
         root_element
@@ -245,7 +243,7 @@ mod tests {
 
 #[cfg(test)]
 mod shadow_tests {
-    use xgpui_luma_style::{Source, Theme};
+    use xgpui_luma_style::{Source, Theme, Value};
 
     use super::*;
     use crate::style::fixture;

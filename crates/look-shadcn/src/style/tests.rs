@@ -404,21 +404,36 @@ fn look_defines_the_visual_variants() {
     }
 }
 
-/// The SDK's button family draws `:disabled` without fading; Shadcn keeps its fade on every control that
-/// extends the button, the text field, the choices, groups and bars (#397).
+/// Shadcn fades a disabled control over its resting colors (`disabled:opacity-50`): `:disabled { opacity }` on
+/// the root and no disabled fill, so nothing behind the control shows through a changed fill (#413).
+#[test]
+fn disabled_controls_fade_over_resting_colors() {
+    let look = ShadcnLook::built_in();
+    for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
+        for variant in [None, Some("secondary"), Some("outline"), Some("ghost")] {
+            let attrs: Vec<(&str, &str)> = variant.map(|v| ("variant", v)).into_iter().collect();
+            let resting = resolve(control, &look, &attrs, &[]);
+            let disabled = resolve(control, &look, &attrs, &["disabled"]);
+            let opacity = disabled.root().get(xgpui_luma::style::lss::props::OPACITY);
+            assert!(opacity.is_some_and(|value| value < 1.0), "{control} {variant:?}: {opacity:?}");
+            for part in disabled.parts() {
+                assert_eq!(
+                    disabled.part(part).background(),
+                    resting.part(part).background(),
+                    "{control} {variant:?} {part:?}: a faded fill must be the resting fill"
+                );
+            }
+        }
+    }
+}
+
+/// Not yet moved to `:disabled { opacity }` (#413): Shadcn still pins the separate fade.
 #[test]
 fn disabled_controls_keep_the_shadcn_fade() {
     let look = ShadcnLook::built_in();
     for control in [
-        "button",
-        "toggle",
-        "popup_menu",
-        "selector",
         "textfield",
         "textarea",
-        "checkbox",
-        "radio",
-        "switch",
         "control_group",
         "context_menu",
         "scrollbar",

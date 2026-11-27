@@ -356,10 +356,8 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
             root_element.child(adorned)
         };
         root_element = root_element.child(focus.overlay(look.focus_border, focused, radius, model.compact));
-        if model.state.disabled {
-            root_element =
-                root_element.opacity(root.value("disabled_opacity").and_then(Value::as_number).unwrap_or(1.0));
-        } else {
+        root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+        if !model.state.disabled {
             root_element = root_element.cursor_pointer();
         }
         root_element
@@ -402,24 +400,25 @@ mod style_states_tests {
 
 #[cfg(test)]
 mod disabled_opacity_tests {
-    use crate::style::default_theme;
+    use crate::style::{default_theme, part_opacity};
     use xgpui_luma_style::Value;
 
     /// SDK controls whose `:disabled` draws its own fill and text don't also fade: a faded fill lets whatever is
-    /// behind the control show through (#397). The button family, text fields, choices, groups and bars.
+    /// behind the control show through (#397). Migrated controls carry the fade as `:disabled { opacity }` (#413).
     #[test]
     fn sdk_disabled_controls_do_not_fade() {
         let theme = default_theme();
+        for control in ["button", "toggle", "popup_menu", "selector", "checkbox", "radio", "switch"] {
+            let sheet = theme.stylesheet();
+            let id = sheet.control(control).expect("declared");
+            assert!(sheet.prop::<f32>(id, "disabled_opacity").is_err(), "{control}: no separate fade property");
+            let key = theme.key_named(control, &[], &["disabled"]).expect("key");
+            assert_eq!(part_opacity(theme.resolve(&key).root()), 1.0, "{control}");
+        }
+        // Not yet moved to `:disabled { opacity }`.
         for control in [
-            "button",
-            "toggle",
-            "popup_menu",
-            "selector",
             "textfield",
             "textarea",
-            "checkbox",
-            "radio",
-            "switch",
             "control_group",
             "context_menu",
             "scrollbar",

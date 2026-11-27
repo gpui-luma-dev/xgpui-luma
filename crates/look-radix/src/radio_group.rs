@@ -273,7 +273,7 @@ mod tests {
                 assert_eq!(view.read(app).changes, 3);
             });
             cx.update(|window, _| {
-                use xgpui_luma::style::lss::{ControlId, PartId, StyleKey, Value};
+                use xgpui_luma::style::lss::{ControlId, PartId, StyleKey, Value, props};
                 let theme = Look::built_in().style_theme();
                 let disabled = crate::style::config().state("disabled").expect("state");
                 let resolved =
@@ -281,7 +281,8 @@ mod tests {
                 let number = |name: &str| resolved.root().value(name).and_then(Value::as_number).expect("number");
                 let mut expected =
                     gpui::Hsla::from(resolved.part(PartId::new("indicator")).background().expect("background"));
-                expected.a *= number("disabled_opacity");
+                // The radio's own `:disabled { opacity }` (none in Radix, which draws disabled colors).
+                expected.a *= resolved.root().get(props::OPACITY).unwrap_or(1.0);
                 let size = number("indicator_size");
                 assert!(
                     window.painted_quads().iter().any(|quad| {

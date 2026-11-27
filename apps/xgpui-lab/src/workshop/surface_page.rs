@@ -2223,7 +2223,7 @@ mod tests {
         let bounds = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
         // Names start at the same place whatever their length; rule lines end at the same place.
         let gap = bounds("lss-inspector-name-gap", cx);
-        for id in ["lss-inspector-name-disabled_opacity", "lss-inspector-name-indicator_scale"] {
+        for id in ["lss-inspector-name-label_baseline_shift", "lss-inspector-name-indicator_scale"] {
             assert_eq!(bounds(id, cx).left(), gap.left(), "{id} starts with the other names");
         }
         assert_eq!(bounds("lss-inspector-rule-height", cx).right(), bounds("lss-inspector-rule-gap", cx).right());
