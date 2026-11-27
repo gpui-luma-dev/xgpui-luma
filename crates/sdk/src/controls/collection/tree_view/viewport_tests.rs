@@ -217,14 +217,14 @@ fn completing_multiple_collapses_preserves_a_surviving_middle_scroll_anchor() {
         tree.select_node_by_id("a-0", cx);
         tree.set_motion_enabled(true, cx);
         tree.list_state.scroll_to(gpui::ListOffset { item_ix: 51, offset_in_item: px(3.0) });
-        tree.hovered_node_id = Some("a-0".into());
-        tree.pressed_node_id = Some("a-0".into());
+        tree.rows_pointer.hover("a-0".into(), true);
+        tree.rows_pointer.press("a-0".into());
         tree.collapse("first", cx);
         tree.collapse("last", cx);
         assert_eq!(tree.active_node_id().map(|id| id.as_ref()), Some("first"));
         assert!(tree.selected_ids().contains("a-0"));
-        assert!(tree.hovered_node_id.is_none());
-        assert!(tree.pressed_node_id.is_none());
+        assert!(tree.rows_pointer.hovered().is_none());
+        assert!(tree.rows_pointer.pressed().is_none());
         assert!(!tree.flat_cache[1].enabled);
         // Settle the clock-dependent motion without sleeping. The next render
         // takes the same projection-rebuild path as natural animation completion.

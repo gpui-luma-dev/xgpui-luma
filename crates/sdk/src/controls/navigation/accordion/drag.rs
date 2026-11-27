@@ -102,8 +102,8 @@ impl AccordionControl {
             self.transitions = order.iter().map(|i| self.transitions[*i].clone()).collect();
             self.content_heights_px = order.iter().map(|i| self.content_heights_px[*i]).collect();
             self.focused_item_index = focused.and_then(|id| self.model.items.iter().position(|i| i.id == id));
-            self.hovered_item_index = None;
-            self.pressed_item_index = None;
+            let changes = self.items_pointer.clear();
+            self.emit_item_changes(changes, cx);
             self.item_bounds.borrow_mut().clear();
         }
         for event in proposal.committed(changed, proposal.keys().to_vec()) {
@@ -152,7 +152,8 @@ impl AccordionControl {
     fn drag_event(&mut self, event: AccordionDragEvent, cx: &mut Context<Self>) {
         if matches!(event, DragDropEvent::DragStarted { .. }) {
             self.drop_layout.cancel();
-            self.pressed_item_index = None;
+            let changes = self.items_pointer.release();
+            self.emit_item_changes(changes, cx);
         }
         if matches!(event, DragDropEvent::DragEnded { .. }) {
             self.active_drag = None;

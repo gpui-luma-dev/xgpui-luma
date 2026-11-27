@@ -170,8 +170,7 @@ impl<T: 'static> TableControl<T> {
             let mut items: Vec<_> = std::mem::take(&mut self.model.items).into_iter().map(Some).collect();
             self.model.items = order.into_iter().filter_map(|index| items[index].take()).collect();
             self.row_keys = keys;
-            self.hovered_index = None;
-            self.pressed_index = None;
+            self.clear_pointer_interaction(cx);
             self.list_state.remeasure();
             self.emit_selection_changes(previous, cx);
         }
@@ -211,7 +210,8 @@ impl<T: 'static> TableControl<T> {
     pub(super) fn handle_row_drag_event(&mut self, event: TableRowDragEvent, cx: &mut Context<Self>) {
         if matches!(event, DragDropEvent::DragEnded { .. }) {
             self.active_row_drag = None;
-            self.pressed_index = None;
+            let changes = self.rows_pointer.release();
+            self.emit_row_changes(changes, cx);
         }
         cx.emit(TableEvent::RowDrag(event));
         cx.notify();

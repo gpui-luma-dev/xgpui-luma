@@ -41,8 +41,8 @@ where
                 }
 
                 let state = CompositeItemState {
-                    hovered: enabled && self.hovered_item == Some(index),
-                    pressed: enabled && self.pressed_item == Some(index),
+                    hovered: enabled && self.items_pointer.is_hovered(item.id()),
+                    pressed: enabled && self.items_pointer.is_pressed(item.id()),
                     disabled: !enabled,
                     selected,
                     active: item_active,

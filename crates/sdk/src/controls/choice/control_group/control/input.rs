@@ -1,3 +1,4 @@
+use crate::infra::item_tracker::ItemChange;
 use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     App, Bounds, ClickEvent, Context, FocusOutEvent, Modifiers, MouseDownEvent, MouseUpEvent, Pixels, SharedString,
@@ -284,23 +285,15 @@ where
     }
 
     pub(super) fn handle_item_hover(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
-        if !self.can_use_item(index) {
+        // Only a usable item can be entered; any item can be left.
+        if hovered && !self.can_use_item(index) {
             return;
         }
-
-        if hovered {
-            if self.hovered_item != Some(index) {
-                self.hovered_item = Some(index);
-                cx.notify();
-            }
-        } else if self.hovered_item == Some(index) {
-            self.hovered_item = None;
-            if self.pressed_item == Some(index) {
-                self.pressed_item = None;
-            }
-            cx.notify();
-        }
-        self.sync_item_visual_events(cx);
+        let Some(item_id) = self.model.items.get(index).map(|item| item.id().clone()) else {
+            return;
+        };
+        let changes = self.items_pointer.hover(item_id, hovered);
+        self.emit_item_changes(changes, cx);
     }
 
     pub(super) fn handle_item_bounds(&mut self, index: usize, bounds: Bounds<Pixels>, cx: &mut Context<Self>) {
@@ -325,47 +318,33 @@ where
         cx: &mut Context<Self>,
     ) {
         if self.can_use_item(index) {
-            self.pressed_item = Some(index);
+            let changes = self.items_pointer.press(self.model.items[index].id().clone());
+            self.emit_item_changes(changes, cx);
             let changed = self.set_active_index(index, Some(window), cx);
             if !changed {
                 self.focus_item_for_strategy(index, window, cx);
             }
-            self.sync_item_visual_events(cx);
             cx.notify();
         }
     }
 
     pub(super) fn handle_item_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.pressed_item.is_some() {
-            self.pressed_item = None;
-            self.sync_item_visual_events(cx);
-            cx.notify();
-        }
+        let changes = self.items_pointer.release();
+        self.emit_item_changes(changes, cx);
     }
 
-    /// Report the hovered and pressed items when they differ from the ones last reported: the one left
-    /// first (`false`), then the one entered (`true`).
-    pub(super) fn sync_item_visual_events(&mut self, cx: &mut Context<Self>) {
-        let id = |index: Option<usize>| index.and_then(|i| self.model.items.get(i)).map(|item| item.id().clone());
-        let (hovered, pressed) = (id(self.hovered_item), id(self.pressed_item));
-        if hovered != self.emitted_hovered {
-            if let Some(item_id) = self.emitted_hovered.take() {
-                cx.emit(ControlGroupEvent::ItemHoverChanged { item_id, hovered: false });
-            }
-            if let Some(item_id) = hovered.clone() {
-                cx.emit(ControlGroupEvent::ItemHoverChanged { item_id, hovered: true });
-            }
-            self.emitted_hovered = hovered;
+    /// Report item hover and press changes, in the order the tracker made them, and redraw.
+    pub(super) fn emit_item_changes(&mut self, changes: Vec<ItemChange<SharedString>>, cx: &mut Context<Self>) {
+        if changes.is_empty() {
+            return;
         }
-        if pressed != self.emitted_pressed {
-            if let Some(item_id) = self.emitted_pressed.take() {
-                cx.emit(ControlGroupEvent::ItemPressedChanged { item_id, pressed: false });
-            }
-            if let Some(item_id) = pressed.clone() {
-                cx.emit(ControlGroupEvent::ItemPressedChanged { item_id, pressed: true });
-            }
-            self.emitted_pressed = pressed;
+        for change in changes {
+            cx.emit(match change {
+                ItemChange::Hovered { key, hovered } => ControlGroupEvent::ItemHoverChanged { item_id: key, hovered },
+                ItemChange::Pressed { key, pressed } => ControlGroupEvent::ItemPressedChanged { item_id: key, pressed },
+            });
         }
+        cx.notify();
     }
 
     pub(super) fn handle_item_click(&mut self, index: usize, event: &ClickEvent, cx: &mut Context<Self>) {
@@ -569,13 +548,13 @@ mod visual_event_tests {
         group.update(&mut cx, |group, cx| {
             group.handle_item_hover(0, true, cx);
             group.handle_item_hover(1, true, cx);
-            group.pressed_item = Some(1);
-            group.sync_item_visual_events(cx);
+            let changes = group.items_pointer.press("b".into());
+            group.emit_item_changes(changes, cx);
             group.set_enabled(false, cx);
         });
         assert_eq!(
             *events.borrow(),
-            ["hover a true", "hover a false", "hover b true", "press b true", "hover b false", "press b false"]
+            ["hover a true", "hover a false", "hover b true", "press b true", "press b false", "hover b false"]
         );
     }
 }
