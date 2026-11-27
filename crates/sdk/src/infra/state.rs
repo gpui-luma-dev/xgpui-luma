@@ -2,11 +2,19 @@ use gpui::{FocusHandle, Window};
 
 use crate::theme::InteractionState;
 
+/// When a focused control draws its focus ring (#433): one rule for every control. The ring shows while the
+/// control has focus and the last input was the keyboard, like GPUI's own `focus_visible` style, so clicking a
+/// control focuses it without a ring and Tab shows one. Text entry is the one exception: a field with a caret
+/// shows focus however it got it.
+pub fn focus_visible(focused: bool, window: &Window) -> bool {
+    focused && window.last_input_was_keyboard()
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ControlFocusState {
     /// The GPUI focus handle associated with the control is focused.
     pub focused: bool,
-    /// The control is focused and GPUI's last input modality was keyboard.
+    /// The control draws its focus ring: see [`focus_visible`].
     pub focus_visible: bool,
 }
 
@@ -14,7 +22,7 @@ impl ControlFocusState {
     pub fn from_focus_handle(enabled: bool, focus_handle: &FocusHandle, window: &Window) -> Self {
         let focused = enabled && focus_handle.is_focused(window);
 
-        Self { focused, focus_visible: focused && window.last_input_was_keyboard() }
+        Self { focused, focus_visible: focus_visible(focused, window) }
     }
 }
 

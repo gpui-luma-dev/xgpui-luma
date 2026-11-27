@@ -80,6 +80,11 @@ impl CommandCore {
         self.interaction.render_state(enabled, window)
     }
 
+    /// The state attachments such as tooltips read: the real focus, not the focus ring.
+    pub fn attachment_state(&self, enabled: bool, window: &Window) -> ButtonInteractionState {
+        self.interaction.attachment_state(enabled, window)
+    }
+
     /// Access the focus handle used by this command behavior core.
     pub fn focus_handle(&self) -> &gpui::FocusHandle {
         self.interaction.focus_handle()

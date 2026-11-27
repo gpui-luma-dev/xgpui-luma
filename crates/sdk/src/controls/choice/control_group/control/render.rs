@@ -17,7 +17,6 @@ where
         let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
         let effective_selected_ids = self.model.effective_selected_ids();
         let item_count = self.model.items.len();
-        let keyboard_focus_visible = window.last_input_was_keyboard();
 
         let items = self
             .model
@@ -38,7 +37,7 @@ where
                     && target.focus_handle.is_focused(window)
                 {
                     item_active = true;
-                    item_focus_visible = keyboard_focus_visible;
+                    item_focus_visible = crate::infra::state::focus_visible(true, window);
                 }
 
                 let state = CompositeItemState {

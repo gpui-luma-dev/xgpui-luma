@@ -1,5 +1,6 @@
 use gpui::{Context, FocusHandle, Window};
 
+use crate::infra::state::focus_visible;
 use crate::theme::InteractionState;
 
 pub(crate) struct ControlInteraction {
@@ -48,7 +49,16 @@ impl ControlInteraction {
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled && tab_stop);
     }
 
+    /// The state the control draws. `focused` follows the focus-ring rule ([`focus_visible`]): a clicked
+    /// control draws no ring.
     pub fn render_state(&self, enabled: bool, window: &Window) -> InteractionState {
+        let state = self.attachment_state(enabled, window);
+        InteractionState { focused: focus_visible(state.focused, window), ..state }
+    }
+
+    /// The state attachments such as tooltips read: `focused` is the control's real focus, so a tooltip opened
+    /// from keyboard focus stays up when the pointer moves.
+    pub fn attachment_state(&self, enabled: bool, window: &Window) -> InteractionState {
         InteractionState { focused: enabled && self.focus_handle.is_focused(window), disabled: !enabled, ..self.state }
     }
 
