@@ -921,7 +921,8 @@ impl Render for SearchSelectorControl {
             trigger_state: TextFieldState {
                 hovered: interaction_state.hovered,
                 focused: self.behavior.state.open || trigger_focused,
-                focus_visible: self.behavior.state.open || trigger_focused,
+                // Open, the trigger is a field being typed in, so it shows focus however it got it.
+                focus_visible: self.behavior.state.open || crate::infra::state::focus_visible(trigger_focused, window),
                 invalid: self.model.invalid,
                 ..TextFieldState::default()
             },
@@ -939,7 +940,7 @@ impl Render for SearchSelectorControl {
             disclosure_progress: self.disclosure_transition.progress(),
         };
 
-        let mut tip_state = interaction_state;
+        let mut tip_state = self.interaction.attachment_state(self.model.enabled, window);
         tip_state.disabled |= self.behavior.state.open;
         let root = self.model.template.render(render_model, handlers, window, cx);
         let root = self.attachments.render(root, tip_state, cx);

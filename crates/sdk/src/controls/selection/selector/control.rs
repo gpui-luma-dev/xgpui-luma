@@ -690,7 +690,7 @@ where
         self.focus_subscriptions
             .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
-        let mut tip_state = self.interaction.render_state(self.model.enabled, window);
+        let mut tip_state = self.interaction.attachment_state(self.model.enabled, window);
         tip_state.disabled |= self.open;
         let model = self.render_model(window);
         let handlers = self.template_handlers(cx);

@@ -208,7 +208,7 @@ impl PopupMenu {
     }
 
     pub(crate) fn attachment_state(&self, window: &Window) -> crate::theme::InteractionState {
-        let mut state = self.interaction.render_state(self.model.enabled, window);
+        let mut state = self.interaction.attachment_state(self.model.enabled, window);
         state.disabled |= self.lifecycle.is_open();
         state
     }
@@ -749,7 +749,7 @@ impl Render for PopupMenu {
             self.highlight_transition.schedule_frame(window, cx);
         }
 
-        let mut tip_state = self.interaction.render_state(self.model.enabled, window);
+        let mut tip_state = self.interaction.attachment_state(self.model.enabled, window);
         tip_state.disabled |= self.lifecycle.is_open();
         let model = self.render_model(window);
         let handlers = self.template_handlers(cx);

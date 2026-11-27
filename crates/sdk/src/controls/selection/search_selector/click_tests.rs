@@ -186,5 +186,9 @@ fn the_trigger_draws_a_focus_ring_when_focused() {
     assert!(!ring_painted(cx), "no ring before focus");
     cx.update(|window, app| selector.read(app).focus_handle(app).focus(window, app));
     cx.run_until_parked();
-    assert!(ring_painted(cx), "a ring once focused");
+    // One focus-ring rule (#433): focus after pointer input draws none, keyboard input draws it.
+    assert!(!ring_painted(cx), "no ring for pointer focus");
+    cx.simulate_keystrokes("shift");
+    cx.run_until_parked();
+    assert!(ring_painted(cx), "a ring once focused from the keyboard");
 }

@@ -44,7 +44,7 @@ impl ListBoxBinding {
 
     /// Whether the host should paint the active item's keyboard focus indicator.
     pub fn focus_visible(&self, window: &Window) -> bool {
-        self.focus.is_focused(window) && window.last_input_was_keyboard()
+        crate::infra::state::focus_visible(self.focus.is_focused(window), window)
     }
 
     /// Attach to a stable, host-owned viewport. Register focus subscriptions on

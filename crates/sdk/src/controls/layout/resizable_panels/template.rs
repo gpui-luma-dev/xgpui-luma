@@ -269,7 +269,7 @@ fn render_overlay_handle(
     window: &mut Window,
     cx: &mut Context<ResizablePanels>,
 ) -> AnyElement {
-    let focused = focus.is_focused(window);
+    let focused = crate::infra::state::focus_visible(focus.is_focused(window), window);
     let (_, lane_px) = overlay_handle_lane(index, model, focused);
     let (origin_px, _, _) = handle_overlay_geometry(split_px, lane_px);
     let interaction_layer = render_handle_interaction_layer(
