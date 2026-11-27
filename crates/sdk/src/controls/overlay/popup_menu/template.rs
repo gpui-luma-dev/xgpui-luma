@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -64,12 +65,12 @@ impl RenderModel for dyn PopupMenuTemplate {
 
 pub struct ThemedPopupMenuTemplate {
     theme: Arc<dyn PopupMenuTheme>,
-    modifiers: Vec<PopupMenuTemplateModifier>,
+    modifiers: RootModifiers<dyn PopupMenuTemplate>,
 }
 
 impl ThemedPopupMenuTemplate {
     pub fn new(theme: Arc<dyn PopupMenuTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -78,13 +79,6 @@ impl ThemedPopupMenuTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PopupMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -381,7 +375,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             root = root.child(deferred(overlay).with_priority(1));
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

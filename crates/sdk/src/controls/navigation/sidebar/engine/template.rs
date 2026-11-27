@@ -1,3 +1,5 @@
+use crate::infra::template::ElementModifiers;
+use crate::infra::template::ModifiedElementTemplate;
 use std::{
     rc::Rc,
     sync::{Arc, OnceLock},
@@ -70,57 +72,27 @@ pub trait SidebarPanelTemplate: Send + Sync {
 pub struct ThemedSidebarPanelTemplate {
     theme: Arc<dyn SidebarTheme>,
     floating_menu_theme: Arc<dyn FloatingMenuTheme>,
-    modifiers: Vec<SidebarPanelTemplateModifier>,
+    modifiers: ElementModifiers<Stateful<Div>>,
 }
 
 impl ThemedSidebarPanelTemplate {
     pub fn new(theme: Arc<dyn SidebarTheme>) -> Self {
-        Self { theme, floating_menu_theme: default_floating_menu_theme(), modifiers: Vec::new() }
+        Self { theme, floating_menu_theme: default_floating_menu_theme(), modifiers: ElementModifiers::default() }
     }
 
     pub fn new_with_floating_menu_theme(
         theme: Arc<dyn SidebarTheme>,
         floating_menu_theme: Arc<dyn FloatingMenuTheme>,
     ) -> Self {
-        Self { theme, floating_menu_theme, modifiers: Vec::new() }
+        Self { theme, floating_menu_theme, modifiers: ElementModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
     where
         F: Fn(Stateful<Div>) -> Stateful<Div> + Send + Sync + 'static,
     {
-        self.modifiers.push(Box::new(modifier));
+        self.modifiers.push(Box::new(move |root, _: &mut App| modifier(root)));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root);
-        }
-        root
-    }
-}
-
-struct ModifiedSidebarPanelTemplate {
-    base: Arc<dyn SidebarPanelTemplate>,
-    modifiers: Vec<SidebarPanelTemplateModifier>,
-}
-
-impl ModifiedSidebarPanelTemplate {
-    fn new(base: Arc<dyn SidebarPanelTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SidebarPanelTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root);
-        }
-        root
     }
 }
 
@@ -143,10 +115,10 @@ pub(crate) fn modified_sidebar_panel_template<F>(
 where
     F: Fn(Stateful<Div>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSidebarPanelTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(move |root, _: &mut App| modifier(root))))
 }
 
-impl SidebarPanelTemplate for ModifiedSidebarPanelTemplate {
+impl SidebarPanelTemplate for ModifiedElementTemplate<dyn SidebarPanelTemplate, Stateful<Div>> {
     fn render(
         &self,
         model: SidebarPanelEngineRenderModel,
@@ -156,7 +128,7 @@ impl SidebarPanelTemplate for ModifiedSidebarPanelTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, main_scroll, handlers, window, cx);
-        self.apply_modifiers(root)
+        self.apply(root, cx)
     }
 }
 
@@ -312,7 +284,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
             );
         }
 
-        self.apply_modifiers(root)
+        self.modifiers.apply(root, cx)
     }
 }
 

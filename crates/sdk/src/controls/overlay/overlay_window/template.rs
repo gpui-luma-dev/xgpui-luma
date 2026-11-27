@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -44,12 +45,12 @@ impl RenderModel for dyn OverlayWindowTemplate {
 
 pub struct ThemedOverlayWindowTemplate {
     theme: Arc<dyn OverlayWindowTheme>,
-    modifiers: Vec<OverlayWindowTemplateModifier>,
+    modifiers: RootModifiers<dyn OverlayWindowTemplate>,
 }
 
 impl ThemedOverlayWindowTemplate {
     pub fn new(theme: Arc<dyn OverlayWindowTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -58,13 +59,6 @@ impl ThemedOverlayWindowTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &OverlayWindowRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -150,6 +144,6 @@ impl OverlayWindowTemplate for ThemedOverlayWindowTemplate {
         }
 
         let root = shell.child(div().w_full().min_w_0().child((model.content)(model, window, cx)));
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }

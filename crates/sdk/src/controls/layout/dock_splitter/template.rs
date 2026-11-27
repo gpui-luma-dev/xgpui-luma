@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -18,9 +19,6 @@ pub struct DockSplitterTemplateHandlers {
     pub key_down: DockSplitterKeyDownHandler,
 }
 
-pub type DockSplitterTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &DockSplitterRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait DockSplitterTemplate: Send + Sync {
     fn render(
         &self,
@@ -38,12 +36,12 @@ impl RenderModel for dyn DockSplitterTemplate {
 
 pub struct ThemedDockSplitterTemplate {
     show_thumb: bool,
-    modifiers: Vec<DockSplitterTemplateModifier>,
+    modifiers: RootModifiers<dyn DockSplitterTemplate>,
 }
 
 impl ThemedDockSplitterTemplate {
     pub fn new(show_thumb: bool) -> Self {
-        Self { show_thumb, modifiers: Vec::new() }
+        Self { show_thumb, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -52,13 +50,6 @@ impl ThemedDockSplitterTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &DockSplitterRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -108,7 +99,7 @@ impl DockSplitterTemplate for ThemedDockSplitterTemplate {
         _cx: &mut App,
     ) -> Stateful<Div> {
         let root = render_splitter(model, look, handlers, self.show_thumb);
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

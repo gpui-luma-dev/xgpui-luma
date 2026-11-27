@@ -1,3 +1,5 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, SharedString, Stateful, div, prelude::*, px};
@@ -37,13 +39,17 @@ pub trait ComboBoxItemsTemplate: Send + Sync {
     ) -> Stateful<gpui::Div>;
 }
 
+impl RenderModel for dyn ComboBoxItemsTemplate {
+    type Model<'a> = ComboBoxItemsRenderModel<'a>;
+}
+
 pub struct DefaultComboBoxItemsTemplate {
-    modifiers: Vec<ComboBoxItemsTemplateModifier>,
+    modifiers: RootModifiers<dyn ComboBoxItemsTemplate>,
 }
 
 impl DefaultComboBoxItemsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     #[allow(dead_code)]
@@ -54,49 +60,11 @@ impl DefaultComboBoxItemsTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &ComboBoxItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
 }
 
 impl Default for DefaultComboBoxItemsTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-struct ModifiedComboBoxItemsTemplate {
-    base: Arc<dyn ComboBoxItemsTemplate>,
-    modifiers: Vec<ComboBoxItemsTemplateModifier>,
-}
-
-impl ModifiedComboBoxItemsTemplate {
-    fn new(base: Arc<dyn ComboBoxItemsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ComboBoxItemsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &ComboBoxItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -112,7 +80,7 @@ pub fn combobox_items_template_with_modifier<F>(
 where
     F: Fn(Stateful<gpui::Div>, &ComboBoxItemsRenderModel<'_>) -> Stateful<gpui::Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedComboBoxItemsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
@@ -196,11 +164,11 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
             root = root.child(row);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl ComboBoxItemsTemplate for ModifiedComboBoxItemsTemplate {
+impl ComboBoxItemsTemplate for ModifiedTemplate<dyn ComboBoxItemsTemplate> {
     fn render(
         &self,
         model: &ComboBoxItemsRenderModel<'_>,
@@ -208,7 +176,7 @@ impl ComboBoxItemsTemplate for ModifiedComboBoxItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

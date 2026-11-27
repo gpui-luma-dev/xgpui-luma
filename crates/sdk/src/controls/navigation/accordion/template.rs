@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -52,12 +53,12 @@ impl RenderModel for dyn AccordionTemplate {
 
 pub struct ThemedAccordionTemplate {
     theme: Arc<dyn AccordionTheme>,
-    modifiers: Vec<AccordionTemplateModifier>,
+    modifiers: RootModifiers<dyn AccordionTemplate>,
 }
 
 impl ThemedAccordionTemplate {
     pub fn new(theme: Arc<dyn AccordionTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -66,13 +67,6 @@ impl ThemedAccordionTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &AccordionRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -339,7 +333,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         if let Some(motion) = motion {
             root = motion.end_surface(root);
         }
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

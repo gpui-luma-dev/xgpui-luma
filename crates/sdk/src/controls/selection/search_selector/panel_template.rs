@@ -1,3 +1,4 @@
+use crate::infra::template::ModifiedElementTemplate;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Bounds, Pixels, SharedString, div, prelude::*, px};
@@ -40,32 +41,10 @@ pub fn default_search_selector_panel_template() -> Arc<dyn SearchSelectorPanelTe
     TEMPLATE.get_or_init(|| Arc::new(DefaultSearchSelectorPanelTemplate)).clone()
 }
 
-struct ModifiedSearchSelectorPanelTemplate {
-    base: Arc<dyn SearchSelectorPanelTemplate>,
-    modifiers: Vec<SearchSelectorPanelTemplateModifier>,
-}
-
-impl ModifiedSearchSelectorPanelTemplate {
-    fn new(base: Arc<dyn SearchSelectorPanelTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-}
-
-impl SearchSelectorPanelTemplate for ModifiedSearchSelectorPanelTemplate {
+impl SearchSelectorPanelTemplate for ModifiedElementTemplate<dyn SearchSelectorPanelTemplate, AnyElement> {
     fn render(&self, model: SearchSelectorPanelRenderModel<'_>, cx: &mut App) -> AnyElement {
-        let mut element = self.base.render(model, cx);
-        for modifier in &self.modifiers {
-            element = modifier(element, cx);
-        }
-        element
+        let element = self.base.render(model, cx);
+        self.apply(element, cx)
     }
 }
 
@@ -76,7 +55,7 @@ pub(super) fn panel_template_with_modifier<F>(
 where
     F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSearchSelectorPanelTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(modifier)))
 }
 
 impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {

@@ -1,3 +1,4 @@
+use crate::infra::template::ModifiedElementTemplate;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -73,25 +74,6 @@ pub trait ComboBoxTemplate: Send + Sync {
         _window: &mut Window,
         _cx: &mut App,
     ) -> AnyElement;
-}
-
-struct ModifiedComboBoxTemplate {
-    base: Arc<dyn ComboBoxTemplate>,
-    modifiers: Vec<ComboBoxTemplateModifier>,
-}
-
-impl ModifiedComboBoxTemplate {
-    fn new(base: Arc<dyn ComboBoxTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
 }
 
 pub struct DefaultComboBoxTemplate;
@@ -195,7 +177,7 @@ impl ComboBoxTemplate for DefaultComboBoxTemplate {
     }
 }
 
-impl ComboBoxTemplate for ModifiedComboBoxTemplate {
+impl ComboBoxTemplate for ModifiedElementTemplate<dyn ComboBoxTemplate, AnyElement> {
     fn render(
         &self,
         model: ComboBoxRenderModel,
@@ -203,13 +185,9 @@ impl ComboBoxTemplate for ModifiedComboBoxTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> AnyElement {
-        let mut element = self.base.render(model, handlers, window, cx);
+        let element = self.base.render(model, handlers, window, cx);
 
-        for modifier in &self.modifiers {
-            element = (modifier)(element, cx);
-        }
-
-        element
+        self.apply(element, cx)
     }
 }
 
@@ -217,7 +195,7 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn ComboBoxTemplate>, mod
 where
     F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
 {
-    Arc::new(ModifiedComboBoxTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(modifier)))
 }
 
 pub use super::items_template::{

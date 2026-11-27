@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -32,12 +33,12 @@ impl RenderModel for dyn ResizablePanelsTemplate {
 }
 
 pub struct ThemedResizablePanelsTemplate {
-    modifiers: Vec<ResizablePanelsTemplateModifier>,
+    modifiers: RootModifiers<dyn ResizablePanelsTemplate>,
 }
 
 impl ThemedResizablePanelsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -46,13 +47,6 @@ impl ThemedResizablePanelsTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ResizablePanelsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -143,7 +137,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
             .on_drag_move(cx.listener(ResizablePanels::handle_drag_move))
             .on_mouse_up(gpui::MouseButton::Left, cx.listener(ResizablePanels::finish_drag))
             .on_mouse_up_out(gpui::MouseButton::Left, cx.listener(ResizablePanels::finish_drag));
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

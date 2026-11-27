@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
@@ -101,7 +102,7 @@ where
 {
     theme: Arc<dyn SelectorTheme>,
     items_template: Arc<dyn SelectorItemsTemplate<T>>,
-    modifiers: Vec<SelectorTemplateModifier<T>>,
+    modifiers: RootModifiers<dyn SelectorTemplate<T>>,
 }
 
 impl<T> ThemedSelectorTemplate<T>
@@ -109,7 +110,7 @@ where
     T: SelectorItemLike + 'static,
 {
     pub fn new(theme: Arc<dyn SelectorTheme>, items_template: Arc<dyn SelectorItemsTemplate<T>>) -> Self {
-        Self { theme, items_template, modifiers: Vec::new() }
+        Self { theme, items_template, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -118,13 +119,6 @@ where
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -233,7 +227,7 @@ where
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
             .on_click(trigger_click);
-        let trigger = face.root(self.apply_modifiers(trigger, model), &face_look);
+        let trigger = face.root(self.modifiers.apply(trigger, model), &face_look);
         let mut root =
             div().id(model.id.clone()).w_full().relative().on_mouse_down_out(root_mouse_down_out).child(trigger);
 
@@ -331,7 +325,7 @@ where
             root = root.child(deferred(overlay).with_priority(1));
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

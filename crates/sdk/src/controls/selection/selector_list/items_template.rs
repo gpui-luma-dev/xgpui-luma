@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
@@ -181,7 +182,7 @@ pub struct DefaultSelectorItemsTemplate<T>
 where
     T: SelectorItemLike + 'static,
 {
-    modifiers: Vec<SelectorItemsTemplateModifier<T>>,
+    modifiers: RootModifiers<dyn SelectorItemsTemplate<T>>,
 }
 
 impl<T> DefaultSelectorItemsTemplate<T>
@@ -189,7 +190,7 @@ where
     T: SelectorItemLike + 'static,
 {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -198,13 +199,6 @@ where
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorItemsRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -374,7 +368,7 @@ where
             })
             .child(rows);
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

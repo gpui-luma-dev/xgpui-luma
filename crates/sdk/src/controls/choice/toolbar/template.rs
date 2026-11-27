@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -31,12 +32,12 @@ pub struct ToolbarRenderedItem {
 
 pub struct ThemedToolbarTemplate {
     theme: Arc<dyn ToolbarTheme>,
-    modifiers: Vec<ToolbarTemplateModifier>,
+    modifiers: RootModifiers<dyn ToolbarTemplate>,
 }
 
 impl ThemedToolbarTemplate {
     pub fn new(theme: Arc<dyn ToolbarTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -45,13 +46,6 @@ impl ThemedToolbarTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ToolbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -92,7 +86,7 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
             root = root.child(child);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

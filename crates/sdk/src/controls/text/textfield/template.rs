@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -36,9 +37,6 @@ pub struct TextFieldTemplateHandlers {
     pub drag_move: TextFieldDragMoveHandler,
 }
 
-pub type TextFieldTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait TextFieldTemplate: Send + Sync {
     fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
         default_textfield_theme().resolve_look(
@@ -73,12 +71,12 @@ impl RenderModel for dyn TextFieldTemplate {
 
 pub struct ThemedTextFieldTemplate {
     theme: Arc<dyn TextFieldTheme>,
-    modifiers: Vec<TextFieldTemplateModifier>,
+    modifiers: RootModifiers<dyn TextFieldTemplate>,
 }
 
 impl ThemedTextFieldTemplate {
     pub fn new(theme: Arc<dyn TextFieldTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -87,13 +85,6 @@ impl ThemedTextFieldTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextFieldRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -334,7 +325,7 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
 
         root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
