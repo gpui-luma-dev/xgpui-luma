@@ -59,6 +59,16 @@ impl PopoverPanelLook {
 
     /// `content` inside the panel this look draws; just `content` while the panel is off (`show_panel`). The
     /// popover draws its content through this, and a page can draw the panel inline with it.
+    /// The height the panel adds around its content: padding and border on
+    /// both edges, or nothing when the panel is off.
+    pub fn chrome_height(&self) -> f32 {
+        if self.shown {
+            2.0 * (self.padding + self.border_width)
+        } else {
+            0.0
+        }
+    }
+
     pub fn wrap(&self, content: impl gpui::IntoElement) -> gpui::AnyElement {
         use gpui::{div, prelude::*, px};
         if !self.shown {

@@ -22,6 +22,8 @@ pub struct PopoverPanel {
     model: super::model::PopoverPanelModel,
     focus_handle: FocusHandle,
     content_bounds: Option<Bounds<Pixels>>,
+    /// The panel's unscrolled size: its content's natural size plus the panel chrome.
+    natural_size: Option<Size<Pixels>>,
     emitted_focused: bool,
     focus_out_subscription: Option<Subscription>,
     pending_focus: bool,
@@ -48,6 +50,7 @@ impl PopoverPanel {
             model: builder.model,
             focus_handle: cx.focus_handle().tab_stop(true),
             content_bounds: None,
+            natural_size: None,
             emitted_focused: false,
             focus_out_subscription: None,
             restore_focus: None,
@@ -289,6 +292,18 @@ impl PopoverPanel {
         cx.notify();
     }
 
+    /// Record the content's unscrolled size, measured inside the scroll area,
+    /// so placement and flipping use the full height even while it scrolls.
+    fn handle_natural_content_bounds(&mut self, bounds: Bounds<Pixels>, cx: &mut Context<Self>) {
+        let chrome = px(self.model.look.chrome_height());
+        let size = Size { width: bounds.size.width + chrome, height: bounds.size.height + chrome };
+        if bounds.size.width <= px(0.0) || self.natural_size == Some(size) {
+            return;
+        }
+        self.natural_size = Some(size);
+        cx.notify();
+    }
+
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
         if self.model.open && self.model.dismiss.allows(DismissReason::Escape) {
             self.dismiss(cx);
@@ -354,8 +369,9 @@ impl Render for PopoverPanel {
         };
 
         let panel = cx.entity();
+        let natural = panel.clone();
         let content = (self.model.content)(&model, window, cx);
-        let content_size = self.content_bounds.map(|bounds| bounds.size).or(self.model.initial_content_size);
+        let content_size = self.natural_size.or(self.model.initial_content_size);
         let placement = resolve_popover_panel_placement(
             anchor_bounds,
             content_size,
@@ -377,7 +393,22 @@ impl Render for PopoverPanel {
                 panel.update(cx, |panel, cx| panel.handle_content_bounds(bounds, cx));
             })
             .opacity(opacity)
-            .child(self.model.look.wrap(content))
+            .child(
+                self.model.look.wrap(
+                    // Taller than the space on its side, the content scrolls inside the panel (#433).
+                    div()
+                        .id("popover-panel-scroll")
+                        .max_h((placement.max_size.height - px(self.model.look.chrome_height())).max(px(0.0)))
+                        .overflow_y_scroll()
+                        .child(
+                            div()
+                                .on_prepaint(move |bounds, _, cx| {
+                                    natural.update(cx, |panel, cx| panel.handle_natural_content_bounds(bounds, cx));
+                                })
+                                .child(content),
+                        ),
+                ),
+            )
             .into_any_element();
 
         let overlay = anchored()
@@ -460,5 +491,41 @@ mod tests {
         assert_eq!(placement.anchor, Anchor::BottomLeft);
         assert_eq!(placement.position, point(px(20.0), px(450.0)));
         assert_eq!(placement.offset, point(px(0.0), px(-4.0)));
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod height_tests {
+    use gpui::{Bounds, Entity, IntoElement, Render, TestAppContext, div, point, px, size};
+
+    use super::*;
+    use crate::controls::overlay::popover_button::panel::PopoverPanelLook;
+
+    struct Host(Entity<PopoverPanel>);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().size_full().child(self.0.clone())
+        }
+    }
+
+    /// Content far taller than the window scrolls inside a panel kept within the window margin.
+    #[gpui::test]
+    fn tall_content_is_limited_to_the_window(cx: &mut TestAppContext) {
+        let (_, cx) = cx.add_window_view(|_, cx| {
+            let panel = PopoverPanelBuilder::new("tall")
+                .content(|_, _, _| div().w(px(120.0)).h(px(5000.0)).into_any_element())
+                .anchor_bounds(Bounds::new(point(px(10.0), px(10.0)), size(px(40.0), px(20.0))))
+                .look(PopoverPanelLook::sdk().shown(true))
+                .motion_enabled(false)
+                .open(true)
+                .spawn(cx);
+            Host(panel)
+        });
+        cx.run_until_parked();
+        let viewport = cx.update(|window, _| window.viewport_size());
+        let panel = cx.debug_bounds("popover-panel").expect("panel drawn");
+        assert!(panel.size.height < px(5000.0), "panel is limited: {panel:?}");
+        assert!(panel.bottom() <= viewport.height, "panel stays in the window: {panel:?} in {viewport:?}");
     }
 }

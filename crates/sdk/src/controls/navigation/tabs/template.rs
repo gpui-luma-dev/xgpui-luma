@@ -10,9 +10,7 @@ use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
-use crate::infra::popup_placement::{
-    LayoutDirection, PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement, layout_direction,
-};
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::infra::lock;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
@@ -41,8 +39,8 @@ pub struct TabsOverlayState {
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     presence: Arc<Mutex<OverlayPresence>>,
     last_overlay: Arc<Mutex<Option<TabsCachedOverlay>>>,
-    /// The app's layout direction, read when the trigger is laid out.
-    direction: Arc<Mutex<LayoutDirection>>,
+    /// The window size and layout direction, read when the trigger is laid out.
+    space: Arc<Mutex<PopupSpace>>,
 }
 
 #[derive(Clone)]
@@ -60,7 +58,7 @@ impl Default for TabsOverlayState {
             trigger_bounds: Arc::new(Mutex::new(None)),
             presence: Arc::new(Mutex::new(OverlayPresence::new(false, true))),
             last_overlay: Arc::new(Mutex::new(None)),
-            direction: Arc::new(Mutex::new(LayoutDirection::default())),
+            space: Arc::new(Mutex::new(PopupSpace::default())),
         }
     }
 }
@@ -457,12 +455,12 @@ where
     let mut root = div()
         .on_children_prepainted({
             let trigger_bounds = overlay_state.trigger_bounds.clone();
-            let direction = overlay_state.direction.clone();
-            move |bounds, _, cx| {
+            let space = overlay_state.space.clone();
+            move |bounds, window, cx| {
                 if let Some(bounds) = bounds.first() {
                     *lock::mutex(&trigger_bounds) = Some(*bounds);
                 }
-                *lock::mutex(&direction) = layout_direction(cx);
+                *lock::mutex(&space) = PopupSpace::of(window, cx);
             }
         })
         .id(id)
@@ -488,13 +486,21 @@ where
             let presence = overlay_state.presence_snapshot();
             let placement = resolve_tabs_overlay_placement(
                 overlay_state.trigger_bounds(),
-                *lock::mutex(&overlay_state.direction),
+                *lock::mutex(&overlay_state.space),
                 overlay.placement,
                 overlay.content_size,
                 overlay.offset_y,
+                overlay.window_margin,
             );
             let offset = presence.adjust_offset(placement.offset, overlay.content_size);
-            let content = div().opacity(presence.opacity()).child(overlay.content);
+            // Taller than the space on its side, the overlay scrolls (#433).
+            let content = div().opacity(presence.opacity()).child(
+                div()
+                    .id("tabs-overlay-scroll")
+                    .max_h(tabs_overlay_max_height(&placement, overlay.content_size))
+                    .overflow_y_scroll()
+                    .child(overlay.content),
+            );
             let anchored_overlay = anchored()
                 .snap_to_window_with_margin(overlay.window_margin)
                 .anchor(placement.anchor)
@@ -511,15 +517,18 @@ where
             {
                 let placement = resolve_tabs_overlay_placement(
                     overlay_state.trigger_bounds(),
-                    *lock::mutex(&overlay_state.direction),
+                    *lock::mutex(&overlay_state.space),
                     cached.placement,
                     cached.content_size,
                     cached.offset_y,
+                    cached.window_margin,
                 );
                 let offset = presence.adjust_offset(placement.offset, cached.content_size);
                 // Exit keeps a sized shell while content is unavailable (`AnyElement` is not cloneable).
-                let content =
-                    div().w(cached.content_size.width).h(cached.content_size.height).opacity(presence.opacity());
+                let content = div()
+                    .w(cached.content_size.width)
+                    .h(tabs_overlay_max_height(&placement, cached.content_size))
+                    .opacity(presence.opacity());
                 let anchored_overlay = anchored()
                     .snap_to_window_with_margin(cached.window_margin)
                     .anchor(placement.anchor)
@@ -533,26 +542,40 @@ where
 
     root.into_any_element()
 }
-
 fn resolve_tabs_overlay_placement(
     trigger_bounds: Option<Bounds<Pixels>>,
-    direction: LayoutDirection,
+    space: impl Into<PopupSpace>,
     placement: TabsOverlayPlacement,
     content_size: Size<Pixels>,
     offset_y: Pixels,
+    window_margin: Pixels,
 ) -> ResolvedPopupPlacement {
     let trigger_bounds = trigger_bounds.unwrap_or_default();
+    let space: PopupSpace = space.into();
     let align = match placement {
         TabsOverlayPlacement::BelowStart => PopupAlign::Start,
         TabsOverlayPlacement::BelowCenter => PopupAlign::Center,
     };
-    // The overlay never flips, so the viewport is not needed; `anchored()` clamps it.
-    PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, Size::default())
-        .direction(direction)
+    // Until the trigger is laid out the window size is unknown: open below, unlimited.
+    let measured = space.viewport.height > px(0.0);
+    let mut placement = PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, space)
         .align(align)
+        .flip(measured)
         .gap(offset_y)
         .content_size(Some(content_size))
-        .resolve()
+        .window_margin(window_margin)
+        .resolve();
+    placement.scrolling &= measured;
+    placement
+}
+
+/// The height the overlay may take: unlimited until the window size is known.
+fn tabs_overlay_max_height(placement: &ResolvedPopupPlacement, content_size: Size<Pixels>) -> Pixels {
+    if placement.scrolling {
+        placement.max_size.height
+    } else {
+        content_size.height
+    }
 }
 
 fn tab_button_template() -> Arc<dyn ButtonTemplate<TabsButtonData>> {
@@ -766,10 +789,11 @@ mod tests {
     fn overlay_below_start_anchors_to_trigger_bottom_left() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
-            LayoutDirection::LeftToRight,
+            size(px(800.0), px(600.0)),
             TabsOverlayPlacement::BelowStart,
             size(px(200.0), px(120.0)),
             px(6.0),
+            px(8.0),
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -781,10 +805,11 @@ mod tests {
     fn overlay_below_center_anchors_to_trigger_center_with_content_offset() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
-            LayoutDirection::LeftToRight,
+            size(px(800.0), px(600.0)),
             TabsOverlayPlacement::BelowCenter,
             size(px(200.0), px(120.0)),
             px(6.0),
+            px(8.0),
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -802,5 +827,45 @@ mod tests {
         assert!(!state.should_paint());
         assert!(!state.is_animating());
         assert!(state.trigger_bounds().is_none());
+    }
+}
+
+#[cfg(test)]
+mod height_tests {
+    use gpui::{Bounds, point, px, size};
+
+    use super::*;
+
+    #[test]
+    fn overlay_near_the_window_bottom_flips_and_limits_its_height() {
+        let trigger = Some(Bounds::new(point(px(40.0), px(500.0)), size(px(80.0), px(32.0))));
+        let content = size(px(200.0), px(900.0));
+        let placement = resolve_tabs_overlay_placement(
+            trigger,
+            size(px(800.0), px(600.0)),
+            TabsOverlayPlacement::BelowStart,
+            content,
+            px(6.0),
+            px(8.0),
+        );
+        // Below: 600 - 8 - 538 = 54; above: 500 - 6 - 8 = 486.
+        assert_eq!(placement.side, PopupSide::Above);
+        assert!(placement.scrolling);
+        assert_eq!(tabs_overlay_max_height(&placement, content), px(486.0));
+    }
+
+    #[test]
+    fn overlay_before_layout_opens_below_unlimited() {
+        let content = size(px(200.0), px(900.0));
+        let placement = resolve_tabs_overlay_placement(
+            None,
+            gpui::Size::default(),
+            TabsOverlayPlacement::BelowStart,
+            content,
+            px(6.0),
+            px(8.0),
+        );
+        assert_eq!(placement.side, PopupSide::Below);
+        assert_eq!(tabs_overlay_max_height(&placement, content), content.height);
     }
 }
