@@ -1,11 +1,11 @@
 use gpui::{
-    anchored, deferred, point, Anchor, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable,
-    IntoElement, MouseButton, MouseDownEvent, Pixels, Point, Render, SharedString, Size, Subscription, Window, div,
-    prelude::*, px,
+    anchored, deferred, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
+    MouseButton, MouseDownEvent, Pixels, Render, SharedString, Size, Subscription, Window, div, prelude::*, px,
 };
 
 use super::model::{PopoverPanelBuilder, PopoverPanelDismissPolicy, PopoverPanelPlacement, PopoverPanelRenderModel};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::focus::EscapeFocus;
 
@@ -409,13 +409,6 @@ impl Render for PopoverPanel {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ResolvedPopoverPanelPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
-}
-
 fn resolve_popover_panel_placement(
     anchor_bounds: Bounds<Pixels>,
     content_size: Option<Size<Pixels>>,
@@ -423,42 +416,25 @@ fn resolve_popover_panel_placement(
     offset_y: Pixels,
     viewport_size: Size<Pixels>,
     window_margin: Pixels,
-) -> ResolvedPopoverPanelPlacement {
-    let content_height = content_size.map_or(px(0.0), |size| size.height);
-    let resolved = match placement {
-        PopoverPanelPlacement::SmartStart => {
-            let viewport_bottom = viewport_size.height - window_margin;
-            if anchor_bounds.bottom() + offset_y + content_height <= viewport_bottom {
-                PopoverPanelPlacement::BelowStart
-            } else {
-                PopoverPanelPlacement::AboveStart
-            }
-        }
-        placement => placement,
+) -> ResolvedPopupPlacement {
+    let (side, align, flip) = match placement {
+        PopoverPanelPlacement::BelowStart => (PopupSide::Below, PopupAlign::Start, false),
+        PopoverPanelPlacement::BelowCenter => (PopupSide::Below, PopupAlign::Center, false),
+        PopoverPanelPlacement::AboveStart => (PopupSide::Above, PopupAlign::Start, false),
+        PopoverPanelPlacement::SmartStart => (PopupSide::Below, PopupAlign::Start, true),
     };
-
-    match resolved {
-        PopoverPanelPlacement::BelowStart | PopoverPanelPlacement::SmartStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        PopoverPanelPlacement::BelowCenter => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.center().x, anchor_bounds.bottom()),
-            offset: point(content_size.map_or(px(0.0), |size| -(size.width * 0.5)), offset_y),
-        },
-        PopoverPanelPlacement::AboveStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.top()),
-            offset: point(px(0.0), -offset_y),
-        },
-    }
+    PopupPlacementRequest::new(anchor_bounds, side, viewport_size)
+        .align(align)
+        .flip(flip)
+        .gap(offset_y)
+        .content_size(content_size)
+        .window_margin(window_margin)
+        .resolve()
 }
 
 #[cfg(test)]
 mod tests {
-    use gpui::{point, px, size, Bounds};
+    use gpui::{Anchor, point, px, size, Bounds};
 
     use super::*;
 

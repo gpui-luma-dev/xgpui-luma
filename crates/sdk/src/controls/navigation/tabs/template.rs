@@ -2,14 +2,15 @@ use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use gpui::{
-    Anchor, AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, Point, SharedString, Size, Stateful, TextRun, Window,
-    anchored, deferred, div, font, hsla, point, px, prelude::*,
+    AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, SharedString, Size, Stateful, TextRun, Window, anchored,
+    deferred, div, font, hsla, px, prelude::*,
 };
 
 use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
 use crate::infra::lock;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
@@ -131,13 +132,6 @@ pub struct TabsItemOverlay {
     pub placement: TabsOverlayPlacement,
     pub offset_y: Pixels,
     pub window_margin: Pixels,
-}
-
-#[derive(Clone, Copy)]
-struct ResolvedTabsOverlayPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
 }
 
 #[derive(Clone)]
@@ -536,22 +530,18 @@ fn resolve_tabs_overlay_placement(
     placement: TabsOverlayPlacement,
     content_size: Size<Pixels>,
     offset_y: Pixels,
-) -> ResolvedTabsOverlayPlacement {
-    let trigger_bounds = trigger_bounds
-        .unwrap_or_else(|| Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(0.0) }));
-
-    match placement {
-        TabsOverlayPlacement::BelowStart => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        TabsOverlayPlacement::BelowCenter => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.center().x, trigger_bounds.bottom()),
-            offset: point(-(content_size.width * 0.5), offset_y),
-        },
-    }
+) -> ResolvedPopupPlacement {
+    let trigger_bounds = trigger_bounds.unwrap_or_default();
+    let align = match placement {
+        TabsOverlayPlacement::BelowStart => PopupAlign::Start,
+        TabsOverlayPlacement::BelowCenter => PopupAlign::Center,
+    };
+    // The overlay never flips, so the viewport is not needed; `anchored()` clamps it.
+    PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, Size::default())
+        .align(align)
+        .gap(offset_y)
+        .content_size(Some(content_size))
+        .resolve()
 }
 
 fn tab_button_template() -> Arc<dyn ButtonTemplate<TabsButtonData>> {
@@ -757,7 +747,7 @@ fn tabs_render_model<'a>(
 
 #[cfg(test)]
 mod tests {
-    use gpui::{Bounds, point, px, size};
+    use gpui::{Anchor, Bounds, point, px, size};
 
     use super::*;
 

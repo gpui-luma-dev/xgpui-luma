@@ -1,14 +1,15 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
-    Anchor, AnyElement, App, Bounds, ClickEvent, Div, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Point, Size,
-    Stateful, Window, anchored, deferred, div, point, px, prelude::*,
+    AnyElement, App, Bounds, ClickEvent, Div, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Size, Stateful,
+    Window, anchored, deferred, div, point, px, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTriggerModel};
 use crate::controls::button::face::{Face, FaceLook, FaceShape};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
 use crate::controls::floating_menu::render_floating_menu_with_submenu_hovers_and_icons_and_transition;
 use crate::infra::icon::render_disclosure_icon;
 use crate::controls::popup_menu::{PopupMenuLook, PopupMenuTheme, PopupMenuTriggerMetrics, default_popup_menu_theme};
@@ -410,13 +411,6 @@ fn split_face_accessibility(node: &mut gpui::accesskit::Node, enabled: bool, dis
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ResolvedPopupMenuPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
-}
-
 fn estimated_menu_size(
     look: &PopupMenuLook,
     items: &[crate::infra::menu_item::MenuItem],
@@ -439,45 +433,29 @@ fn resolve_popup_menu_placement(
     look: &PopupMenuLook,
     items: &[crate::infra::menu_item::MenuItem],
     viewport_size: Size<Pixels>,
-) -> ResolvedPopupMenuPlacement {
+) -> ResolvedPopupPlacement {
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
     });
     let menu_size = estimated_menu_size(look, items, trigger_bounds.size.width);
-    let offset_y = px(look.menu_offset_y);
-    let resolved = match placement {
-        PopupMenuPlacement::Smart => {
-            let viewport_bottom = viewport_size.height - px(look.floating_menu.window_margin);
-            if trigger_bounds.bottom() + offset_y + menu_size.height <= viewport_bottom {
-                PopupMenuPlacement::BelowStart
-            } else {
-                PopupMenuPlacement::AboveStart
-            }
+    let (side, align, flip) = match placement {
+        PopupMenuPlacement::Smart => (PopupSide::Below, PopupAlign::Start, true),
+        PopupMenuPlacement::BelowStart | PopupMenuPlacement::CenteredOnTrigger => {
+            (PopupSide::Below, PopupAlign::Start, false)
         }
-        placement => placement,
+        PopupMenuPlacement::AboveStart => (PopupSide::Above, PopupAlign::Start, false),
+        PopupMenuPlacement::RightEnd => (PopupSide::End, PopupAlign::End, false),
     };
-
-    match resolved {
-        PopupMenuPlacement::Smart | PopupMenuPlacement::BelowStart => ResolvedPopupMenuPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        PopupMenuPlacement::AboveStart => ResolvedPopupMenuPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.top()),
-            offset: point(px(0.0), -offset_y),
-        },
-        PopupMenuPlacement::RightEnd => ResolvedPopupMenuPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(trigger_bounds.right(), trigger_bounds.bottom()),
-            offset: point(offset_y, px(0.0)),
-        },
-        PopupMenuPlacement::CenteredOnTrigger => ResolvedPopupMenuPlacement {
-            anchor: Anchor::TopLeft,
-            position: trigger_bounds.center(),
-            offset: point(-(menu_size.width * 0.5), -(menu_size.height * 0.5)),
-        },
+    let request = PopupPlacementRequest::new(trigger_bounds, side, viewport_size)
+        .align(align)
+        .flip(flip)
+        .gap(px(look.menu_offset_y))
+        .content_size(Some(menu_size))
+        .window_margin(px(look.floating_menu.window_margin));
+    if placement == PopupMenuPlacement::CenteredOnTrigger {
+        request.resolve_centered()
+    } else {
+        request.resolve()
     }
 }
 
@@ -487,7 +465,7 @@ fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla, size: f32) -> AnyElem
 
 #[cfg(test)]
 mod tests {
-    use gpui::{Bounds, point, px, size};
+    use gpui::{Anchor, Bounds, point, px, size};
 
     use super::*;
     use crate::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle, compose_popup_menu_look};
