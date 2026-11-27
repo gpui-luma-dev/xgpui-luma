@@ -7,6 +7,7 @@ use super::theme::{PagerLook, PagerTheme, default_pager_theme};
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonContentContext, ButtonRenderModel, ControlPresenter};
 use crate::infra::icon::{IconSource, render_icon_source};
+use crate::infra::popup_placement::{PopupSide, attached_popup};
 use crate::theme::InteractionState;
 
 pub type PagerOutsideMouseDownHandler = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + Send + Sync + 'static>;
@@ -306,44 +307,48 @@ pub(crate) fn render_page_size_select(
                 }),
         )
         .when(model.page_size_open, |slot| {
+            let menu = div()
+                .occlude()
+                .flex()
+                .flex_col()
+                .gap(px(look.popup_gap))
+                .p(px(look.popup_padding))
+                .min_w(px(model.page_size_trigger_width()))
+                .rounded(px(look.radius))
+                .border(px(look.border_width))
+                .border_color(look.border)
+                .bg(look.panel_background)
+                .shadow(look.shadow.clone())
+                .children(model.page_size_options.iter().copied().map(|option| {
+                    let selected = option == model.page_size;
+                    div()
+                        .id(("page-size", option))
+                        .px(px(look.padding_x))
+                        .py(px(look.popup_item_padding_y))
+                        .rounded(px((look.radius - look.popup_item_radius_inset).max(0.0)))
+                        .when(selected, |slot| slot.bg(look.selected_background).text_color(look.selected_foreground))
+                        .when(!selected, |slot| slot.text_color(look.body_text))
+                        .text_size(px(look.typography.size))
+                        .line_height(px(look.typography.line_height))
+                        .when(model.enabled, |slot| slot.cursor_pointer())
+                        .child(format!("{option}"))
+                        .when(model.enabled, |slot| {
+                            slot.on_click({
+                                let set_page_size = handlers.set_page_size.clone();
+                                move |event, window, cx| set_page_size(option, event, window, cx)
+                            })
+                        })
+                }));
+            // Below the trigger, above it near the window bottom (#433).
+            let window_margin = crate::theme::stylesheet::PopoverGeometry::sdk().window_margin;
             slot.child(
-                div()
-                    .absolute()
-                    .top(px(look.control_height + look.popup_offset_y))
-                    .left(px(0.0))
-                    .occlude()
-                    .flex()
-                    .flex_col()
-                    .gap(px(look.popup_gap))
-                    .p(px(look.popup_padding))
-                    .min_w(px(model.page_size_trigger_width()))
-                    .rounded(px(look.radius))
-                    .border(px(look.border_width))
-                    .border_color(look.border)
-                    .bg(look.panel_background)
-                    .shadow(look.shadow.clone())
-                    .children(model.page_size_options.iter().copied().map(|option| {
-                        let selected = option == model.page_size;
-                        div()
-                            .id(("page-size", option))
-                            .px(px(look.padding_x))
-                            .py(px(look.popup_item_padding_y))
-                            .rounded(px((look.radius - look.popup_item_radius_inset).max(0.0)))
-                            .when(selected, |slot| {
-                                slot.bg(look.selected_background).text_color(look.selected_foreground)
-                            })
-                            .when(!selected, |slot| slot.text_color(look.body_text))
-                            .text_size(px(look.typography.size))
-                            .line_height(px(look.typography.line_height))
-                            .when(model.enabled, |slot| slot.cursor_pointer())
-                            .child(format!("{option}"))
-                            .when(model.enabled, |slot| {
-                                slot.on_click({
-                                    let set_page_size = handlers.set_page_size.clone();
-                                    move |event, window, cx| set_page_size(option, event, window, cx)
-                                })
-                            })
-                    })),
+                gpui::deferred(
+                    attached_popup(PopupSide::Below, menu)
+                        .band(px(0.0), px(look.control_height))
+                        .gap(px(look.popup_offset_y))
+                        .window_margin(px(window_margin)),
+                )
+                .with_priority(1),
             )
         })
 }

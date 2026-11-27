@@ -2,7 +2,8 @@ use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, Pixels, Render, ScrollEvent,
     SharedString, Subscription, TextRun, Window, font, px,
 };
-use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::infra::popup_placement::PopupSpace;
+use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::controls::scrollbar::ScrollbarEvent;
 
 use super::behavior::{SelectionBehavior, SelectionEvent, SelectionStatus, SubmitResult};
@@ -520,13 +521,20 @@ impl Render for AutocompleteControl {
             trigger_width.max(max_label_width + horizontal_chrome)
         };
 
+        let mut popup_placement = None;
         let popup_content = if self.model.enabled && self.presence.should_paint() && !menu_items.is_empty() {
             let menu_id = SharedString::from("autocomplete-menu");
             let row_height = px(look.item_height);
             let content_top_padding = px(look.padding);
-            let min_visible_rows = self.model.row_limits.0.max(1) as f32;
-            let max_visible_rows = (self.model.row_limits.1 as f32).max(min_visible_rows);
-            let visible_rows = (menu_items.len() as f32).clamp(min_visible_rows, max_visible_rows);
+            let min_visible_rows = self.model.row_limits.0.max(1);
+            let max_visible_rows = self.model.row_limits.1.max(min_visible_rows);
+            let wanted_rows = menu_items.len().clamp(min_visible_rows, max_visible_rows);
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(trigger, popup_width, &look, px(0.0), wanted_rows, PopupSpace::of(window, cx))
+            });
+            popup_placement = fit.map(|fit| fit.placement);
+            // Rows beyond the space on the opening side scroll.
+            let visible_rows = fit.map_or(wanted_rows, |fit| wanted_rows.min(fit.max_rows)) as f32;
             let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
 
             self.popup_surface.configure(menu_items.len(), row_height, content_top_padding, viewport_height);
@@ -570,7 +578,7 @@ impl Render for AutocompleteControl {
             status_detail,
             status_color: autocomplete_look.status_color,
             muted_text_color: autocomplete_look.muted_text_color,
-            popup_bounds: self.trigger_bounds,
+            popup_placement,
             popup_look: look,
             popup_content,
             presence: self.presence.clone(),

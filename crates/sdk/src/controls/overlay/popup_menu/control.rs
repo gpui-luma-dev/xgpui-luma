@@ -535,7 +535,10 @@ impl PopupMenu {
     }
 
     fn handle_mouse_down_out(&mut self, event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.lifecycle.is_open() && !self.lifecycle.is_inside_trigger(event.position) {
+        if self.lifecycle.is_open()
+            && self.model.dismiss.click_outside
+            && !self.lifecycle.is_inside_trigger(event.position)
+        {
             self.dismiss_menu(cx);
             cx.notify();
         }
@@ -693,7 +696,7 @@ impl PopupMenu {
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.lifecycle.is_open() {
+        if self.lifecycle.is_open() && self.model.dismiss.escape {
             self.dismiss_menu(cx);
             cx.notify();
         } else {
@@ -711,7 +714,7 @@ impl PopupMenu {
         self.split_state = Default::default();
         self.interaction.handle_mouse_up();
         let focused = self.emit_focus_changed(false, cx);
-        let closed = self.dismiss_menu(cx);
+        let closed = self.model.dismiss.focus_loss && self.dismiss_menu(cx);
         if focused || closed {
             cx.notify();
         }
@@ -785,5 +788,43 @@ impl AttachmentTarget for PopupMenu {
     }
     fn attachment_anchor(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
         self.lifecycle.trigger_bounds().unwrap_or(bounds)
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod dismiss_tests {
+    use gpui::{Entity, TestAppContext};
+
+    use super::*;
+    use crate::infra::menu_item::MenuItem;
+    use crate::infra::popup_dismiss::PopupDismiss;
+
+    fn open_menu_with_policy(
+        cx: &mut TestAppContext,
+        dismiss: PopupDismiss,
+    ) -> (Entity<PopupMenu>, &mut gpui::VisualTestContext) {
+        let (menu, cx) = cx.add_window_view(|_, cx| {
+            PopupMenu::from_builder(PopupMenu::new("menu").items([MenuItem::new("one")]).dismiss(dismiss), cx)
+        });
+        menu.update(cx, |menu, cx| {
+            menu.open_menu_with(None, cx);
+        });
+        (menu, cx)
+    }
+
+    #[gpui::test]
+    fn escape_and_focus_loss_follow_the_policy(cx: &mut TestAppContext) {
+        let (menu, cx) = open_menu_with_policy(cx, PopupDismiss::NEVER);
+        menu.update_in(cx, |menu, window, cx| {
+            menu.handle_escape_focus(&EscapeFocus, window, cx);
+            menu.handle_focus_out(FocusOutEvent { blurred: cx.focus_handle().downgrade() }, window, cx);
+            assert!(menu.lifecycle.is_open(), "NEVER keeps the menu open");
+        });
+
+        menu.update_in(cx, |menu, window, cx| {
+            menu.model.dismiss = PopupDismiss::LIGHT;
+            menu.handle_escape_focus(&EscapeFocus, window, cx);
+            assert!(!menu.lifecycle.is_open(), "Escape closes under LIGHT");
+        });
     }
 }

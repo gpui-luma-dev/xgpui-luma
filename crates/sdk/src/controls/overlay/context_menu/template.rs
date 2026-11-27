@@ -1,11 +1,12 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
-    Anchor, App, Bounds, ClickEvent, Div, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Stateful, Window,
-    anchored, deferred, div, px, prelude::*, relative,
+    App, Bounds, ClickEvent, Div, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Stateful, Window, anchored,
+    deferred, div, px, prelude::*, relative,
 };
 
 use super::ContextMenuRenderModel;
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::floating_menu::render_floating_menu_with_submenu_presence_and_transition;
 use crate::controls::context_menu::{ContextMenuTheme, default_context_menu_theme};
 
@@ -125,7 +126,7 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
         &self,
         model: &ContextMenuRenderModel<'_>,
         handlers: ContextMenuTemplateHandlers,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
         let ContextMenuTemplateHandlers {
@@ -192,16 +193,29 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
                 model.items,
                 model.open_submenu,
                 model.active_path,
-                look.floating_menu,
+                look.floating_menu.clone(),
                 item_hovers,
                 item_clicks,
                 model.submenu_presence.clone(),
                 model.submenu_transition,
             );
+            // At the pointer, opening upward when there is more room above (#433).
+            let menu_look = &look.floating_menu;
+            let menu_size =
+                gpui::size(px(menu_look.min_width), px(menu_look.padding * 2.0 + menu_look.rows_height(model.items)));
+            let placement = PopupPlacementRequest::new(
+                Bounds::new(position, gpui::Size::default()),
+                PopupSide::Below,
+                PopupSpace::of(window, cx),
+            )
+            .flip(true)
+            .content_size(Some(menu_size))
+            .window_margin(px(look.window_margin))
+            .resolve();
             let overlay = anchored()
                 .snap_to_window_with_margin(px(look.window_margin))
-                .anchor(Anchor::TopLeft)
-                .position(position)
+                .anchor(placement.anchor)
+                .position(placement.position)
                 // Dismiss relative to the menu surface. Its deferred bounds are
                 // outside the target, so attaching this to the target closes
                 // the menu on mouse-down before a menu item's click can run.

@@ -5,10 +5,11 @@ use gpui::{
 };
 
 use super::{
-    OverlayWindowBuilder, OverlayWindowDismissPolicy, OverlayWindowEvent, OverlayWindowMode, OverlayWindowPosition,
-    OverlayWindowRenderModel, OverlayWindowTemplateHandlers, OverlayWindowTemplateParts,
+    OverlayWindowBuilder, OverlayWindowEvent, OverlayWindowMode, OverlayWindowPosition, OverlayWindowRenderModel,
+    OverlayWindowTemplateHandlers, OverlayWindowTemplateParts,
 };
 use super::model::ThemeInvalidator;
+use crate::infra::popup_dismiss::PopupDismiss;
 use crate::theme::observe_theme_revision;
 
 #[derive(Clone)]
@@ -110,13 +111,8 @@ impl OverlayWindowControl {
         cx.notify();
     }
 
-    pub fn set_dismiss_policy(&mut self, dismiss_policy: OverlayWindowDismissPolicy, cx: &mut Context<Self>) {
-        self.model.dismiss_policy = dismiss_policy;
-        cx.notify();
-    }
-
-    pub fn set_dismissible(&mut self, dismissible: bool, cx: &mut Context<Self>) {
-        self.model.dismissible = dismissible;
+    pub fn set_dismiss(&mut self, dismiss: PopupDismiss, cx: &mut Context<Self>) {
+        self.model.dismiss = Some(dismiss);
         cx.notify();
     }
 
@@ -134,7 +130,7 @@ impl OverlayWindowControl {
             id: &self.model.id,
             mode: self.model.mode,
             position: self.model.position,
-            dismissible: self.model.dismissible,
+            dismiss: self.model.dismiss(),
             draggable: self.model.draggable,
             width: self.model.width,
             focused: self.focus_handle.is_focused(window),
@@ -149,22 +145,19 @@ impl OverlayWindowControl {
     fn handle_shell_mouse_down(&mut self, _event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         self.focus_handle.focus(window, cx);
         cx.stop_propagation();
-        if self.model.dismiss_policy == OverlayWindowDismissPolicy::CloseOnFocusLoss {
+        if self.model.dismiss().focus_loss {
             self.pending_focus = false;
         }
     }
 
     fn handle_shell_mouse_down_out(&mut self, _event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.model.mode == OverlayWindowMode::Modeless
-            && self.model.dismissible
-            && self.model.dismiss_policy == OverlayWindowDismissPolicy::CloseOnClickAway
-        {
+        if self.model.mode == OverlayWindowMode::Modeless && self.model.dismiss().click_outside {
             self.dismiss(cx);
         }
     }
 
     fn handle_backdrop_mouse_down(&mut self, _event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if self.model.dismissible {
+        if self.model.dismiss().click_outside {
             window.prevent_default();
             cx.stop_propagation();
             self.dismiss(cx);
@@ -212,7 +205,7 @@ impl OverlayWindowControl {
     }
 
     fn handle_key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if event.keystroke.key.as_str() == "escape" && self.model.dismissible {
+        if event.keystroke.key.as_str() == "escape" && self.model.dismiss().escape {
             window.prevent_default();
             cx.stop_propagation();
             self.dismiss(cx);
@@ -251,7 +244,7 @@ impl Render for OverlayWindowControl {
 
         if self.model.open
             && self.model.mode == OverlayWindowMode::Modeless
-            && self.model.dismiss_policy == OverlayWindowDismissPolicy::CloseOnFocusLoss
+            && self.model.dismiss().focus_loss
             && !self.pending_focus
             && !self.has_internal_focus(window)
         {

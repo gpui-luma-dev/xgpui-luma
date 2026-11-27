@@ -1,11 +1,12 @@
 use gpui::{
-    anchored, deferred, point, Anchor, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable,
-    IntoElement, MouseButton, MouseDownEvent, Pixels, Point, Render, SharedString, Size, Subscription, Window, div,
-    prelude::*, px,
+    anchored, deferred, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
+    MouseButton, MouseDownEvent, Pixels, Render, SharedString, Size, Subscription, Window, div, prelude::*, px,
 };
 
-use super::model::{PopoverPanelBuilder, PopoverPanelDismissPolicy, PopoverPanelPlacement, PopoverPanelRenderModel};
+use super::model::{PopoverPanelBuilder, PopoverPanelPlacement, PopoverPanelRenderModel};
+use crate::infra::popup_dismiss::DismissReason;
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::focus::EscapeFocus;
 
@@ -188,8 +189,7 @@ impl PopoverPanel {
             open: self.model.open,
             anchor_bounds: self.model.anchor_bounds,
             placement: self.model.placement,
-            dismiss_policy: self.model.dismiss_policy,
-            dismissible: self.model.dismissible,
+            dismiss: self.model.dismiss,
             focused: self.focus_handle.is_focused(window),
             content_bounds: self.content_bounds,
         }
@@ -223,19 +223,11 @@ impl PopoverPanel {
     }
 
     fn can_dismiss_on_click_away(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnClickAway | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
+        self.model.dismiss.allows(DismissReason::ClickOutside)
     }
 
     fn can_dismiss_on_focus_loss(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnFocusLoss | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
+        self.model.dismiss.allows(DismissReason::FocusLoss)
     }
 
     fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) {
@@ -298,7 +290,7 @@ impl PopoverPanel {
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.model.open && self.model.dismissible {
+        if self.model.open && self.model.dismiss.allows(DismissReason::Escape) {
             self.dismiss(cx);
         } else {
             cx.propagate();
@@ -369,7 +361,7 @@ impl Render for PopoverPanel {
             content_size,
             self.model.placement,
             self.model.offset_y,
-            window.viewport_size(),
+            PopupSpace::of(window, cx),
             self.model.window_margin,
         );
         let scale_size = content_size.unwrap_or(Size { width: px(0.0), height: px(0.0) });
@@ -409,56 +401,32 @@ impl Render for PopoverPanel {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ResolvedPopoverPanelPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
-}
-
 fn resolve_popover_panel_placement(
     anchor_bounds: Bounds<Pixels>,
     content_size: Option<Size<Pixels>>,
     placement: PopoverPanelPlacement,
     offset_y: Pixels,
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
     window_margin: Pixels,
-) -> ResolvedPopoverPanelPlacement {
-    let content_height = content_size.map_or(px(0.0), |size| size.height);
-    let resolved = match placement {
-        PopoverPanelPlacement::SmartStart => {
-            let viewport_bottom = viewport_size.height - window_margin;
-            if anchor_bounds.bottom() + offset_y + content_height <= viewport_bottom {
-                PopoverPanelPlacement::BelowStart
-            } else {
-                PopoverPanelPlacement::AboveStart
-            }
-        }
-        placement => placement,
+) -> ResolvedPopupPlacement {
+    let (side, align, flip) = match placement {
+        PopoverPanelPlacement::BelowStart => (PopupSide::Below, PopupAlign::Start, false),
+        PopoverPanelPlacement::BelowCenter => (PopupSide::Below, PopupAlign::Center, false),
+        PopoverPanelPlacement::AboveStart => (PopupSide::Above, PopupAlign::Start, false),
+        PopoverPanelPlacement::SmartStart => (PopupSide::Below, PopupAlign::Start, true),
     };
-
-    match resolved {
-        PopoverPanelPlacement::BelowStart | PopoverPanelPlacement::SmartStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        PopoverPanelPlacement::BelowCenter => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.center().x, anchor_bounds.bottom()),
-            offset: point(content_size.map_or(px(0.0), |size| -(size.width * 0.5)), offset_y),
-        },
-        PopoverPanelPlacement::AboveStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.top()),
-            offset: point(px(0.0), -offset_y),
-        },
-    }
+    PopupPlacementRequest::new(anchor_bounds, side, viewport_size)
+        .align(align)
+        .flip(flip)
+        .gap(offset_y)
+        .content_size(content_size)
+        .window_margin(window_margin)
+        .resolve()
 }
 
 #[cfg(test)]
 mod tests {
-    use gpui::{point, px, size, Bounds};
+    use gpui::{Anchor, point, px, size, Bounds};
 
     use super::*;
 

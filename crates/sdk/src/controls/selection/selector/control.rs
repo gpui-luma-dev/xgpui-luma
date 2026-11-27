@@ -568,7 +568,7 @@ where
     }
 
     fn handle_mouse_down_out(&mut self, _event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.open {
+        if self.open && self.model.dismiss.click_outside {
             self.close_menu_with_event(true, cx);
             cx.notify();
         }
@@ -651,7 +651,7 @@ where
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.open {
+        if self.open && self.model.dismiss.escape {
             self.close_menu_with_event(true, cx);
             cx.notify();
         } else {
@@ -667,7 +667,7 @@ where
 
     fn handle_focus_out(&mut self, _: FocusOutEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let mut changed = self.emit_focus_changed(false, cx);
-        if self.open {
+        if self.open && self.model.dismiss.focus_loss {
             changed |= self.close_menu_with_event(true, cx);
         }
         if changed {

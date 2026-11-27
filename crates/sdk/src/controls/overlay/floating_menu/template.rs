@@ -1,11 +1,12 @@
 use std::sync::{Arc, OnceLock};
 
-use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, relative, prelude::*, svg};
+use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, prelude::*, svg};
 use crate::infra::menu_item::{MenuItem, MenuItemIcon};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::infra::state::MenuPath;
 use crate::controls::floating_menu::FloatingMenuLook;
 use crate::infra::icon::DisclosureIcons;
+use crate::infra::popup_placement::{PopupSide, attached_popup};
 
 pub type FloatingMenuClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub type FloatingMenuHoverHandler = Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
@@ -216,7 +217,17 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
         }
 
         if let Some(submenu) = submenu {
-            menu = menu.child(submenu);
+            // Beside its row, flipping to the other side at the window edge (#433).
+            // Deferred, so a scrolling parent menu does not clip it.
+            let row_top = px(look.padding + row_offset(model.items, model.open_submenu.unwrap_or(0), look));
+            menu = menu.child(
+                gpui::deferred(
+                    attached_popup(PopupSide::End, submenu)
+                        .band(row_top, px(look.item_height))
+                        .window_margin(px(look.window_margin)),
+                )
+                .with_priority(2),
+            );
         }
 
         self.apply_modifiers(menu, model)
@@ -475,10 +486,6 @@ fn render_floating_submenu(
 ) -> Stateful<Div> {
     let mut submenu = div()
         .id((item.id().clone(), 1usize))
-        .absolute()
-        .top(px(look.padding + row_offset(items, index, look)))
-        .left(relative(1.0))
-        .ml(px(0.0))
         .min_w(px(look.min_width))
         .p(px(look.padding))
         .bg(look.background)

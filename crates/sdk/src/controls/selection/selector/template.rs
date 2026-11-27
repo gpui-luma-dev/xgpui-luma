@@ -10,6 +10,7 @@ use super::item_template::render_item_content;
 
 use crate::controls::button::face::{Face, FaceShape};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::selector_list::{
     SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
     default_selector_items_template,
@@ -267,7 +268,7 @@ where
                 model.placement,
                 &look,
                 model.items.len(),
-                window.viewport_size(),
+                PopupSpace::of(window, cx),
             );
             let centered = model.opening_mode == SelectorOpeningMode::Centered && !model.items.is_empty();
             if centered {
@@ -374,77 +375,53 @@ pub(crate) fn resolve_selector_popup_metrics(
     placement: SelectorPlacement,
     look: &SelectorLook,
     item_count: usize,
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
 ) -> ResolvedSelectorPlacement {
+    let space: PopupSpace = viewport_size.into();
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
     });
     let menu_size = estimated_menu_size(look, item_count, trigger_bounds.size.width);
-    let offset_y = px(look.menu_offset_y);
     let viewport_margin = px(look.items_panel.window_margin);
-    let viewport_top = viewport_margin;
-    let viewport_bottom = viewport_size.height - viewport_margin;
-    let available_below = (viewport_bottom - (trigger_bounds.bottom() + offset_y)).max(px(0.0));
-    let available_above = (trigger_bounds.top() - offset_y - viewport_top).max(px(0.0));
     let minimum_height = px((look.items_panel.padding * 2.0) + look.items_panel.item_height);
-    let resolved = match placement {
-        SelectorPlacement::Smart => {
-            if trigger_bounds.bottom() + offset_y + menu_size.height <= viewport_bottom {
-                SelectorPlacement::BelowStart
-            } else if trigger_bounds.top() - offset_y - menu_size.height >= viewport_top {
-                SelectorPlacement::AboveStart
-            } else if available_below >= available_above {
-                SelectorPlacement::BelowStart
-            } else {
-                SelectorPlacement::AboveStart
-            }
-        }
-        placement => placement,
-    };
 
-    let available_height = match resolved {
-        SelectorPlacement::Smart | SelectorPlacement::BelowStart => available_below,
-        SelectorPlacement::AboveStart => available_above,
-        SelectorPlacement::CenteredOnTrigger => viewport_size.height - (viewport_margin * 2.0),
-        SelectorPlacement::OverlayOnTrigger => viewport_bottom - trigger_bounds.top(),
-    }
-    .max(minimum_height);
-    let max_height = menu_size.height.min(available_height);
-    let scrolling = menu_size.height > max_height;
-
-    match resolved {
-        SelectorPlacement::Smart | SelectorPlacement::BelowStart => ResolvedSelectorPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-            max_height,
-            scrolling,
-            initial_scroll: px(0.0),
-        },
-        SelectorPlacement::AboveStart => ResolvedSelectorPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.top()),
-            offset: point(px(0.0), -offset_y),
-            max_height,
-            scrolling,
-            initial_scroll: px(0.0),
-        },
-        SelectorPlacement::CenteredOnTrigger => ResolvedSelectorPlacement {
-            anchor: Anchor::TopLeft,
-            position: trigger_bounds.center(),
-            offset: point(-(menu_size.width * 0.5), -(max_height * 0.5)),
-            max_height,
-            scrolling,
-            initial_scroll: px(0.0),
-        },
-        SelectorPlacement::OverlayOnTrigger => ResolvedSelectorPlacement {
+    if placement == SelectorPlacement::OverlayOnTrigger {
+        // Covers the trigger and runs down to the window margin.
+        let available = (space.viewport.height - viewport_margin - trigger_bounds.top()).max(minimum_height);
+        let max_height = menu_size.height.min(available);
+        return ResolvedSelectorPlacement {
             anchor: Anchor::TopLeft,
             position: trigger_bounds.origin,
             offset: point(px(0.0), px(0.0)),
             max_height,
-            scrolling,
+            scrolling: menu_size.height > max_height,
             initial_scroll: px(0.0),
-        },
+        };
+    }
+
+    let (side, flip) = match placement {
+        SelectorPlacement::AboveStart => (PopupSide::Above, false),
+        SelectorPlacement::Smart => (PopupSide::Below, true),
+        _ => (PopupSide::Below, false),
+    };
+    let request = PopupPlacementRequest::new(trigger_bounds, side, space)
+        .flip(flip)
+        .gap(px(look.menu_offset_y))
+        .content_size(Some(menu_size))
+        .window_margin(viewport_margin)
+        .min_main_size(minimum_height);
+    let resolved = if placement == SelectorPlacement::CenteredOnTrigger {
+        request.resolve_centered()
+    } else {
+        request.resolve()
+    };
+    ResolvedSelectorPlacement {
+        anchor: resolved.anchor,
+        position: resolved.position,
+        offset: resolved.offset,
+        max_height: menu_size.height.min(resolved.max_size.height),
+        scrolling: resolved.scrolling,
+        initial_scroll: px(0.0),
     }
 }
 

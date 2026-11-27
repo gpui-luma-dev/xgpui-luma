@@ -202,9 +202,8 @@ impl PagerControl {
     }
 
     fn handle_outside_mouse_down(&mut self, _: &MouseDownEvent, _: &mut Window, cx: &mut Context<Self>) {
-        if self.page_size_open {
-            self.page_size_open = false;
-            cx.notify();
+        if self.page_size_open && self.model.dismiss.click_outside {
+            self.set_page_size_open(false, true, cx);
         }
     }
 
@@ -232,6 +231,8 @@ impl PagerControl {
     fn set_page_size_internal(&mut self, page_size: usize, emit: bool, cx: &mut Context<Self>) {
         let page_size = page_size.max(1);
         if self.model.page_size == page_size {
+            // Choosing the current size still closes the menu.
+            self.set_page_size_open(false, emit, cx);
             return;
         }
 

@@ -153,6 +153,7 @@ pub struct SidebarPanelEngineModel {
     pub(crate) enabled: bool,
     pub(crate) collapsed: bool,
     pub(crate) motion_enabled: bool,
+    pub(crate) rail_dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(crate) disclosure_icons: DisclosureIcons,
     pub(crate) template: Arc<dyn SidebarPanelTemplate>,
     pub(crate) scrollbar_template: Arc<dyn ScrollbarTemplate>,
@@ -227,6 +228,7 @@ impl SidebarPanelEngineBuilder {
                 enabled: true,
                 collapsed: false,
                 motion_enabled: true,
+                rail_dismiss: crate::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
                 disclosure_icons: DisclosureIcons::default(),
                 template: default_sidebar_panel_template(),
                 scrollbar_template: default_scrollbar_template(),
@@ -235,6 +237,12 @@ impl SidebarPanelEngineBuilder {
                 scrollbar_auto_hide_activate: ScrollbarAutoHideActivate::HoverOrMove,
             },
         }
+    }
+
+    /// What closes the icon rail's flyout menu.
+    pub fn rail_dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.rail_dismiss = dismiss;
+        self
     }
 
     pub fn title(mut self, title: impl Into<SharedString>) -> Self {

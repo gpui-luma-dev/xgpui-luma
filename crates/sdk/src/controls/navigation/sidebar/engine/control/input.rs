@@ -331,7 +331,9 @@ impl SidebarPanelEngine {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.rail_submenu_lifecycle.dismiss_from_outside_click(event.position) {
+        if self.model.rail_dismiss.click_outside
+            && self.rail_submenu_lifecycle.dismiss_from_outside_click(event.position)
+        {
             self.close_rail_submenu(cx);
             cx.notify();
         }
@@ -340,7 +342,7 @@ impl SidebarPanelEngine {
     pub(super) fn handle_escape_focus(&mut self, _: &EscapeFocus, window: &mut Window, cx: &mut Context<Self>) {
         if cx.stop_active_drag(window) {
             cx.stop_propagation();
-        } else if self.open_rail_submenu.is_some() {
+        } else if self.open_rail_submenu.is_some() && self.model.rail_dismiss.escape {
             self.close_rail_submenu(cx);
             cx.notify();
         } else {
@@ -562,6 +564,13 @@ impl SidebarPanelEngine {
                 window,
                 move |this, _: FocusOutEvent, window, cx| {
                     if !this.any_focus_target_focused(window) && this.emit_focus_changed(false, cx) {
+                        cx.notify();
+                    }
+                    if !this.any_focus_target_focused(window)
+                        && this.model.rail_dismiss.focus_loss
+                        && this.open_rail_submenu.is_some()
+                    {
+                        this.close_rail_submenu(cx);
                         cx.notify();
                     }
                 },

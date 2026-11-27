@@ -2,14 +2,17 @@ use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use gpui::{
-    Anchor, AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, Point, SharedString, Size, Stateful, TextRun, Window,
-    anchored, deferred, div, font, hsla, point, px, prelude::*,
+    AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, SharedString, Size, Stateful, TextRun, Window, anchored,
+    deferred, div, font, hsla, px, prelude::*,
 };
 
 use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{
+    LayoutDirection, PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement, layout_direction,
+};
 use crate::infra::lock;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
@@ -38,6 +41,8 @@ pub struct TabsOverlayState {
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     presence: Arc<Mutex<OverlayPresence>>,
     last_overlay: Arc<Mutex<Option<TabsCachedOverlay>>>,
+    /// The app's layout direction, read when the trigger is laid out.
+    direction: Arc<Mutex<LayoutDirection>>,
 }
 
 #[derive(Clone)]
@@ -55,6 +60,7 @@ impl Default for TabsOverlayState {
             trigger_bounds: Arc::new(Mutex::new(None)),
             presence: Arc::new(Mutex::new(OverlayPresence::new(false, true))),
             last_overlay: Arc::new(Mutex::new(None)),
+            direction: Arc::new(Mutex::new(LayoutDirection::default())),
         }
     }
 }
@@ -131,13 +137,6 @@ pub struct TabsItemOverlay {
     pub placement: TabsOverlayPlacement,
     pub offset_y: Pixels,
     pub window_margin: Pixels,
-}
-
-#[derive(Clone, Copy)]
-struct ResolvedTabsOverlayPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
 }
 
 #[derive(Clone)]
@@ -458,10 +457,12 @@ where
     let mut root = div()
         .on_children_prepainted({
             let trigger_bounds = overlay_state.trigger_bounds.clone();
-            move |bounds, _, _| {
+            let direction = overlay_state.direction.clone();
+            move |bounds, _, cx| {
                 if let Some(bounds) = bounds.first() {
                     *lock::mutex(&trigger_bounds) = Some(*bounds);
                 }
+                *lock::mutex(&direction) = layout_direction(cx);
             }
         })
         .id(id)
@@ -487,6 +488,7 @@ where
             let presence = overlay_state.presence_snapshot();
             let placement = resolve_tabs_overlay_placement(
                 overlay_state.trigger_bounds(),
+                *lock::mutex(&overlay_state.direction),
                 overlay.placement,
                 overlay.content_size,
                 overlay.offset_y,
@@ -509,6 +511,7 @@ where
             {
                 let placement = resolve_tabs_overlay_placement(
                     overlay_state.trigger_bounds(),
+                    *lock::mutex(&overlay_state.direction),
                     cached.placement,
                     cached.content_size,
                     cached.offset_y,
@@ -533,25 +536,23 @@ where
 
 fn resolve_tabs_overlay_placement(
     trigger_bounds: Option<Bounds<Pixels>>,
+    direction: LayoutDirection,
     placement: TabsOverlayPlacement,
     content_size: Size<Pixels>,
     offset_y: Pixels,
-) -> ResolvedTabsOverlayPlacement {
-    let trigger_bounds = trigger_bounds
-        .unwrap_or_else(|| Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(0.0) }));
-
-    match placement {
-        TabsOverlayPlacement::BelowStart => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        TabsOverlayPlacement::BelowCenter => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.center().x, trigger_bounds.bottom()),
-            offset: point(-(content_size.width * 0.5), offset_y),
-        },
-    }
+) -> ResolvedPopupPlacement {
+    let trigger_bounds = trigger_bounds.unwrap_or_default();
+    let align = match placement {
+        TabsOverlayPlacement::BelowStart => PopupAlign::Start,
+        TabsOverlayPlacement::BelowCenter => PopupAlign::Center,
+    };
+    // The overlay never flips, so the viewport is not needed; `anchored()` clamps it.
+    PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, Size::default())
+        .direction(direction)
+        .align(align)
+        .gap(offset_y)
+        .content_size(Some(content_size))
+        .resolve()
 }
 
 fn tab_button_template() -> Arc<dyn ButtonTemplate<TabsButtonData>> {
@@ -757,7 +758,7 @@ fn tabs_render_model<'a>(
 
 #[cfg(test)]
 mod tests {
-    use gpui::{Bounds, point, px, size};
+    use gpui::{Anchor, Bounds, point, px, size};
 
     use super::*;
 
@@ -765,6 +766,7 @@ mod tests {
     fn overlay_below_start_anchors_to_trigger_bottom_left() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            LayoutDirection::LeftToRight,
             TabsOverlayPlacement::BelowStart,
             size(px(200.0), px(120.0)),
             px(6.0),
@@ -779,6 +781,7 @@ mod tests {
     fn overlay_below_center_anchors_to_trigger_center_with_content_offset() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            LayoutDirection::LeftToRight,
             TabsOverlayPlacement::BelowCenter,
             size(px(200.0), px(120.0)),
             px(6.0),

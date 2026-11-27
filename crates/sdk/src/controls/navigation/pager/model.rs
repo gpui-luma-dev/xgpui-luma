@@ -129,6 +129,7 @@ pub struct PagerModel {
     pub(crate) page_count: usize,
     pub(crate) page_size: usize,
     pub(crate) page_size_options: Vec<usize>,
+    pub(crate) dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(crate) enabled: bool,
     pub(crate) style: PagerStyle,
     pub(crate) info_text: Option<SharedString>,
@@ -333,6 +334,7 @@ impl PagerBuilder {
                 page_count: 0,
                 page_size: 10,
                 page_size_options: vec![10, 25],
+                dismiss: crate::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
                 enabled: true,
                 style: PagerStyle::MinimalEdge,
                 info_text: None,
@@ -360,6 +362,13 @@ impl PagerBuilder {
 
     pub fn page_size(mut self, page_size: usize) -> Self {
         self.model.page_size = page_size.max(1);
+        self
+    }
+
+    /// What closes the page-size menu: an outside click by default. The pager
+    /// takes no keyboard focus, so focus loss and Escape do not apply.
+    pub fn dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
         self
     }
 

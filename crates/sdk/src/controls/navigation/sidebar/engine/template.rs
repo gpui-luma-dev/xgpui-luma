@@ -10,6 +10,7 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{NavNodeKind, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{InteractionState, LumaTextStyle, LumaTypography};
@@ -165,7 +166,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
         model: SidebarPanelEngineRenderModel,
         main_scroll: &ScrollContainer,
         handlers: SidebarPanelTemplateHandlers,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
         let theme = &self.theme;
@@ -241,6 +242,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
                         rail_submenu_item_clicks,
                         rail_submenu_bounds,
                         rail_submenu_mouse_down_out.expect("rail submenu should have outside click handler"),
+                        PopupSpace::of(window, cx),
                     ))
                     .with_priority(1),
                 );
@@ -830,6 +832,7 @@ fn render_collapsed_rail_node(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_rail_submenu_overlay(
     submenu: RenderedRailSubmenu,
     look: FloatingMenuLook,
@@ -838,6 +841,7 @@ fn render_rail_submenu_overlay(
     item_clicks: Vec<FloatingMenuClickHandler>,
     bounds_handler: Option<SidebarPanelBoundsHandler>,
     mouse_down_out: SidebarPanelMouseDownHandler,
+    viewport: PopupSpace,
 ) -> impl IntoElement {
     let menu = render_floating_menu(
         &submenu.id,
@@ -849,8 +853,15 @@ fn render_rail_submenu_overlay(
         item_clicks,
     );
 
+    // Beside the rail row, flipping to the other side at the window edge (#433).
+    let placement = PopupPlacementRequest::new(submenu.parent_bounds, PopupSide::End, viewport)
+        .flip(true)
+        .gap(px(geometry.rail_submenu_offset_x))
+        .content_size(submenu.content_size)
+        .window_margin(px(geometry.window_margin))
+        .resolve();
     let content_size = submenu.content_size.unwrap_or_default();
-    let offset = submenu.presence.adjust_offset(point(px(geometry.rail_submenu_offset_x), px(0.0)), content_size);
+    let offset = submenu.presence.adjust_offset(placement.offset, content_size);
     let content = if let Some(bounds_handler) = bounds_handler {
         div()
             .on_mouse_down_out(move |event, window, cx| mouse_down_out(event, window, cx))
@@ -865,8 +876,8 @@ fn render_rail_submenu_overlay(
 
     anchored()
         .snap_to_window_with_margin(px(geometry.window_margin))
-        .anchor(Anchor::TopLeft)
-        .position(point(submenu.parent_bounds.right(), submenu.parent_bounds.top()))
+        .anchor(placement.anchor)
+        .position(placement.position)
         .offset(offset)
         .child(content)
 }
