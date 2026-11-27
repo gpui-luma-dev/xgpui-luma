@@ -54,15 +54,18 @@ pub trait ContextMenuTheme: Send + Sync {
         StyleBinding::sdk("context_menu")
     }
 
-    /// The menu the target opens. The floating menu moves to its own style separately.
-    fn menu(&self) -> FloatingMenuLook {
-        crate::controls::floating_menu::default_floating_menu_theme().resolve()
+    /// The style of the menu the target opens (the `floating_menu` control).
+    fn menu(&self) -> StyleBinding {
+        StyleBinding::sdk("floating_menu")
     }
 
     /// The look in `state`, built from [`Self::style`] for code that still reads a [`ContextMenuLook`].
     #[deprecated(note = "templates draw from `style()`; resolve that binding and read its parts instead (#433)")]
     fn resolve(&self, state: InteractionState) -> ContextMenuLook {
-        ContextMenuLook::from_resolved(&self.style().resolve_states(StyleStates::new(state), 1.0), self.menu())
+        ContextMenuLook::from_resolved(
+            &self.style().resolve_states(StyleStates::new(state), 1.0),
+            crate::controls::floating_menu::styled_floating_menu_look(&self.menu()),
+        )
     }
 
     fn metrics(&self) -> MetricTokens {

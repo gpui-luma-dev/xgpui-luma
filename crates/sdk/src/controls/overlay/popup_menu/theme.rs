@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{BoxShadow, Hsla};
 
 use super::PopupMenuTriggerStyle;
-use crate::controls::floating_menu::FloatingMenuLook;
+use crate::style::StyleBinding;
 use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 #[derive(Clone, Debug)]
@@ -15,7 +15,8 @@ pub struct PopupMenuPalette {
     pub trigger_border: Option<Hsla>,
     pub trigger_shadow: Option<Vec<BoxShadow>>,
     pub trigger_typography: LumaTextStyle,
-    pub floating_menu: FloatingMenuLook,
+    /// The menu's style (the `floating_menu` control).
+    pub floating_menu: StyleBinding,
 }
 
 /// Build one with a theme's `resolve_look` or [`compose_popup_menu_look`]; it may gain fields.
@@ -40,7 +41,8 @@ pub struct PopupMenuLook {
     pub menu_offset_y: f32,
     /// The trigger's fade in this state: the root part's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
     pub trigger_opacity: f32,
-    pub floating_menu: FloatingMenuLook,
+    /// The menu's style (the `floating_menu` control).
+    pub floating_menu: StyleBinding,
 }
 
 /// Build one from [`Default`]; it may gain fields.

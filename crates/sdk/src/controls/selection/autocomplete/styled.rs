@@ -44,13 +44,16 @@ impl StyledAutocompleteTheme {
     pub fn sdk() -> Self {
         Self {
             binding: StyleBinding::sdk("autocomplete"),
-            menu: Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve()),
+            menu: Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
         }
     }
 }
 
 impl AutocompleteTheme for StyledAutocompleteTheme {
     fn resolve(&self) -> AutocompleteLook {
-        styled_autocomplete_look(&self.binding, (self.menu)())
+        styled_autocomplete_look(
+            &self.binding,
+            crate::controls::floating_menu::styled_floating_menu_look(&(self.menu)()),
+        )
     }
 }

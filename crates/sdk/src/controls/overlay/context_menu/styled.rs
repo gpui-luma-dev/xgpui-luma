@@ -22,7 +22,7 @@ impl StyledContextMenuTheme {
     pub fn sdk() -> Self {
         Self {
             binding: StyleBinding::sdk("context_menu"),
-            menu: std::sync::Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve()),
+            menu: std::sync::Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
         }
     }
 
@@ -37,7 +37,7 @@ impl ContextMenuTheme for StyledContextMenuTheme {
         self.binding.clone()
     }
 
-    fn menu(&self) -> crate::controls::floating_menu::FloatingMenuLook {
+    fn menu(&self) -> StyleBinding {
         (self.menu)()
     }
 }

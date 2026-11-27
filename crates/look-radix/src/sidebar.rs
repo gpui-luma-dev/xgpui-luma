@@ -49,8 +49,8 @@ struct RailMenuTheme {
     look: Look,
 }
 impl xgpui_luma::controls::floating_menu::FloatingMenuTheme for RailMenuTheme {
-    fn resolve(&self) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
-        crate::floating_menu_look(&self.look, PopupMenuVariant::Solid, Tone::Accent)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        crate::floating_menu_binding_for(&self.look, PopupMenuVariant::Solid, Tone::Accent, crate::RadixSize::Two)
     }
 }
 /// Live Radix navigation rows, section labels, focus and drag feedback.

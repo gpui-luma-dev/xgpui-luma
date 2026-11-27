@@ -18,9 +18,10 @@ pub use template::{
     FloatingMenuClickHandler, FloatingMenuHighlight, FloatingMenuHoverHandler, FloatingMenuRenderModel,
     FloatingMenuSeparatorTemplate, ThemedFloatingMenuSeparatorTemplate, FloatingMenuTemplate,
     FloatingMenuTemplateHandlers, FloatingMenuTemplateModifier, ThemedFloatingMenuTemplate,
-    default_floating_menu_template, floating_menu_template_with_modifier, render_floating_menu,
-    render_floating_menu_with_submenu_hovers_and_icons, render_floating_menu_with_submenu_hovers,
-    render_floating_menu_with_submenu_hovers_and_icons_and_transition, render_floating_menu_with_submenu_presence,
-    render_floating_menu_with_submenu_presence_and_transition, render_floating_menu_with_template,
+    default_floating_menu_template, floating_menu_size, floating_menu_template_with_modifier,
+    floating_menu_window_margin, render_floating_menu, render_floating_menu_with_submenu_hovers_and_icons,
+    render_floating_menu_with_submenu_hovers, render_floating_menu_with_submenu_hovers_and_icons_and_transition,
+    render_floating_menu_with_submenu_presence, render_floating_menu_with_submenu_presence_and_transition,
+    render_floating_menu_with_template,
 };
 pub use theme::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};

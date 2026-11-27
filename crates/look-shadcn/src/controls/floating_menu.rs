@@ -9,14 +9,18 @@
 //! | Item hover fg | `accent-foreground`                |
 //! | Item disabled | `muted-foreground`               |
 
-use xgpui_luma::controls::floating_menu::FloatingMenuLook;
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::mode::ShadcnModeTokens;
 
-/// The Shadcn floating menu at `size`, drawn from `.lss` (`style/floating_menu.lss`) for `mode`'s catalog.
-pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> FloatingMenuLook {
+/// The Shadcn floating menu style at `size` (`style/floating_menu.lss`) for `mode`'s catalog: what menu templates
+/// resolve and draw from (#433).
+pub fn floating_menu_binding(
+    mode: &ShadcnModeTokens,
+    theme_mode: ThemeMode,
+    size: ShadcnSize,
+) -> xgpui_luma::style::StyleBinding {
     debug_assert_eq!(theme_mode, mode.theme_mode, "the tokens' own mode draws the menu");
     let binding = xgpui_luma::style::StyleBinding::new(
         "floating_menu",
@@ -27,7 +31,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
     } else {
         binding
     };
-    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&binding)
+    binding
 }
 
 #[cfg(test)]
@@ -40,7 +44,15 @@ mod tests {
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use super::floating_menu_look;
+    use super::floating_menu_binding;
+
+    fn floating_menu_look(
+        mode: &ShadcnModeTokens,
+        theme_mode: xgpui_luma::theme::ThemeMode,
+        size: ShadcnSize,
+    ) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
+        xgpui_luma::controls::floating_menu::styled_floating_menu_look(&floating_menu_binding(mode, theme_mode, size))
+    }
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([

@@ -24,7 +24,7 @@ struct Radii {
 }
 
 fn radii(look: &ShadcnLook) -> Radii {
-    let menu = look.floating_menu_theme().resolve();
+    let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look(&look.floating_menu_theme().style());
     Radii {
         floating_menu: menu.radius,
         floating_menu_item: menu.item_radius,

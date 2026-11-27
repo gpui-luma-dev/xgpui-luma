@@ -91,7 +91,8 @@ mod tests {
                             );
                         }
                         crate::control_group::assert_close(
-                            palette.floating_menu.item_hover_background,
+                            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&palette.floating_menu)
+                                .item_hover_background,
                             Tone::Accent.step(&fork, 9),
                         );
                     }

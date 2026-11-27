@@ -120,7 +120,7 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
         // Drawn straight from the resolved style (#433); the menu is the floating menu's look.
         let resolved = self.theme.style().resolve_states(StyleStates::new(model.state), 1.0);
         let style = resolved.root();
-        let menu_look = self.theme.menu();
+        let menu_style = self.theme.menu();
         let window_margin = px(style.number("window_margin"));
         let custom_content = model.target_content.map(|content| content(cx));
         let has_custom_content = custom_content.is_some();
@@ -175,15 +175,14 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
                 model.items,
                 model.open_submenu,
                 model.active_path,
-                menu_look.clone(),
+                menu_style.clone(),
                 item_hovers,
                 item_clicks,
                 model.submenu_presence.clone(),
                 model.submenu_transition,
             );
             // At the pointer, opening upward when there is more room above (#433).
-            let menu_size =
-                gpui::size(px(menu_look.min_width), px(menu_look.padding * 2.0 + menu_look.rows_height(model.items)));
+            let menu_size = crate::controls::floating_menu::floating_menu_size(&menu_style, model.items);
             let placement = PopupPlacementRequest::new(
                 Bounds::new(position, gpui::Size::default()),
                 PopupSide::Below,
@@ -229,7 +228,7 @@ mod resolved_style_tests {
             let state = InteractionState { disabled: !enabled, ..Default::default() };
             let look = ContextMenuLook::from_resolved(
                 &theme.style().resolve_states(StyleStates::new(state), 1.0),
-                theme.menu(),
+                crate::controls::floating_menu::styled_floating_menu_look(&theme.menu()),
             );
             let mut app = TestAppContext::single();
             let (_, cx) = app.add_window_view(|_, cx| {

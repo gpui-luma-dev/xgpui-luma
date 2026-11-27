@@ -19,7 +19,7 @@ fn styled_popup_menu_theme(theme: ShadcnLook, menu_size: crate::ShadcnSize) -> A
         StyledPopupMenuTheme::new(
             ThemeSource::Live(Arc::new(move || style.style_theme())),
             Arc::new(move || {
-                crate::controls::floating_menu::floating_menu_look(
+                crate::controls::floating_menu::floating_menu_binding(
                     theme.mode_tokens().as_ref(),
                     theme.mode(),
                     menu_size,

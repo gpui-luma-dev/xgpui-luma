@@ -179,7 +179,9 @@ impl ContentPaneHost {
     }
 
     pub(super) fn render_catalog_picker(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let menu_look = self.board.look.with_size(ShadcnSize::Sm).floating_menu_theme().resolve();
+        let menu_look = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+            &self.board.look.with_size(ShadcnSize::Sm).floating_menu_theme().style(),
+        );
         let selected_entry_id = self.controls_panel.read(cx).selected_entry_id();
         render_control_catalog_picker(&menu_look, Some(selected_entry_id), true, cx, |host, exposition_id, _, cx| {
             host.controls_panel.update(cx, |panel, cx| panel.select_entry(exposition_id, cx));
