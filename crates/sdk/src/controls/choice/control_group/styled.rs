@@ -1,10 +1,10 @@
 //! The control-group frame read from `.lss` (issue #285): `control_group.lss`. Its rows are the `.lss`
 //! toggle, through [`StyledButtonTemplate::look`].
 
+use crate::style::PartRead;
 use std::sync::Arc;
 
-use gpui::Hsla;
-use xgpui_luma_style::{PartId, PartView, Value};
+use xgpui_luma_style::PartId;
 
 use super::theme::{ControlGroupItemPalette, ControlGroupListLook, ControlGroupTheme};
 use crate::controls::button::StyledButtonTemplate;
@@ -14,14 +14,6 @@ use crate::theme::{InteractionState, MetricTokens, StandardBoxScale};
 
 /// Supplies the control metrics the rows are laid out with.
 pub type MetricsSource = Arc<dyn Fn() -> MetricTokens + Send + Sync>;
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
 
 /// A control-group theme whose frame and rows are read from `.lss`.
 pub struct StyledControlGroupTheme {
@@ -52,17 +44,15 @@ impl ControlGroupTheme for StyledControlGroupTheme {
         let resolved = self.binding.resolve(&[("disabled", !enabled)], 1.0);
         let root = resolved.root();
         ControlGroupListLook {
-            background: color(root, "background"),
-            border: color(root, "border"),
-            radius: number(root, "radius"),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
-            gap: number(root, "gap"),
-            vertical_gap: number(root, "vertical_gap"),
-            border_width: number(root, "border_width"),
-            item_disabled_opacity: crate::style::part_opacity(
-                self.binding.resolve(&[("disabled", true)], 1.0).part(PartId::new("item")),
-            ),
+            background: root.color("background"),
+            border: root.color("border"),
+            radius: root.number("radius"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.number("gap"),
+            vertical_gap: root.number("vertical_gap"),
+            border_width: root.number("border_width"),
+            item_disabled_opacity: self.binding.resolve(&[("disabled", true)], 1.0).part(PartId::new("item")).opacity(),
         }
     }
 

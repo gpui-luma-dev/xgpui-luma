@@ -5,12 +5,11 @@
 //! is selected through the `selected` state). Data that animates between off and on (a toggle's) blends
 //! the face colors with its progress. A model's own `look` override still wins.
 
+use crate::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{App, Div, Hsla, Stateful, Window, div, prelude::*, px};
-use xgpui_luma_style::{
-    AttrId, AttrValue, ControlId, Overrides, PartView, Resolved, StateId, StyleKey, Theme, Value, box_shadows,
-};
+use xgpui_luma_style::{AttrId, AttrValue, ControlId, Overrides, PartView, Resolved, StateId, StyleKey, Theme, Value};
 
 use super::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use super::face::{Face, FaceLook, FaceShape};
@@ -207,7 +206,7 @@ fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -
         muted_foreground: hsl(root.value("muted_foreground").and_then(Value::as_color)).unwrap_or_else(transparent),
         border: hsl(colors.border()),
         typography,
-        font_family: root.font_family().unwrap_or("").to_string().into(),
+        font_family: root.font_family_name(),
         radius: if icon {
             length(root, "icon_radius")
         } else {
@@ -222,7 +221,7 @@ fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -
         } else {
             length(root, "text_icon_size")
         },
-        shadow: root.shadow().filter(|layers| !layers.is_empty()).map(|layers| box_shadows(&layers)),
+        shadow: root.box_shadow_opt(),
     }
 }
 
@@ -336,7 +335,7 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
             height: look.height,
             focus: focus_adorner(root),
             focus_border: look.focus_border,
-            opacity: crate::style::part_opacity(root),
+            opacity: root.opacity(),
         };
 
         let content = if let Some(icon) = &model.icon {
@@ -428,7 +427,7 @@ mod style_states_tests {
 
 #[cfg(test)]
 mod disabled_opacity_tests {
-    use crate::style::{default_theme, part_opacity};
+    use crate::style::{PartRead as _, default_theme};
 
     /// SDK controls whose `:disabled` draws its own fill and text don't also fade: a faded fill lets whatever is
     /// behind the control show through (#397). Migrated controls carry the fade as `:disabled { opacity }` (#413).
@@ -465,7 +464,7 @@ mod disabled_opacity_tests {
             let key = theme.key_named(control, &[], &["disabled"]).expect("key");
             let resolved = theme.resolve(&key);
             for part in resolved.parts() {
-                assert_eq!(part_opacity(resolved.part(part)), 1.0, "{control} {part:?}");
+                assert_eq!(resolved.part(part).opacity(), 1.0, "{control} {part:?}");
             }
         }
     }

@@ -115,13 +115,7 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// The fade a part draws at in its resolved state: its `opacity` (`:disabled { opacity = … }`), or 1 when
-/// unset. Templates apply this once instead of a separate disabled fade (#413).
-pub(crate) fn part_opacity(part: xgpui_luma_style::PartView<'_>) -> f32 {
-    part.get(xgpui_luma_style::props::OPACITY).map_or(1.0, |o| o.clamp(0.0, 1.0))
-}
-
-/// Applies a resolved part opacity ([`part_opacity`]) to `element`, leaving it untouched when opaque. The one
+/// Applies a resolved part opacity ([`PartRead::opacity`]) to `element`, leaving it untouched when opaque. The one
 /// place templates apply a state fade.
 pub(crate) fn fade<E: gpui::Styled>(element: E, opacity: f32) -> E {
     if opacity < 1.0 {
@@ -156,7 +150,7 @@ pub fn disabled_fade_problems(theme: &Theme) -> Vec<String> {
             };
             let (resting, disabled) = (theme.resolve(&resting), theme.resolve(&disabled));
             for part in disabled.parts() {
-                if part_opacity(disabled.part(part)) < 1.0 && fill(disabled.part(part)) != fill(resting.part(part)) {
+                if disabled.part(part).opacity() < 1.0 && fill(disabled.part(part)) != fill(resting.part(part)) {
                     problems.push(format!("{control} {part:?} {disabled_states:?}: fades and changes its fill"));
                 }
             }
@@ -271,6 +265,69 @@ impl ThemeSource {
     }
 }
 
+/// Shared readers for one resolved part (#433): the reads every control's template and theme make, so no
+/// control keeps its own `color()` / `number()` helpers. A property the part does not set reads as its
+/// default (transparent, `0`, the given text size), never a panic.
+pub trait PartRead {
+    /// A color, transparent when unset.
+    fn color(&self, name: &str) -> gpui::Hsla {
+        self.color_opt(name).unwrap_or_else(gpui::transparent_black)
+    }
+    /// A color, if the part sets one.
+    fn color_opt(&self, name: &str) -> Option<gpui::Hsla>;
+    /// A color that paints: set and not fully transparent.
+    fn painted(&self, name: &str) -> Option<gpui::Hsla> {
+        self.color_opt(name).filter(|color| color.a > 0.0)
+    }
+    /// A number (a length, a width, a factor), `0` when unset.
+    fn number(&self, name: &str) -> f32 {
+        self.number_opt(name).unwrap_or(0.0)
+    }
+    /// A number, if the part sets one.
+    fn number_opt(&self, name: &str) -> Option<f32>;
+    /// `font_weight`, at least 100 (CSS's thinnest), so an unset weight still draws text.
+    fn font_weight(&self) -> gpui::FontWeight {
+        gpui::FontWeight(self.number("font_weight").max(100.0))
+    }
+    /// `font_size`, `line_height` and `font_weight`, with the control's default size and line height.
+    fn typography(&self, size: f32, line_height: f32) -> crate::theme::LumaTextStyle {
+        crate::theme::LumaTextStyle {
+            size: self.number_opt("font_size").unwrap_or(size),
+            line_height: self.number_opt("line_height").unwrap_or(line_height),
+            weight: self.font_weight(),
+        }
+    }
+    /// `font_family`, empty (the window's font) when unset.
+    fn font_family_name(&self) -> gpui::SharedString;
+    /// The fade the part draws at: its `opacity` (`:disabled { opacity = … }`), clamped to 0–1, or 1 when
+    /// unset. Templates apply it once with [`fade`].
+    fn opacity(&self) -> f32;
+    /// `shadow` as GPUI shadows, empty when unset.
+    fn box_shadow(&self) -> Vec<gpui::BoxShadow> {
+        self.box_shadow_opt().unwrap_or_default()
+    }
+    /// `shadow` as GPUI shadows, if the part sets at least one layer.
+    fn box_shadow_opt(&self) -> Option<Vec<gpui::BoxShadow>>;
+}
+
+impl PartRead for xgpui_luma_style::PartView<'_> {
+    fn color_opt(&self, name: &str) -> Option<gpui::Hsla> {
+        self.value(name).and_then(xgpui_luma_style::Value::as_color).map(gpui::Hsla::from)
+    }
+    fn number_opt(&self, name: &str) -> Option<f32> {
+        self.value(name).and_then(xgpui_luma_style::Value::as_number)
+    }
+    fn font_family_name(&self) -> gpui::SharedString {
+        self.font_family().unwrap_or("").to_string().into()
+    }
+    fn opacity(&self) -> f32 {
+        self.get(xgpui_luma_style::props::OPACITY).map_or(1.0, |o| o.clamp(0.0, 1.0))
+    }
+    fn box_shadow_opt(&self) -> Option<Vec<gpui::BoxShadow>> {
+        self.shadow().filter(|layers| !layers.is_empty()).map(xgpui_luma_style::box_shadows)
+    }
+}
+
 /// One control's styles bound for rendering: the theme source, the control, and the attribute
 /// values and states every instance has (a look's variant, size or tone). A control's theme adapter
 /// adds its interaction states and resolves.
@@ -372,6 +429,24 @@ mod tests {
     use xgpui_luma_style::Value;
 
     use super::*;
+
+    /// The shared readers (#433): an unset property reads as its default, and a set one as its value.
+    #[test]
+    fn part_readers_default_unset_properties() {
+        let resolved = StyleBinding::sdk("tooltip").resolve(&[], 1.0);
+        let missing = resolved.part(xgpui_luma_style::PartId::new("no_such_part"));
+        assert_eq!(missing.color("background"), gpui::transparent_black());
+        assert_eq!(missing.painted("background"), None);
+        assert_eq!(missing.number("radius"), 0.0);
+        assert_eq!(missing.font_weight(), gpui::FontWeight(100.0), "an unset weight still draws text");
+        assert_eq!(missing.typography(13.0, 18.0).size, 13.0);
+        assert_eq!(missing.opacity(), 1.0);
+        assert!(missing.box_shadow().is_empty());
+
+        let root = resolved.root();
+        assert!(root.painted("background").is_some(), "the SDK tooltip paints a background");
+        assert_eq!(root.number_opt("radius"), root.radius());
+    }
 
     #[test]
     fn sources_list_every_lss_file() {

@@ -1,7 +1,7 @@
 //! The callout read from `.lss` (issue #285): `callout.lss`. Looks render the element from [`CalloutLook`].
 
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
 
 use crate::style::StyleBinding;
 
@@ -15,10 +15,6 @@ pub struct CalloutLook {
     pub gap: f32,
     pub icon_size: f32,
     pub font_size: f32,
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
 }
 
 /// The callout's `.lss` values for one binding (the `callout` control).
@@ -40,16 +36,13 @@ impl StyledCallout {
     pub fn look(&self) -> CalloutLook {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
-        let color = |name: &str| {
-            root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-        };
         CalloutLook {
-            background: color("background"),
-            foreground: color("foreground"),
-            radius: number(root, "radius"),
-            padding: number(root, "padding_x"),
-            gap: number(root, "gap"),
-            icon_size: number(root, "icon_size"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            radius: root.number("radius"),
+            padding: root.number("padding_x"),
+            gap: root.number("gap"),
+            icon_size: root.number("icon_size"),
             font_size: root.font_size().unwrap_or(14.0),
         }
     }

@@ -1,5 +1,6 @@
 //! The card read from `.lss` (issue #285): `card.lss`. Looks render the element from [`CardLook`].
 
+use crate::style::PartRead;
 use gpui::{AnyElement, BoxShadow, Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma_style::{PartId, PartView, Value};
 
@@ -29,20 +30,8 @@ pub struct CardLook {
     pub font_family: SharedString,
 }
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 fn text(part: PartView<'_>) -> LumaTextStyle {
-    LumaTextStyle {
-        size: part.font_size().unwrap_or(14.0),
-        line_height: part.line_height().unwrap_or(20.0),
-        weight: gpui::FontWeight(number(part, "font_weight").max(100.0)),
-    }
+    part.typography(14.0, 20.0)
 }
 
 fn opaque(color: Hsla) -> Option<Hsla> {
@@ -71,9 +60,9 @@ impl StyledCard {
         let root = resolved.root();
         let (title, description) = (resolved.part(PartId::new("title")), resolved.part(PartId::new("description")));
         CardLook {
-            background: opaque(color(root, "background")),
-            border: opaque(color(root, "border")),
-            border_width: number(root, "border_width"),
+            background: opaque(root.color("background")),
+            border: opaque(root.color("border")),
+            border_width: root.number("border_width"),
             shadow: root
                 .value("shadow")
                 .and_then(|v| match v {
@@ -81,18 +70,18 @@ impl StyledCard {
                     _ => None,
                 })
                 .unwrap_or_default(),
-            radius: number(root, "radius"),
-            padding: number(root, "padding_x"),
-            section_gap: number(root, "section_gap"),
-            header_gap: number(root, "header_gap"),
-            body_gap: number(root, "body_gap"),
-            title_color: color(title, "foreground"),
-            description_color: color(description, "foreground"),
-            body_color: color(root, "foreground"),
+            radius: root.number("radius"),
+            padding: root.number("padding_x"),
+            section_gap: root.number("section_gap"),
+            header_gap: root.number("header_gap"),
+            body_gap: root.number("body_gap"),
+            title_color: title.color("foreground"),
+            description_color: description.color("foreground"),
+            body_color: root.color("foreground"),
             title: text(title),
             description: text(description),
             body: text(root),
-            font_family: root.font_family().unwrap_or("").to_string().into(),
+            font_family: root.font_family_name(),
         }
     }
 }

@@ -1,8 +1,9 @@
 //! The popover's own panel, from `popover.lss` (#397): its `panel` part, drawn while `show_panel` is on. The
 //! SDK leaves it off, so content brings its own chrome (a card, a menu); a look turns it on.
 
+use crate::style::PartRead;
 use gpui::{BoxShadow, Hsla};
-use xgpui_luma_style::{PartId, PartView, Value, box_shadows};
+use xgpui_luma_style::PartId;
 
 use crate::style::StyleBinding;
 
@@ -21,28 +22,20 @@ pub struct PopoverPanelLook {
     pub padding: f32,
 }
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 impl PopoverPanelLook {
     /// The panel `binding` (a `popover` control) resolves to.
     pub fn from_binding(binding: &StyleBinding) -> Self {
         let resolved = binding.resolve(&[], 1.0);
         let panel = resolved.part(PartId::new("panel"));
         Self {
-            shown: number(resolved.root(), "show_panel") != 0.0,
-            background: color(panel, "background"),
-            foreground: color(panel, "foreground"),
-            border: color(panel, "border"),
-            border_width: number(panel, "border_width"),
-            shadow: panel.shadow().map(|layers| box_shadows(&layers)).unwrap_or_default(),
-            radius: number(panel, "radius"),
-            padding: number(panel, "padding"),
+            shown: resolved.root().number("show_panel") != 0.0,
+            background: panel.color("background"),
+            foreground: panel.color("foreground"),
+            border: panel.color("border"),
+            border_width: panel.number("border_width"),
+            shadow: panel.box_shadow(),
+            radius: panel.number("radius"),
+            padding: panel.number("padding"),
         }
     }
 

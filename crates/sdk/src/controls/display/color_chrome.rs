@@ -1,7 +1,7 @@
 //! Color-control chrome read from `.lss` (issue #285): `color_chrome.lss`.
 
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::Value;
 
 use crate::style::StyleBinding;
 
@@ -31,10 +31,7 @@ impl StyledColorChrome {
     pub fn look(&self) -> ColorChromeLook {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
-        let color = |name: &str| {
-            root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-        };
-        ColorChromeLook { border: color("border"), background: color("background") }
+        ColorChromeLook { border: root.color("border"), background: root.color("background") }
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -379,7 +380,7 @@ where
     T: ControlGroupItemLike + 'static,
 {
     let disabled = crate::style::StyleBinding::sdk("control_group").resolve(&[("disabled", true)], 1.0);
-    let opacity = crate::style::part_opacity(disabled.part(xgpui_luma_style::PartId::new("item")));
+    let opacity = disabled.part(xgpui_luma_style::PartId::new("item")).opacity();
     render_control_group_item_elements_with_opacity(model, handlers, window, cx, opacity)
 }
 

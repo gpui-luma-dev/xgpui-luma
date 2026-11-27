@@ -1,27 +1,17 @@
 //! The selector trigger read from `.lss` (issue #285): `selector.lss`, which extends the button. The
 //! popup panel is supplied separately (it is drawn with the floating menu's values).
 
+use crate::style::PartRead;
 use std::sync::Arc;
-
-use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value, box_shadows};
 
 use super::model::SelectorTriggerStyle;
 use super::theme::{SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState};
 use crate::controls::selector_list::SelectorItemsPanelLook;
 use crate::style::{StyleBinding, ThemeSource};
-use crate::theme::{FocusMetricTokens, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
+use crate::theme::{FocusMetricTokens, InteractionState, MetricTokens, StandardBoxScale};
 
 /// Supplies the selector's popup panel look.
 pub type ItemsPanelSource = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync>;
-
-fn color(root: PartView<'_>, name: &str) -> Option<Hsla> {
-    root.value(name).and_then(Value::as_color).map(Hsla::from)
-}
-
-fn number(root: PartView<'_>, name: &str) -> f32 {
-    root.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
 
 /// A selector theme whose trigger is read from `.lss`.
 #[derive(Clone)]
@@ -99,11 +89,11 @@ impl SelectorTheme for StyledSelectorTheme {
         let resolved = self.resolve_root(SelectorTriggerStyle::Outline, InteractionState::default(), false);
         let root = resolved.root();
         MetricTokens {
-            border_width: number(root, "border_width"),
+            border_width: root.number("border_width"),
             focus: FocusMetricTokens {
-                gap: number(root, "focus_gap"),
-                width: number(root, "focus_width"),
-                offset: number(root, "focus_offset"),
+                gap: root.number("focus_gap"),
+                width: root.number("focus_width"),
+                offset: root.number("focus_offset"),
             },
             ..MetricTokens::default()
         }
@@ -143,29 +133,21 @@ impl StyledSelectorTheme {
         let root = resolved.root();
         let transparent = gpui::transparent_black();
         SelectorLook {
-            trigger_background: color(root, "background").unwrap_or(transparent),
-            trigger_foreground: color(root, "foreground").unwrap_or(transparent),
-            trigger_icon: color(root, "icon").unwrap_or(transparent),
-            trigger_border: color(root, "border"),
-            trigger_shadow: if without_elevation {
-                None
-            } else {
-                root.shadow().filter(|layers| !layers.is_empty()).map(|layers| box_shadows(&layers))
-            },
-            trigger_typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(14.0),
-                line_height: root.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
+            trigger_background: root.color_opt("background").unwrap_or(transparent),
+            trigger_foreground: root.color_opt("foreground").unwrap_or(transparent),
+            trigger_icon: root.color_opt("icon").unwrap_or(transparent),
+            trigger_border: root.color_opt("border"),
+            trigger_shadow: if without_elevation { None } else { root.box_shadow_opt() },
+            trigger_typography: root.typography(14.0, 20.0),
             trigger_radius: root.radius().unwrap_or(0.0),
-            trigger_padding_x: number(root, "padding_x"),
-            trigger_padding_y: number(root, "padding_y"),
+            trigger_padding_x: root.number("padding_x"),
+            trigger_padding_y: root.number("padding_y"),
             trigger_gap: root.gap().unwrap_or(0.0),
             trigger_height: root.height().unwrap_or(0.0),
-            trigger_icon_size: number(root, "icon_size"),
-            trigger_focus_border: color(root, "focus_border").unwrap_or(transparent),
-            trigger_opacity: crate::style::part_opacity(root),
-            menu_offset_y: number(root, "menu_offset_y"),
+            trigger_icon_size: root.number("icon_size"),
+            trigger_focus_border: root.color_opt("focus_border").unwrap_or(transparent),
+            trigger_opacity: root.opacity(),
+            menu_offset_y: root.number("menu_offset_y"),
             items_panel: (self.items_panel)(),
         }
     }

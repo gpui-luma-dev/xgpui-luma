@@ -1,19 +1,12 @@
 //! Listbox chrome read from `.lss` (issue #285): `listbox.lss`. Looks paint the surface from
 //! [`StyledListBox::surface`] and rows with [`StyledListBox::paint_row`]; item content stays the host's.
 
+use crate::style::PartRead;
 use gpui::{Div, ElementId, Hsla, Stateful, div, prelude::*, px};
-use xgpui_luma_style::{PartId, PartView, Resolved, Value};
+use xgpui_luma_style::{PartId, Resolved};
 
 use super::ListBoxItemState;
 use crate::style::StyleBinding;
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
 
 /// The listbox surface's colors and frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -65,10 +58,10 @@ impl StyledListBox {
         let resolved = self.binding.resolve(&[("focused", focused), ("disabled", !enabled)], 1.0);
         let root = resolved.root();
         ListBoxSurfaceLook {
-            background: color(root, "background"),
-            border: color(root, "border"),
-            border_width: number(root, "border_width"),
-            radius: number(root, "radius"),
+            background: root.color("background"),
+            border: root.color("border"),
+            border_width: root.number("border_width"),
+            radius: root.number("radius"),
         }
     }
 
@@ -94,16 +87,16 @@ impl StyledListBox {
         let resolved = self.resolve_row(state, focused, hover, pressed);
         let row = resolved.part(PartId::new("row"));
         ListBoxRowLook {
-            background: color(row, "background"),
-            foreground: color(row, "foreground"),
-            border: color(row, "border"),
-            border_width: number(row, "border_width"),
-            radius: number(row, "radius"),
-            padding_x: number(row, "padding_x"),
-            font_family: row.font_family().unwrap_or("").to_string().into(),
+            background: row.color("background"),
+            foreground: row.color("foreground"),
+            border: row.color("border"),
+            border_width: row.number("border_width"),
+            radius: row.number("radius"),
+            padding_x: row.number("padding_x"),
+            font_family: row.font_family_name(),
             font_size: row.font_size().unwrap_or(14.0),
             line_height: row.line_height().unwrap_or(20.0),
-            font_weight: gpui::FontWeight(number(row, "font_weight").max(100.0)),
+            font_weight: row.font_weight(),
         }
     }
 
