@@ -1,6 +1,7 @@
 //! The context-menu target read from `.lss` (issue #285): `context_menu.lss`. The menu is supplied
 //! separately (a floating menu, which has its own `.lss`).
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 
 use super::theme::{ContextMenuLook, ContextMenuTheme};
@@ -37,13 +38,8 @@ impl StyledContextMenuTheme {
 
 impl ContextMenuTheme for StyledContextMenuTheme {
     fn resolve(&self, state: InteractionState) -> ContextMenuLook {
-        let states = [
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
+        let states = StyleStates::new(state);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let root = resolved.root();
         ContextMenuLook {
             border_width: root.number("border_width"),

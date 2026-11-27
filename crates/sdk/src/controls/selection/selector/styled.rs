@@ -1,6 +1,7 @@
 //! The selector trigger read from `.lss` (issue #285): `selector.lss`, which extends the button. The
 //! popup panel is supplied separately (it is drawn with the floating menu's values).
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use std::sync::Arc;
 
@@ -52,15 +53,8 @@ impl StyledSelectorTheme {
             SelectorTriggerStyle::Outline => "outline",
             SelectorTriggerStyle::Ghost => "ghost",
         };
-        let states = [
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-            ("invalid", state.invalid),
-            ("open", open),
-        ];
-        self.binding.resolve_for(&[("variant", variant)], &states, 1.0)
+        let states = StyleStates::new(state).open(open);
+        self.binding.resolve_states_for(&[("variant", variant)], states, 1.0)
     }
 }
 

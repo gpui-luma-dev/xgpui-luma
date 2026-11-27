@@ -1,6 +1,7 @@
 //! Tree-view rows read from `.lss` (issue #285): `tree_view.lss`. Looks keep their icons and drag shadow and
 //! delegate rows and layout to [`StyledTreeView`].
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use gpui::Hsla;
 
@@ -25,14 +26,8 @@ impl StyledTreeView {
     }
 
     fn resolve(&self, state: InteractionState, selected: bool) -> std::sync::Arc<xgpui_luma_style::Resolved> {
-        let states = [
-            ("selected", selected),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        self.binding.resolve(&states, 1.0)
+        let states = StyleStates::new(state).selected(selected);
+        self.binding.resolve_states(states, 1.0)
     }
 
     /// A row in `state`, selected or not.

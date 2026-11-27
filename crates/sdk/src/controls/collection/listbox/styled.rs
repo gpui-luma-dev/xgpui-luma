@@ -1,6 +1,8 @@
 //! Listbox chrome read from `.lss` (issue #285): `listbox.lss`. Looks paint the surface from
 //! [`StyledListBox::surface`] and rows with [`StyledListBox::paint_row`]; item content stays the host's.
 
+use crate::theme::InteractionState;
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use gpui::{Div, ElementId, Hsla, Stateful, div, prelude::*, px};
 use xgpui_luma_style::{PartId, Resolved};
@@ -55,7 +57,10 @@ impl StyledListBox {
 
     /// The surface, enabled or not, with or without focus.
     pub fn surface(&self, enabled: bool, focused: bool) -> ListBoxSurfaceLook {
-        let resolved = self.binding.resolve(&[("focused", focused), ("disabled", !enabled)], 1.0);
+        let resolved = self.binding.resolve_states(
+            StyleStates::new(InteractionState { focused, disabled: !enabled, ..Default::default() }),
+            1.0,
+        );
         let root = resolved.root();
         ListBoxSurfaceLook {
             background: root.color("background"),
@@ -72,14 +77,9 @@ impl StyledListBox {
         hover: bool,
         pressed: bool,
     ) -> std::sync::Arc<Resolved> {
-        let states = [
-            ("selected", state.selected),
-            ("hover", hover),
-            ("pressed", pressed),
-            ("focused", focused),
-            ("disabled", !state.enabled),
-        ];
-        self.binding.resolve(&states, 1.0)
+        let interaction =
+            InteractionState { hovered: hover, pressed, focused, disabled: !state.enabled, ..Default::default() };
+        self.binding.resolve_states(StyleStates::new(interaction).selected(state.selected), 1.0)
     }
 
     /// A row in `state`; `focused` is the active row while focus is visible.

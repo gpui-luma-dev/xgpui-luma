@@ -328,6 +328,57 @@ impl PartRead for xgpui_luma_style::PartView<'_> {
     }
 }
 
+/// A control's style states (#433): its interaction state plus the extras a control may have. One function,
+/// [`Self::pairs`], names them for the style key, so no control writes its own `("hover", …)` list. A state a
+/// control's `.lss` does not style changes nothing, so every control passes the full set.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct StyleStates {
+    pub interaction: crate::theme::InteractionState,
+    /// Semantically selected or current: a selected row, the active tab, the current page.
+    pub selected: bool,
+    /// Checked or on.
+    pub checked: bool,
+    /// The control's popup or panel is open.
+    pub open: bool,
+}
+
+impl StyleStates {
+    pub fn new(interaction: crate::theme::InteractionState) -> Self {
+        Self { interaction, ..Self::default() }
+    }
+
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    pub fn checked(mut self, checked: bool) -> Self {
+        self.checked = checked;
+        self
+    }
+
+    pub fn open(mut self, open: bool) -> Self {
+        self.open = open;
+        self
+    }
+
+    /// The states by the names `.lss` uses.
+    pub fn pairs(&self) -> [(&'static str, bool); 8] {
+        let state = self.interaction;
+        [
+            ("hover", state.hovered),
+            ("pressed", state.pressed),
+            ("focused", state.focused),
+            ("disabled", state.disabled),
+            ("invalid", state.invalid),
+            ("selected", self.selected),
+            ("checked", self.checked),
+            ("open", self.open),
+        ]
+    }
+}
+
 /// One control's styles bound for rendering: the theme source, the control, and the attribute
 /// values and states every instance has (a look's variant, size or tone). A control's theme adapter
 /// adds its interaction states and resolves.
@@ -396,6 +447,21 @@ impl StyleBinding {
         self.resolve_for(&[], states, scale)
     }
 
+    /// Resolve in `states` (the one state function, [`StyleStates`]) at `scale` device pixels per pixel.
+    pub fn resolve_states(&self, states: StyleStates, scale: f32) -> Arc<xgpui_luma_style::Resolved> {
+        self.resolve_for(&[], &states.pairs(), scale)
+    }
+
+    /// [`Self::resolve_states`] with extra attribute values for this call (see [`Self::resolve_for`]).
+    pub fn resolve_states_for(
+        &self,
+        attrs: &[(&str, &str)],
+        states: StyleStates,
+        scale: f32,
+    ) -> Arc<xgpui_luma_style::Resolved> {
+        self.resolve_for(attrs, &states.pairs(), scale)
+    }
+
     /// Resolve with extra attribute values for this call (a trigger style picked per render), then the
     /// interaction states. An attribute or value the configuration does not declare is ignored.
     pub fn resolve_for(
@@ -429,6 +495,15 @@ mod tests {
     use xgpui_luma_style::Value;
 
     use super::*;
+
+    /// The one state function (#433) names only states the config declares, so none is silently dropped.
+    #[test]
+    fn style_states_are_declared_states() {
+        let config = config();
+        for (name, _) in StyleStates::default().pairs() {
+            assert!(config.state(name).is_some(), "{name} is not a declared state");
+        }
+    }
 
     /// The shared readers (#433): an unset property reads as its default, and a set one as its value.
     #[test]

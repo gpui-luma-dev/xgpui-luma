@@ -1,6 +1,7 @@
 //! Layout chrome read from `.lss` (issue #285): `scrollbar.lss`, `dock_splitter.lss`,
 //! `resizable_panels.lss` and `split_view.lss`. Looks bind their own stylesheet and use these themes.
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 
 use super::dock_splitter::{DockSplitterLook, DockSplitterTheme};
@@ -39,8 +40,8 @@ impl ScrollbarTheme for StyledScrollbarTheme {
             ScrollbarStyle::Ghost => "ghost",
             ScrollbarStyle::Soft => "soft",
         };
-        let states = [("hover", state.hovered), ("pressed", state.pressed), ("disabled", state.disabled)];
-        let resolved = self.binding.resolve_for(&[("variant", variant)], &states, 1.0);
+        let states = StyleStates::new(state);
+        let resolved = self.binding.resolve_states_for(&[("variant", variant)], states, 1.0);
         let root = resolved.root();
         ScrollbarLook {
             opacity: root.opacity(),
@@ -124,8 +125,8 @@ impl ResizablePanelsTheme for StyledResizablePanelsTheme {
     }
 
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let states = [("hover", state.hovered), ("pressed", state.pressed), ("disabled", state.disabled)];
-        let resolved = self.binding.resolve(&states, 1.0);
+        let states = StyleStates::new(state);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let root = resolved.root();
         ResizablePanelsLook {
             border: root.color("border"),

@@ -1,6 +1,7 @@
 //! Tabs read from `.lss` (issue #285): `tabs.lss`. Looks keep their own drag preview, baseline and content
 //! padding, and delegate the list and tabs to [`StyledTabs`].
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use gpui::SharedString;
 use xgpui_luma_style::PartId;
@@ -41,14 +42,8 @@ impl StyledTabs {
 
     /// A tab, active or not, in `state`.
     pub fn item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let states = [
-            ("selected", active),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
+        let states = StyleStates::new(state).selected(active);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
         TabsItemLook {
             accessory_size: root.number("accessory_size"),

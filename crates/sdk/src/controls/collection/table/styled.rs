@@ -1,6 +1,7 @@
 //! The table read from `.lss` (issue #285): `table.lss`. Looks keep their drag preview (the shared
 //! `drag_preview`) and delegate the frame, header and rows to [`StyledTable`].
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use xgpui_luma_style::{PartId, PartView};
 
@@ -44,7 +45,14 @@ impl StyledTable {
 
     /// The frame and header, enabled or not, focused or not.
     pub fn look(&self, enabled: bool, focused: bool) -> TableLook {
-        let resolved = self.binding.resolve(&[("disabled", !enabled), ("focused", focused && enabled)], 1.0);
+        let resolved = self.binding.resolve_states(
+            StyleStates::new(InteractionState {
+                focused: focused && enabled,
+                disabled: !enabled,
+                ..Default::default()
+            }),
+            1.0,
+        );
         let (root, header) = (resolved.root(), resolved.part(PartId::new("header")));
         TableLook {
             row_divider_width: root.number("row_divider_width"),
@@ -67,14 +75,8 @@ impl StyledTable {
     }
 
     fn resolve_row(&self, selected: bool, state: InteractionState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
-        let states = [
-            ("selected", selected),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        self.binding.resolve(&states, 1.0)
+        let states = StyleStates::new(state).selected(selected);
+        self.binding.resolve_states(states, 1.0)
     }
 
     /// The row drag preview's geometry.
