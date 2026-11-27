@@ -172,7 +172,7 @@ impl HoverCardBuilder {
                     .dismiss(PopupDismiss::CLICK_OUTSIDE)
                     .offset_y(px(6.0))
                     .initial_content_size(gpui::size(px(440.0), px(180.0)))
-                    .trigger_on_pointer_down(false)
+                    .open_on(xgpui_luma::infra::trigger::TriggerOpenOn::Never)
                     .spawn(cx);
                 let subscriptions = vec![
                     cx.subscribe(&self.trigger, |this: &mut HoverCard, _, event: &ButtonEvent, cx| match event {

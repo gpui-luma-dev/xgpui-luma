@@ -1,3 +1,4 @@
+use crate::infra::trigger::{TriggerToggle, toggle_on_click, toggle_on_press};
 use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use gpui::{
@@ -338,6 +339,8 @@ impl PopupMenu {
                 disclosure_down: Box::new(cx.listener(|this, _, _, cx| {
                     this.split_state.disclosure.pressed = this.model.enabled;
                     cx.notify();
+                    let toggle = toggle_on_press(this.model.open_on, this.model.enabled, this.lifecycle.is_open());
+                    this.apply_trigger_toggle(toggle, cx);
                 })),
             }),
             trigger_bounds: Box::new(cx.listener(Self::handle_trigger_bounds)),
@@ -450,18 +453,21 @@ impl PopupMenu {
     }
 
     fn handle_trigger_click(&mut self, event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if event.is_keyboard() {
-            return;
-        }
+        let toggle = toggle_on_click(self.model.open_on, event, self.model.enabled, self.lifecycle.is_open());
+        self.apply_trigger_toggle(toggle, cx);
+    }
 
-        if self.model.enabled {
-            if self.lifecycle.is_open() {
-                self.dismiss_menu(cx);
-            } else {
+    fn apply_trigger_toggle(&mut self, toggle: Option<TriggerToggle>, cx: &mut Context<Self>) {
+        match toggle {
+            Some(TriggerToggle::Open) => {
                 self.open_menu_with(None, cx);
             }
-            cx.notify();
+            Some(TriggerToggle::Close) => {
+                self.dismiss_menu(cx);
+            }
+            None => return,
         }
+        cx.notify();
     }
 
     fn handle_action_click(&mut self, event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -511,6 +517,11 @@ impl PopupMenu {
     fn handle_mouse_down(&mut self, _event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         if self.interaction.handle_mouse_down(self.model.enabled, window, cx) {
             cx.notify();
+        }
+        // A split trigger opens from its disclosure face alone (its own handler).
+        if !self.model.split {
+            let toggle = toggle_on_press(self.model.open_on, self.model.enabled, self.lifecycle.is_open());
+            self.apply_trigger_toggle(toggle, cx);
         }
     }
 
@@ -825,5 +836,29 @@ impl crate::infra::focus_report::ReportsFocus for PopupMenu {
 
     fn focus_enabled(&self) -> bool {
         self.model.enabled
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod trigger_tests {
+    use gpui::{ClickEvent, MouseClickEvent, MouseDownEvent, TestAppContext};
+
+    use super::*;
+    use crate::infra::menu_item::MenuItem;
+    use crate::infra::trigger::TriggerOpenOn;
+
+    #[gpui::test]
+    fn open_on_chooses_press_or_click(cx: &mut TestAppContext) {
+        for (open_on, opens_on_press) in [(TriggerOpenOn::Press, true), (TriggerOpenOn::Click, false)] {
+            let (menu, cx) = cx.add_window_view(|_, cx| {
+                PopupMenu::from_builder(PopupMenu::new("menu").items([MenuItem::new("one")]).open_on(open_on), cx)
+            });
+            menu.update_in(cx, |menu, window, cx| {
+                menu.handle_mouse_down(&MouseDownEvent::default(), window, cx);
+                assert_eq!(menu.lifecycle.is_open(), opens_on_press, "{open_on:?}: press");
+                menu.handle_trigger_click(&ClickEvent::Mouse(MouseClickEvent::default()), window, cx);
+                assert!(menu.lifecycle.is_open(), "{open_on:?}: the click does not undo the press, or opens");
+            });
+        }
     }
 }

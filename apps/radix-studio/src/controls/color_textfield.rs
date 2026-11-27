@@ -110,7 +110,7 @@ impl ColorTextField {
             .dismiss(PopupDismiss::CLICK_OUTSIDE)
             .offset_y(px(4.0))
             .initial_content_size(gpui::size(px(384.0), px(264.0)))
-            .trigger_on_pointer_down(false)
+            .open_on(xgpui_luma::infra::trigger::TriggerOpenOn::Never)
             .spawn(cx);
 
         let mut subscriptions = Vec::new();

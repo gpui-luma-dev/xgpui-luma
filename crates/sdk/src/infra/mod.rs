@@ -21,6 +21,7 @@ pub mod rounded_shell;
 pub mod shadow_layout;
 pub mod state;
 pub mod template;
+pub mod trigger;
 pub mod value;
 
 pub use arc_shape::{Arc, ArcData};

@@ -196,6 +196,11 @@ impl SplitButtonBuilder {
         self.map_popup(|popup| popup.dismiss(dismiss))
     }
 
+    /// What on the disclosure face opens the menu: a click by default.
+    pub fn open_on(self, open_on: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.map_popup(|popup| popup.open_on(open_on))
+    }
+
     pub fn placement(self, placement: PopupMenuPlacement) -> Self {
         self.map_popup(|popup| popup.placement(placement))
     }

@@ -44,7 +44,7 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) initial_content_size: Option<gpui::Size<Pixels>>,
     pub(super) focus_on_open: bool,
     pub(super) motion_enabled: bool,
-    pub(super) trigger_on_pointer_down: bool,
+    pub(super) open_on: crate::infra::trigger::TriggerOpenOn,
     pub(super) measure_trigger: bool,
     pub(super) panel_look: super::panel::PopoverPanelLook,
 }
@@ -94,7 +94,7 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             initial_content_size: None,
             focus_on_open: true,
             motion_enabled: true,
-            trigger_on_pointer_down: true,
+            open_on: crate::infra::trigger::TriggerOpenOn::Press,
             measure_trigger: true,
             panel_look: super::panel::PopoverPanelLook::sdk(),
         }
@@ -165,8 +165,10 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         self.motion_enabled = value;
         self
     }
-    pub fn trigger_on_pointer_down(mut self, value: bool) -> Self {
-        self.trigger_on_pointer_down = value;
+    /// What on the trigger opens the popover: a press by default. `Never`
+    /// leaves opening to the app (for hover cards and custom triggers).
+    pub fn open_on(mut self, value: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.open_on = value;
         self
     }
     /// Uses bounds supplied by the host instead of measuring the trigger child.
