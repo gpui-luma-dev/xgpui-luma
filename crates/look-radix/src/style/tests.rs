@@ -396,6 +396,7 @@ fn disabled_controls_draw_colors_without_fading() {
         "button",
         "toggle",
         "popup_menu",
+        "trigger_button",
         "selector",
         "checkbox",
         "radio",

@@ -13,7 +13,8 @@ use xgpui_luma_style::{
 };
 
 use super::{ButtonRenderModel, ButtonTemplate, button_content_context};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, button_family_effective_border};
+use super::face::{Face, FaceLook, FaceShape};
+use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::controls::choice::styled::{ThemeProvider, focus_adorner, hsl, length, transparent};
 use crate::infra::template::{Modifier, TemplateWithModifiers};
 use crate::theme::{InteractionState, LumaTextStyle};
@@ -27,6 +28,12 @@ pub trait ButtonData: Clone + 'static {
             .downcast_ref::<crate::controls::toggle::ToggleData>()
             .map(|toggle| (toggle.selected, toggle.progress))
     }
+
+    /// For a trigger's data ([`TriggerData`](crate::controls::trigger_button::TriggerData)): whether it is open,
+    /// stretches to its parent's width, and its chevron.
+    fn trigger(&self) -> Option<&crate::controls::trigger_button::TriggerData> {
+        (self as &dyn std::any::Any).downcast_ref::<crate::controls::trigger_button::TriggerData>()
+    }
 }
 
 impl<D: Clone + 'static> ButtonData for D {}
@@ -39,6 +46,8 @@ enum ThemeSource {
 /// A button-family template whose values come from `.lss` files.
 pub struct StyledButtonTemplate<D> {
     source: ThemeSource,
+    /// The control read instead of `button` / `toggle`, e.g. `trigger_button`.
+    control: Option<ControlId>,
     attrs: Vec<(AttrId, AttrValue)>,
     states: Vec<StateId>,
     overrides: Overrides,
@@ -57,7 +66,14 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
     }
 
     fn with_source(source: ThemeSource) -> Self {
-        Self { source, attrs: Vec::new(), states: Vec::new(), overrides: Overrides::new(), modifiers: Vec::new() }
+        Self {
+            source,
+            control: None,
+            attrs: Vec::new(),
+            states: Vec::new(),
+            overrides: Overrides::new(),
+            modifiers: Vec::new(),
+        }
     }
 
     /// The SDK alone.
@@ -70,6 +86,13 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
             ThemeSource::Fixed(theme) => theme.clone(),
             ThemeSource::Live(provider) => provider(),
         }
+    }
+
+    /// Read `control` (one that extends `button`, e.g. `trigger_button` or `selector`) instead of `button`, or
+    /// `toggle` for the toggle role.
+    pub fn control(mut self, control: &str) -> Self {
+        self.control = Some(ControlId::named(control));
+        self
     }
 
     /// A variant of a look, e.g. `"secondary"`: shorthand for `attr("variant", variant)`.
@@ -130,12 +153,14 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         scale: f32,
     ) -> StyleKey {
         let config = theme.stylesheet().config();
-        let control = if matches!(role, ButtonFamilyRole::Toggle { .. }) {
-            "toggle"
-        } else {
-            "button"
-        };
-        let key = StyleKey::new(ControlId::new(control)).scale(scale);
+        let control = self.control.unwrap_or_else(|| {
+            ControlId::new(if matches!(role, ButtonFamilyRole::Toggle { .. }) {
+                "toggle"
+            } else {
+                "button"
+            })
+        });
+        let key = StyleKey::new(control).scale(scale);
         let key = self.states.iter().fold(key, |key, state| key.state(*state));
         let mut key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
         let values = [
@@ -216,8 +241,14 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
                 (if on { on_style } else { off_style }, colors)
             }
             None => {
-                let settled = theme
-                    .resolve_with(&self.key(&theme, model.role, model.state, role_selected, scale), &self.overrides);
+                // An open trigger looks hovered (the selector's rule) and sets `open` for looks that style it.
+                let open = model.data.trigger().is_some_and(|trigger| trigger.open);
+                let state = InteractionState { hovered: model.state.hovered || open, ..model.state };
+                let mut key = self.key(&theme, model.role, state, role_selected, scale);
+                if let Some(open_state) = theme.stylesheet().config().state("open") {
+                    key = key.state_if(open_state, open);
+                }
+                let settled = theme.resolve_with(&key, &self.overrides);
                 let colors = Resolved::lerp(&settled, &settled, 0.0);
                 (settled, colors)
             }
@@ -248,49 +279,65 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let (settled, colors) = self.resolve(model, window.scale_factor());
         let root = settled.root();
-        let mut look = match &model.look {
+        let look = match &model.look {
             Some(resolve) => resolve(model),
             None => look_from(root, colors.root(), model.role),
         };
         let presenter_model = button_content_context(model, look.clone());
-        let focused = model.state.focused && !model.state.disabled;
-        let border: Hsla = button_family_effective_border(look.border);
-        let focus = focus_adorner(root);
-        let focus_extent = if model.compact { 0.0 } else { focus.extent() };
-        let border_width = length(root, "border_width");
-
-        let mut control = div()
-            .id((model.id.clone(), 0usize))
-            .flex()
-            .items_center()
-            .justify_center()
-            .gap(px(look.gap))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .font_family(look.font_family.clone())
-            .font_weight(look.typography.weight)
-            .h(px(look.height))
-            .border(px(border_width))
-            .border_color(border);
+        let trigger = model.data.trigger();
 
         let toggle = matches!(model.role, ButtonFamilyRole::Toggle { .. });
         let square_icon_toggle = toggle && !model.round && look.padding_x <= 0.0 && look.padding_y <= 0.0;
-        if matches!(model.role, ButtonFamilyRole::Icon) || (toggle && model.round) || square_icon_toggle {
-            let corner_radius = model.radius_override.get().unwrap_or(look.radius);
-            control = control.w(px(look.height)).flex_shrink_0().p_0();
-            control = if model.round || corner_radius >= look.height / 2.0 {
-                control.rounded_full()
+        let corner_radius = model.radius_override.get().unwrap_or(look.radius);
+        let shape = if matches!(model.role, ButtonFamilyRole::Icon) || (toggle && model.round) || square_icon_toggle {
+            if model.round {
+                FaceShape::Round
             } else {
-                control.rounded(px(corner_radius))
-            };
+                FaceShape::Square
+            }
         } else if model.round {
-            control = control.w(px(look.height)).p_0().rounded_full();
+            FaceShape::Round
         } else {
-            let corner_radius = model.radius_override.get().unwrap_or(look.radius);
-            control = control.px(px(look.padding_x)).py(px(look.padding_y)).rounded(px(corner_radius));
-        }
+            FaceShape::Padded
+        };
+        let radius = if let Some(radius) = model.radius_override.get() {
+            radius
+        } else if model.round {
+            look.height / 2.0
+        } else {
+            look.radius
+        };
+        let face = Face {
+            id: model.id.clone(),
+            shape,
+            radius: if shape == FaceShape::Padded || shape == FaceShape::Square {
+                corner_radius
+            } else {
+                radius
+            },
+            full_width: trigger.is_some_and(|trigger| trigger.full_width),
+            min_height: false,
+            focused: model.state.focused && !model.state.disabled,
+            disabled: model.state.disabled,
+            elevation: model.elevation,
+            compact: model.compact,
+        };
+        let face_look = FaceLook {
+            background: look.background,
+            foreground: look.foreground,
+            border: look.border,
+            border_width: length(root, "border_width"),
+            shadow: look.shadow.clone(),
+            typography: look.typography,
+            font_family: look.font_family.clone(),
+            padding_x: look.padding_x,
+            padding_y: look.padding_y,
+            gap: look.gap,
+            height: look.height,
+            focus: focus_adorner(root),
+            focus_border: look.focus_border,
+            opacity: crate::style::part_opacity(root),
+        };
 
         let content = if let Some(icon) = &model.icon {
             match icon {
@@ -319,10 +366,15 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
         } else {
             content
         };
-        control = control.child(div().text_color(look.foreground).child(content));
+        // A trigger's chevron takes the `icon` color (`trigger_button.lss`), dimmed with its state.
+        let trailing = trigger.and_then(|trigger| trigger.chevron.as_ref()).map(|chevron| {
+            let color = hsl(colors.root().value("icon").and_then(Value::as_color)).unwrap_or(look.muted_foreground);
+            crate::infra::icon::render_icon_source(chevron, color, look.icon_size)
+        });
+        let mut control = face.control(&face_look, content, trailing);
         // A two-stop face (Radix classic) paints over the flat fill, even under a model look override.
-        let face = colors.root();
-        let stop = |name: &str| face.value(name).and_then(Value::as_color).map(Hsla::from);
+        let colors_root = colors.root();
+        let stop = |name: &str| colors_root.value(name).and_then(Value::as_color).map(Hsla::from);
         if let (Some(top), Some(bottom)) = (stop("background_start"), stop("background_end")) {
             control = control.bg(gpui::linear_gradient(
                 180.0,
@@ -330,37 +382,13 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
                 gpui::linear_color_stop(bottom, 1.0),
             ));
         }
-        control = self.apply_modifiers(control, model);
-
-        if crate::infra::shadow_layout::should_paint_shadow(
-            model.elevation,
-            model.state.disabled,
-            look.shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()),
-        ) && let Some(shadows) = look.shadow.take()
-        {
-            control = control.shadow(shadows);
+        let control = self.apply_modifiers(control, model);
+        let root = face.root(control, &face_look);
+        // A trigger tells assistive technology whether its popup is showing.
+        match trigger {
+            Some(trigger) => root.aria_expanded(trigger.open),
+            None => root,
         }
-
-        let radius = if let Some(radius) = model.radius_override.get() {
-            radius
-        } else if model.round {
-            look.height / 2.0
-        } else {
-            look.radius
-        };
-        let adorned = div().id((model.id.clone(), 1usize)).relative().child(control);
-        let mut root_element = div().id(model.id.clone()).relative();
-        root_element = if focus_extent > 0.0 {
-            root_element.p(px(focus_extent)).child(adorned)
-        } else {
-            root_element.child(adorned)
-        };
-        root_element = root_element.child(focus.overlay(look.focus_border, focused, radius, model.compact));
-        root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
-        if !model.state.disabled {
-            root_element = root_element.cursor_pointer();
-        }
-        root_element
     }
 }
 
@@ -411,6 +439,7 @@ mod disabled_opacity_tests {
             "button",
             "toggle",
             "popup_menu",
+            "trigger_button",
             "selector",
             "checkbox",
             "radio",

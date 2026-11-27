@@ -1,10 +1,10 @@
 // Radix selector trigger. Layer: look. The popup-menu trigger: outline is the page background with the
 // border role, ghost has no face; both tint to accent 3 when hovered or pressed. Size 2 text at every
-// size, medium weight; the chevron takes the label color. Radix triggers do not mark invalid.
+// size, medium weight; the chevron takes the label color in every state (owned, so it follows the disabled label). Radix triggers do not mark invalid.
 
 selector {
   part root {
-    icon        = foreground
+    icon        := foreground
     font_size   = 14
     line_height = 20
     font_weight = 500

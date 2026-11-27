@@ -8,6 +8,7 @@
 mod callback;
 mod control;
 mod core;
+pub(crate) mod face;
 mod model;
 mod template;
 mod styled;
@@ -15,6 +16,7 @@ mod styled;
 pub mod family;
 pub mod icon_button;
 pub mod split_button;
+pub mod trigger_button;
 
 pub use control::{Button, ButtonEvent};
 pub use callback::{ButtonCallbacks, ButtonEventExt};
@@ -28,3 +30,7 @@ pub use model::{
 pub use template::{ButtonTemplate, ButtonTemplateModifier, default_button_template};
 pub use styled::{ButtonData, StyledButtonTemplate};
 pub use icon_button::IconButton;
+pub use trigger_button::{TriggerButton, TriggerData};
+
+#[cfg(all(test, feature = "test-support"))]
+mod face_tests;

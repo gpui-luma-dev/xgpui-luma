@@ -1,5 +1,5 @@
 // Shadcn selector trigger. Layer: look. The trigger is this look's outline or ghost button (inherited
-// through `selector extends button`) with the control's own padding, a muted chevron, and a destructive
+// through `selector extends trigger_button extends button`) with the control's own padding, a muted chevron, and a destructive
 // edge and ring when invalid.
 
 selector {
@@ -7,7 +7,8 @@ selector {
   size sm { padding_x = metrics.control.padding_x }
   size lg { padding_x = metrics.control.padding_x }
 
-  part root { icon = css.muted_foreground }
+  // Owned (`:=`): shadcn fades a disabled trigger over its resting colors, chevron included.
+  part root { icon := css.muted_foreground }
 
   variant outline {
     part root {

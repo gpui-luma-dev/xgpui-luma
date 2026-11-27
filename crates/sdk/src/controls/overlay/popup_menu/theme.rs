@@ -18,12 +18,16 @@ pub struct PopupMenuPalette {
     pub floating_menu: FloatingMenuLook,
 }
 
+/// Build one with a theme's `resolve_look` or [`compose_popup_menu_look`]; it may gain fields.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct PopupMenuLook {
     /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
     pub trigger_focus_border: gpui::Hsla,
     pub trigger_background: Hsla,
     pub trigger_foreground: Hsla,
+    /// The chevron (`icon`, the label color unless a look changes it).
+    pub trigger_icon: Hsla,
     pub trigger_border: Option<Hsla>,
     pub trigger_shadow: Option<Vec<BoxShadow>>,
     pub trigger_typography: LumaTextStyle,
@@ -39,11 +43,15 @@ pub struct PopupMenuLook {
     pub floating_menu: FloatingMenuLook,
 }
 
+/// Build one from [`Default`]; it may gain fields.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub struct PopupMenuTriggerMetrics {
     pub without_elevation: bool,
     pub icon_only: bool,
     pub trigger_radius_override: Option<f32>,
+    /// The menu is showing: sets the `open` state (the trigger styles of `trigger_button.lss`).
+    pub open: bool,
 }
 
 pub trait PopupMenuTheme: Send + Sync {
@@ -84,6 +92,7 @@ pub fn compose_popup_menu_look(palette: &PopupMenuPalette, scale: &StandardBoxSc
         trigger_focus_border: palette.trigger_focus_border,
         trigger_background: palette.trigger_background,
         trigger_foreground: palette.trigger_foreground,
+        trigger_icon: palette.trigger_foreground,
         trigger_border: palette.trigger_border,
         trigger_shadow: palette.trigger_shadow.clone(),
         trigger_typography: palette.trigger_typography,
