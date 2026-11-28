@@ -8,7 +8,7 @@ use gpui::{AnyElement, App, Context, Entity, Render, SharedString, Subscription,
 use xgpui_luma::color::ColorValue;
 use xgpui_luma::infra::ElementExt;
 
-use crate::color_stop::template::{detail_label, editor_panel, label, swatch};
+use crate::color_stop::template::{detail_label, editor_panel, label};
 use crate::color_stop::{
     ColorStop, ColorStopBuilder, ColorStopEvent, ColorStopRenderModel, ColorStopTemplate, ColorStopTemplateHandlers,
     make_color_stop_template,
@@ -184,7 +184,7 @@ fn format_stop_event(event: &ColorStopEvent) -> String {
 fn numbered_stop_template() -> Arc<dyn ColorStopTemplate> {
     const NUMBER_WIDTH: f32 = 18.0;
     make_color_stop_template(
-        |model: ColorStopRenderModel<'_>, handlers: ColorStopTemplateHandlers, _: &mut Window, cx: &mut App| {
+        |mut model: ColorStopRenderModel<'_>, handlers: ColorStopTemplateHandlers, _: &mut Window, _: &mut App| {
             let chrome = model.look.chrome();
             let number: SharedString = model.index.map(|index| (index + 1).to_string()).unwrap_or_default().into();
             let line = div()
@@ -201,7 +201,7 @@ fn numbered_stop_template() -> Arc<dyn ColorStopTemplate> {
                         .text_color(chrome.muted_text)
                         .child(number),
                 )
-                .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
+                .children(model.swatch.take())
                 .child(label(&model))
                 .children(detail_label(&model))
                 .children(model.remove_button);

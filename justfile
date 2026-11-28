@@ -261,9 +261,6 @@ lab-parley-test-native *args:
 lab-parley-perf:
     cargo test --release --locked -p xgpui-lab --features test-support --bin xgpui-lab measure_ -- --ignored --nocapture
 
-lab-chromaticity *args:
-    {{ app-run }} -p xgpui-lab --bin chromaticity-lab "${app_args[@]}"
-
 lab-coverage-report:
     {{ python }} apps/xgpui-lab/scripts/render_objc2_coverage.py
 

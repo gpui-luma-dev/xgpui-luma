@@ -7,28 +7,16 @@
 
 use std::sync::{Arc, OnceLock};
 
-use gpui::{
-    AnyElement, App, Bounds, ClickEvent, Div, IntoElement, MouseButton, Pixels, SharedString, Stateful, Window, div,
-    prelude::*, px,
-};
+use gpui::{AnyElement, App, Bounds, IntoElement, Pixels, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::color::ColorValue;
 use xgpui_luma::infra::ElementExt;
-use xgpui_luma::infra::attachments::TooltipHandle;
-use xgpui_luma::theme::InteractionState;
-use xgpui_luma_color::ColorSwatch;
 
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
-pub(crate) type ColorStopClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub(crate) type ColorStopBoundsHandler = Box<dyn Fn(Bounds<Pixels>, &mut Window, &mut App) + 'static>;
-pub(crate) type ColorStopHoverHandler = Box<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 
 /// Behavior the template attaches to its own elements.
 pub(crate) struct ColorStopTemplateHandlers {
-    /// Attach to the swatch (or whatever the template uses to toggle the editor).
-    pub swatch_click: ColorStopClickHandler,
-    /// Swatch hover, which drives its tooltip.
-    pub swatch_hover: ColorStopHoverHandler,
     /// Attach to the root (e.g. via `on_prepaint`) so the control knows its
     /// laid-out size; lists use it to size their viewport.
     pub bounds: ColorStopBoundsHandler,
@@ -58,9 +46,9 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub remove_button: Option<AnyElement>,
     /// Color editor; present only while expanded.
     pub editor: Option<AnyElement>,
-    /// Swatch help ("Edit color" / "Close color editor"), for the current state.
-    pub swatch_tooltip: Option<TooltipHandle>,
-    pub swatch_hovered: bool,
+    /// Swatch button that toggles the editor, with its state-dependent tooltip.
+    /// Pre-rendered and isolated from the surrounding row, like `remove_button`.
+    pub swatch: Option<AnyElement>,
 }
 
 pub(crate) trait ColorStopTemplate: Send + Sync {
@@ -115,16 +103,16 @@ pub(crate) struct DefaultColorStopTemplate;
 
 /// Height of the default template's single line.
 pub(crate) const DEFAULT_LINE_HEIGHT: f32 = 32.0;
-const SWATCH_SIZE: f32 = 26.0;
+pub(super) const SWATCH_SIZE: f32 = 26.0;
 const DETAIL_MIN_WIDTH: f32 = 60.0;
 
 impl ColorStopTemplate for DefaultColorStopTemplate {
     fn render(
         &self,
-        model: ColorStopRenderModel<'_>,
+        mut model: ColorStopRenderModel<'_>,
         handlers: ColorStopTemplateHandlers,
         _window: &mut Window,
-        cx: &mut App,
+        _cx: &mut App,
     ) -> AnyElement {
         let group: SharedString = format!("{}-group", model.id).into();
         let line = div()
@@ -133,7 +121,7 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
             .flex()
             .items_center()
             .gap_2()
-            .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
+            .children(model.swatch.take())
             .child(label(&model))
             .children(gamut_badge(&model))
             .children(detail_label(&model))
@@ -162,38 +150,6 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
 }
 
 // Building blocks shared with custom templates.
-
-/// Color swatch (checkerboard for translucent colors) that toggles the editor,
-/// with its tooltip. The press stays with the swatch, so the surrounding row
-/// neither takes focus from an open editor nor starts a drag.
-pub(crate) fn swatch(
-    model: &ColorStopRenderModel<'_>,
-    on_click: ColorStopClickHandler,
-    on_hover: ColorStopHoverHandler,
-    cx: &App,
-) -> Stateful<Div> {
-    let id: SharedString = format!("{}-swatch", model.id).into();
-    let selector = id.to_string();
-    let root = div()
-        .id(id)
-        .debug_selector(move || selector.clone())
-        .flex_shrink_0()
-        .w(px(SWATCH_SIZE))
-        .cursor_pointer()
-        .on_hover(move |hovered, window, cx| on_hover(*hovered, window, cx))
-        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .on_click(move |event, window, cx| {
-            cx.stop_propagation();
-            on_click(event, window, cx);
-        })
-        .child(ColorSwatch::new(model.color).checkerboard(true).height(px(SWATCH_SIZE)).rounded(px(6.0)));
-    match &model.swatch_tooltip {
-        Some(tooltip) => {
-            tooltip.render(root, InteractionState { hovered: model.swatch_hovered, ..Default::default() }, cx)
-        }
-        None => root,
-    }
-}
 
 /// `hsl(h s l / a)` label filling the remaining width; truncates rather than
 /// running into the trailing badge/detail.

@@ -47,10 +47,11 @@ pub(crate) struct ChromaticityLab {
 impl ChromaticityLab {
     pub(crate) fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let choices = vec![
-            Choice::new(
+            Choice::sized(
                 "chromaticity-source",
                 "Source",
                 &look,
+                radix::ButtonSize::One,
                 labels(&model::NAMES),
                 1,
                 cx,
@@ -60,10 +61,11 @@ impl ChromaticityLab {
                     cx.notify();
                 },
             ),
-            Choice::new(
+            Choice::sized(
                 "chromaticity-pixel",
                 "Pixel",
                 &look,
+                radix::ButtonSize::One,
                 model::PATCHES.iter().map(|p| p.0.to_owned()).collect(),
                 0,
                 cx,
@@ -73,10 +75,11 @@ impl ChromaticityLab {
                     cx.notify();
                 },
             ),
-            Choice::new(
+            Choice::sized(
                 "chromaticity-simulated",
                 "Simulated gamut",
                 &look,
+                radix::ButtonSize::One,
                 labels(&model::NAMES),
                 0,
                 cx,
@@ -86,10 +89,11 @@ impl ChromaticityLab {
                     cx.notify();
                 },
             ),
-            Choice::new(
+            Choice::sized(
                 "chromaticity-luminance",
                 "Fill Y",
                 &look,
+                radix::ButtonSize::One,
                 labels(&["0.05", "0.18", "0.50"]),
                 1,
                 cx,
@@ -99,10 +103,11 @@ impl ChromaticityLab {
                     cx.notify();
                 },
             ),
-            Choice::new(
+            Choice::sized(
                 "chromaticity-mapping",
                 "Mapping",
                 &look,
+                radix::ButtonSize::One,
                 labels(&["Clip", "Reduce chroma"]),
                 0,
                 cx,
@@ -116,10 +121,11 @@ impl ChromaticityLab {
                     cx.notify();
                 },
             ),
-            Choice::new(
+            Choice::sized(
                 "chromaticity-fill",
                 "Fill",
                 &look,
+                radix::ButtonSize::One,
                 labels(&["Visible", "Hidden"]),
                 0,
                 cx,
@@ -133,6 +139,7 @@ impl ChromaticityLab {
             .map(|index| {
                 radix::TextField::new(format!("chroma-rgb-{index}"))
                     .look(&look)
+                    .size(radix::TextFieldSize::One)
                     .surface()
                     .overrides(value_field_overrides(&look))
                     .full_width(true)
@@ -194,6 +201,7 @@ impl ChromaticityLab {
         let switches = vec![
             radix::Switch::new("chroma-hatching")
                 .look(&look)
+                .size(radix::SwitchSize::One)
                 .label("Hatching")
                 .checked(true)
                 .on_value_changed(cx, |this: &mut Self, value, cx| {
@@ -203,6 +211,7 @@ impl ChromaticityLab {
                 .spawn(cx),
             radix::Switch::new("chroma-uv")
                 .look(&look)
+                .size(radix::SwitchSize::One)
                 .label("u′v′")
                 .checked(false)
                 .on_value_changed(cx, |this: &mut Self, value, cx| {
