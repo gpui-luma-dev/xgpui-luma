@@ -7,72 +7,7 @@ use xgpui_luma_style::PartId;
 
 use super::styled::{resolve_tab, resolve_tabs_list};
 use crate::style::{PartRead, StyleBinding};
-use crate::theme::{InteractionState, LumaTextStyle};
-
-#[deprecated(note = "the tabs template draws from `TabsTheme::style()`; resolve it with `resolve_tabs_list` (#433)")]
-#[derive(Clone, Copy, Debug)]
-pub struct TabsListLook {
-    /// List border thickness in pixels.
-    pub border_width: f32,
-    pub background: Option<Hsla>,
-    pub border: Option<Hsla>,
-    pub radius: f32,
-    pub padding: f32,
-    pub gap: f32,
-}
-
-#[deprecated(note = "the tabs template draws from `TabsTheme::item_style()`; resolve it with `resolve_tab` (#433)")]
-#[derive(Clone, Copy, Debug)]
-pub struct TabsItemLook {
-    /// Accessory glyph size and gap in pixels.
-    pub accessory_size: f32,
-    pub accessory_gap: f32,
-    pub label_color: Hsla,
-    pub indicator: Option<Hsla>,
-    /// Selected-chip fill. `None` is transparent (line / underline tabs).
-    pub background: Option<Hsla>,
-    pub label_typography: LumaTextStyle,
-    pub radius: f32,
-    pub padding_x: f32,
-    pub height: f32,
-    pub indicator_height: f32,
-}
-
-impl TabsListLook {
-    /// The look `resolved` (a tab list's resolved style, see [`resolve_tabs_list`]) describes: the compatibility
-    /// path for code that still reads a `TabsListLook` (#433).
-    pub fn from_resolved(resolved: &xgpui_luma_style::Resolved) -> Self {
-        let list = resolved.part(PartId::new("list"));
-        Self {
-            border_width: list.number("border_width"),
-            background: list.painted("background"),
-            border: list.painted("border"),
-            radius: list.number("radius"),
-            padding: list.number("padding"),
-            gap: list.number("gap"),
-        }
-    }
-}
-
-impl TabsItemLook {
-    /// The look `resolved` (a tab's resolved style, see [`resolve_tab`]) describes, `active` or not: the
-    /// compatibility path for code that still reads a `TabsItemLook` (#433).
-    pub fn from_resolved(resolved: &xgpui_luma_style::Resolved, active: bool) -> Self {
-        let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
-        Self {
-            accessory_size: root.number("accessory_size"),
-            accessory_gap: root.number("accessory_gap"),
-            label_color: item.color("foreground"),
-            indicator: if active { root.painted("indicator") } else { None },
-            background: item.painted("background"),
-            label_typography: item.typography(14.0, 20.0),
-            radius: item.number("radius"),
-            padding_x: item.number("padding_x"),
-            height: item.number("height"),
-            indicator_height: root.number("indicator_height"),
-        }
-    }
-}
+use crate::theme::InteractionState;
 
 /// Full-list rule painted behind the active indicator without consuming layout space.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -127,18 +62,6 @@ pub trait TabsTheme: Send + Sync {
     #[allow(deprecated)]
     fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
         crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
-    }
-
-    /// The tab list, built from [`Self::style`] for code that still reads a [`TabsListLook`].
-    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_tabs_list` (#433)")]
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        TabsListLook::from_resolved(&resolve_tabs_list(&self.style(), enabled))
-    }
-
-    /// A tab, built from [`Self::item_style`] for code that still reads a [`TabsItemLook`].
-    #[deprecated(note = "the template draws from `item_style()`; resolve it with `resolve_tab` (#433)")]
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        TabsItemLook::from_resolved(&resolve_tab(&self.item_style(active, state), active, state), active)
     }
 
     /// The tabs' font family: the `item` part's, at rest.

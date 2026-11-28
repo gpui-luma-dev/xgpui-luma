@@ -1,5 +1,4 @@
 //! Radix resize chrome over the SDK splitter and split-view engines.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{SharedString, px};
 use xgpui_luma::controls::{dock_splitter::*, split_view::*};
@@ -61,6 +60,9 @@ mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
     use xgpui_luma::theme::ThemeMode;
+    use xgpui_luma::controls::dock_splitter::resolve_dock_splitter;
+    use xgpui_luma::controls::split_view::resolve_split_view;
+    use xgpui_luma::style::PartRead;
     #[test]
     fn splitter_colors_follow_live_palettes_and_disabled_state() {
         let look = Look::built_in();
@@ -71,11 +73,12 @@ mod tests {
             for accent in [Accent::Blue, Accent::Lime] {
                 look.set_palettes(accent, Gray::Auto);
                 for enabled in [false, true] {
-                    let dock = dock.resolve(enabled);
-                    let split = split.resolve(true, enabled);
-                    crate::control_group::assert_close(dock.hover_color, split.separator_hover);
+                    let dock = resolve_dock_splitter(&dock.style(), enabled);
+                    let split = resolve_split_view(&split.style(), enabled);
+                    let (dock, split) = (dock.root(), split.root());
+                    crate::control_group::assert_close(dock.color("hover_line"), split.color("separator_hover"));
                     crate::control_group::assert_close(
-                        dock.hover_color,
+                        dock.color("hover_line"),
                         look.resolve_role(if enabled {
                             SemanticRole::Focus
                         } else {
@@ -83,8 +86,8 @@ mod tests {
                         })
                         .hsla(),
                     );
-                    assert!(dock.hit_target_px >= dock.visible_line_px);
-                    assert!(split.geometry.hitbox_width >= split.geometry.cue_hovered_width);
+                    assert!(dock.number("hit_target") >= dock.number("visible_line"));
+                    assert!(split.number("hitbox_width") >= split.number("cue_hovered_width"));
                 }
             }
         }
@@ -118,6 +121,10 @@ mod tests {
 #[cfg(test)]
 mod lss_tests {
     use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle, resolve_scrollbar, scrollbar_length};
+    use xgpui_luma::controls::dock_splitter::resolve_dock_splitter;
+    use xgpui_luma::controls::resizable_panels::resolve_resizable_panels;
+    use xgpui_luma::controls::split_view::resolve_split_view;
+    use xgpui_luma::theme::stylesheet::{DockSplitterGeometry, SplitViewGeometry};
     use xgpui_luma::style::PartRead;
     use xgpui_luma::theme::{InteractionState, ThemeMode};
 
@@ -171,18 +178,22 @@ mod lss_tests {
 
                 let panels = crate::resizable_panels_theme(&look);
                 for disabled in [false, true] {
-                    let got = panels.resolve(InteractionState { disabled, hovered: true, ..Default::default() });
-                    assert_close(got.border, role(SemanticRole::Border));
-                    assert_close(got.divider, if disabled { gray(4) } else { role(SemanticRole::Border) });
-                    assert_close(got.grip, role(SemanticRole::MutedForeground));
+                    let got = resolve_resizable_panels(
+                        &panels.style(),
+                        InteractionState { disabled, hovered: true, ..Default::default() },
+                    );
+                    let got = got.root();
+                    assert_close(got.color("border"), role(SemanticRole::Border));
+                    assert_close(got.color("divider"), if disabled { gray(4) } else { role(SemanticRole::Border) });
+                    assert_close(got.color("grip"), role(SemanticRole::MutedForeground));
                     let emphasis = if disabled {
                         SemanticRole::MutedForeground
                     } else {
                         SemanticRole::Focus
                     };
-                    assert_close(got.grip_emphasis, role(emphasis));
-                    assert!(got.border_width > 0.0 && got.divider_width > 0.0);
-                    assert_eq!(got.opacity, 1.0, "Radix draws disabled colors without fading");
+                    assert_close(got.color("grip_emphasis"), role(emphasis));
+                    assert!(got.number("border_width") > 0.0 && got.number("divider_width") > 0.0);
+                    assert_eq!(got.opacity(), 1.0, "Radix draws disabled colors without fading");
                 }
 
                 let (dock, split) = (crate::dock_splitter_theme(&look), crate::split_view_theme(&look));
@@ -192,24 +203,28 @@ mod lss_tests {
                     } else {
                         SemanticRole::MutedForeground
                     });
-                    let got = dock.resolve(enabled);
+                    let got = resolve_dock_splitter(&dock.style(), enabled);
+                    let geometry = DockSplitterGeometry::from_resolved(&got);
+                    let got = got.root();
                     assert_close(
-                        got.line_color,
+                        got.color("line"),
                         role(if enabled {
                             SemanticRole::Border
                         } else {
                             SemanticRole::MutedForeground
                         }),
                     );
-                    assert_close(got.hover_color, active);
-                    assert_close(got.thumb_color, active);
-                    assert!(got.hit_target_px >= got.visible_line_px && got.visible_line_px > 0.0);
-                    assert!(got.geometry.thumb_height > 0.0);
-                    let got = split.resolve(false, enabled);
-                    assert_close(got.separator, if enabled { role(SemanticRole::Border) } else { gray(4) });
-                    assert_close(got.separator_hover, active);
-                    assert!(got.geometry.hitbox_width >= got.geometry.cue_hovered_width);
-                    assert!(got.geometry.cue_hovered_width > 0.0);
+                    assert_close(got.color("hover_line"), active);
+                    assert_close(got.color("thumb"), active);
+                    assert!(got.number("hit_target") >= got.number("visible_line") && got.number("visible_line") > 0.0);
+                    assert!(geometry.thumb_height > 0.0);
+                    let got = resolve_split_view(&split.style(), enabled);
+                    let geometry = SplitViewGeometry::from_resolved(&got);
+                    let got = got.root();
+                    assert_close(got.color("separator"), if enabled { role(SemanticRole::Border) } else { gray(4) });
+                    assert_close(got.color("separator_hover"), active);
+                    assert!(geometry.hitbox_width >= geometry.cue_hovered_width);
+                    assert!(geometry.cue_hovered_width > 0.0);
                 }
             }
         }

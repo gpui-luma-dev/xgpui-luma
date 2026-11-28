@@ -1,5 +1,4 @@
 //! Radix tabs, drawn from `.lss` (`style/tabs.lss`) with the look-wide `TabsStyle` tuning over them.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -295,6 +294,56 @@ mod tests {
     use crate::semantic::SemanticRole;
     use crate::RadixSize;
 
+    /// A tab list in `enabled`, read from the theme's resolved style (#433).
+    struct ListProbe {
+        background: Option<gpui::Hsla>,
+        padding: f32,
+        radius: f32,
+        gap: f32,
+    }
+
+    /// A tab, `active` or not, in `state`, read from the theme's resolved style (#433).
+    struct ItemProbe {
+        background: Option<gpui::Hsla>,
+        indicator: Option<gpui::Hsla>,
+        radius: f32,
+        padding_x: f32,
+        height: f32,
+        indicator_height: f32,
+    }
+
+    fn tab_list(theme: &std::sync::Arc<dyn xgpui_luma::controls::tabs::TabsTheme>, enabled: bool) -> ListProbe {
+        use xgpui_luma::controls::tabs::resolve_tabs_list;
+        use xgpui_luma::style::PartRead;
+        let resolved = resolve_tabs_list(&theme.style(), enabled);
+        let list = resolved.part(xgpui_luma::style::lss::PartId::new("list"));
+        ListProbe {
+            background: list.painted("background"),
+            padding: list.number("padding"),
+            radius: list.number("radius"),
+            gap: list.number("gap"),
+        }
+    }
+
+    fn tab_item(
+        theme: &std::sync::Arc<dyn xgpui_luma::controls::tabs::TabsTheme>,
+        active: bool,
+        state: InteractionState,
+    ) -> ItemProbe {
+        use xgpui_luma::controls::tabs::resolve_tab;
+        use xgpui_luma::style::PartRead;
+        let resolved = resolve_tab(&theme.item_style(active, state), active, state);
+        let (root, item) = (resolved.root(), resolved.part(xgpui_luma::style::lss::PartId::new("item")));
+        ItemProbe {
+            background: item.painted("background"),
+            indicator: if active { root.painted("indicator") } else { None },
+            radius: item.number("radius"),
+            padding_x: item.number("padding_x"),
+            height: item.number("height"),
+            indicator_height: root.number("indicator_height"),
+        }
+    }
+
     #[test]
     fn embedded_geometry_preserves_all_modes_sizes_and_variants() {
         let look = Look::built_in();
@@ -305,7 +354,7 @@ mod tests {
                     let theme = tabs_theme_for(&look.with_size(size), variant);
                     let surface = variant == TabsVariant::Surface;
                     for enabled in [true, false] {
-                        let list = theme.resolve_list(enabled);
+                        let list = tab_list(&theme, enabled);
                         assert_eq!(list.gap, if surface { 2.0 } else { 0.0 });
                         assert_eq!(list.padding, if surface { 4.0 } else { 0.0 });
                     }
@@ -317,7 +366,7 @@ mod tests {
                         InteractionState { disabled: true, ..Default::default() },
                     ] {
                         for active in [false, true] {
-                            let item = theme.resolve_item(active, state);
+                            let item = tab_item(&theme, active, state);
                             assert_eq!(item.indicator_height, if surface { 0.0 } else { 2.0 });
                             assert_eq!(item.height, if size == RadixSize::One { 32.0 } else { 40.0 });
                             assert_eq!(item.padding_x, if size == RadixSize::One { 8.0 } else { 16.0 });
@@ -338,10 +387,10 @@ mod tests {
         tuning.gap = 11.0;
         tuning.indicator_height = 7.0;
         look.set_tabs_style(tuning);
-        assert_eq!(line.resolve_list(true).gap, 11.0);
-        assert_eq!(line.resolve_item(true, Default::default()).indicator_height, 7.0);
-        assert_eq!(surface.resolve_list(true).gap, 2.0);
-        assert_eq!(surface.resolve_item(true, Default::default()).indicator_height, 0.0);
+        assert_eq!(tab_list(&line, true).gap, 11.0);
+        assert_eq!(tab_item(&line, true, Default::default()).indicator_height, 7.0);
+        assert_eq!(tab_list(&surface, true).gap, 2.0);
+        assert_eq!(tab_item(&surface, true, Default::default()).indicator_height, 0.0);
     }
 
     #[test]
@@ -355,21 +404,19 @@ mod tests {
                 InteractionState { hovered: true, pressed: true, ..Default::default() },
             ] {
                 for active in [false, true] {
-                    let item = tabs.resolve_item(active, state);
+                    let item = tab_item(&tabs, active, state);
                     // The gray ghost fill: gray 3 hovered, gray 4 pressed.
                     let step = if state.pressed { 4 } else { 3 };
                     crate::control_group::assert_close(
                         item.background.expect("a hover or press fill"),
                         look.resolve_step(ScaleFamily::Gray, step).hsla(),
                     );
-                    let resting = tabs.resolve_item(active, InteractionState::default());
+                    let resting = tab_item(&tabs, active, InteractionState::default());
                     assert_eq!(item.indicator, resting.indicator);
                     assert_eq!(item.padding_x, resting.padding_x);
                     assert_eq!(item.height, resting.height);
                     assert!(resting.background.is_none());
-                    assert!(
-                        tabs.resolve_item(active, InteractionState { disabled: true, ..state }).background.is_none()
-                    );
+                    assert!(tab_item(&tabs, active, InteractionState { disabled: true, ..state }).background.is_none());
                 }
             }
         }
@@ -381,7 +428,7 @@ mod tests {
     fn baseline_can_change_without_changing_tab_geometry_or_indicator() {
         let look = Look::built_in();
         let theme = tabs_theme(&look);
-        let original = theme.resolve_item(true, InteractionState::default());
+        let original = tab_item(&theme, true, InteractionState::default());
         let mut style = look.tabs_style();
         // An explicit color is exact in every mode; without one the `.lss` baseline color follows the mode.
         let color = look.resolve_step(ScaleFamily::Gray, 8).hsla();
@@ -392,7 +439,7 @@ mod tests {
             let baseline = theme.baseline(true).unwrap();
             assert_eq!((baseline.height, baseline.inset_x, baseline.bottom), (3.0, 12.0, 4.0));
             assert_eq!(baseline.color, color);
-            let active = theme.resolve_item(true, InteractionState::default());
+            let active = tab_item(&theme, true, InteractionState::default());
             assert_eq!(active.height, original.height);
             assert_eq!(active.padding_x, original.padding_x);
             assert_eq!(active.indicator_height, original.indicator_height);
@@ -401,7 +448,7 @@ mod tests {
         style.baseline = None;
         look.set_tabs_style(style);
         assert!(theme.baseline(true).is_none());
-        assert!(theme.resolve_item(true, InteractionState::default()).indicator.is_some());
+        assert!(tab_item(&theme, true, InteractionState::default()).indicator.is_some());
     }
 
     #[test]
@@ -423,9 +470,9 @@ mod tests {
     fn line_tabs_use_underline_indicator() {
         let look = Look::built_in();
         let theme = tabs_theme(&look);
-        let list = theme.resolve_list(true);
-        let active = theme.resolve_item(true, InteractionState::default());
-        let inactive = theme.resolve_item(false, InteractionState::default());
+        let list = tab_list(&theme, true);
+        let active = tab_item(&theme, true, InteractionState::default());
+        let inactive = tab_item(&theme, false, InteractionState::default());
 
         assert!(list.background.is_none());
         assert_eq!(list.padding, 0.0);
@@ -444,9 +491,9 @@ mod tests {
     fn surface_tabs_use_list_fill_and_selected_chip() {
         let look = Look::built_in();
         let theme = tabs_theme_for(&look, TabsVariant::Surface);
-        let list = theme.resolve_list(true);
-        let active = theme.resolve_item(true, InteractionState::default());
-        let inactive = theme.resolve_item(false, InteractionState::default());
+        let list = tab_list(&theme, true);
+        let active = tab_item(&theme, true, InteractionState::default());
+        let inactive = tab_item(&theme, false, InteractionState::default());
 
         assert!(list.background.is_some());
         assert!(list.padding > 0.0);
