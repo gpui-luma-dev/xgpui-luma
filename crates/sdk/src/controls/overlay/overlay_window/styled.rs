@@ -3,8 +3,7 @@
 use std::sync::Arc;
 
 use super::OverlayWindowMode;
-#[allow(deprecated)]
-use super::theme::OverlayWindowLook;
+
 use super::theme::OverlayWindowTheme;
 use crate::style::StyleBinding;
 
@@ -16,13 +15,6 @@ pub fn resolve_overlay_window(binding: &StyleBinding, mode: OverlayWindowMode) -
         _ => &[],
     };
     binding.resolve_for(attrs, &[], 1.0)
-}
-
-/// The overlay window for `binding` (the `overlay_window` control) in `mode`.
-#[deprecated(note = "the template draws from the resolved style; use `resolve_overlay_window` (#433)")]
-#[allow(deprecated)]
-pub fn styled_overlay_window_look(binding: &StyleBinding, mode: OverlayWindowMode) -> OverlayWindowLook {
-    OverlayWindowLook::from_resolved(&resolve_overlay_window(binding, mode))
 }
 
 /// An overlay-window theme read from `.lss`, resolved on every presentation.

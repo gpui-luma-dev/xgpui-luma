@@ -10,7 +10,6 @@ pub use model::{
 pub use template::{
     DockSplitterTemplate, DockSplitterTemplateHandlers, ThemedDockSplitterTemplate, default_dock_splitter_template,
 };
-#[allow(deprecated)]
 pub use theme::{DockSplitterTheme, default_dock_splitter_theme};
 
 mod callback;

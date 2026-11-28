@@ -1,22 +1,8 @@
 //! The callout read from `.lss` (issue #285): `callout.lss`. Looks render the element from [`CalloutLook`].
 
 use crate::style::PartRead;
-use gpui::Hsla;
 
 use crate::style::StyleBinding;
-
-/// A callout's colors, frame and text size.
-#[deprecated(note = "the callout draws from `StyledCallout::resolve` (#433)")]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CalloutLook {
-    pub background: Hsla,
-    pub foreground: Hsla,
-    pub radius: f32,
-    pub padding: f32,
-    pub gap: f32,
-    pub icon_size: f32,
-    pub font_size: f32,
-}
 
 /// The callout's `.lss` values for one binding (the `callout` control).
 #[derive(Clone)]
@@ -37,22 +23,6 @@ impl StyledCallout {
     /// The callout's style for the binding's attributes and states (#433): the callout draws from its parts.
     pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
         self.binding.resolve(&[], 1.0)
-    }
-
-    #[deprecated(note = "the callout draws from `resolve()` (#433)")]
-    #[allow(deprecated)]
-    pub fn look(&self) -> CalloutLook {
-        let resolved = self.resolve();
-        let root = resolved.root();
-        CalloutLook {
-            background: root.color("background"),
-            foreground: root.color("foreground"),
-            radius: root.number("radius"),
-            padding: root.number("padding_x"),
-            gap: root.number("gap"),
-            icon_size: root.number("icon_size"),
-            font_size: root.font_size().unwrap_or(14.0),
-        }
     }
 }
 

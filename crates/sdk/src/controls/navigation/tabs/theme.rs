@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
@@ -55,13 +53,6 @@ pub trait TabsTheme: Send + Sync {
             item.typography(14.0, 20.0),
             Some(self.font_family()),
         )
-    }
-
-    /// Appearance of native drag previews and insertion feedback.
-    #[deprecated(note = "templates draw from the resolved style; use `drag_style` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
     }
 
     /// The tabs' font family: the `item` part's, at rest.

@@ -773,7 +773,6 @@ fn submenu_transition_progress(index: usize, open_submenu: Option<usize>, transi
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
 
@@ -887,37 +886,6 @@ mod tests {
                 geometry,
             )
             .is_none()
-        );
-    }
-
-    /// The template draws from the resolved style (#433) with the values the `FloatingMenuLook` compatibility
-    /// type reads.
-    #[test]
-    fn the_resolved_style_matches_the_look() {
-        let binding = StyleBinding::sdk("floating_menu");
-        let look = crate::controls::floating_menu::styled_floating_menu_look(&binding);
-        let style = MenuStyle::resolve(&binding);
-        let (geometry, colors) = (style.geometry(), style.row_colors());
-        assert_eq!(
-            (geometry.padding, geometry.min_width, geometry.item_height),
-            (look.padding, look.min_width, look.item_height)
-        );
-        assert_eq!(geometry.separator_height, look.separator_thickness + 2.0 * look.separator_spacing);
-        assert_eq!(
-            (colors.foreground, colors.hover_background, colors.hover_foreground, colors.disabled_foreground),
-            (
-                look.foreground,
-                look.item_hover_background,
-                look.item_hover_foreground,
-                look.item_disabled_foreground
-            )
-        );
-        assert_eq!(style.disabled_opacity(), look.item_disabled_opacity);
-        assert_eq!((style.item_radius(), style.icon_size()), (look.item_radius, look.item_icon_size));
-        let items = [MenuItem::new("a"), MenuItem::separator("s"), MenuItem::new("b")];
-        assert_eq!(
-            floating_menu_size(&binding, &items),
-            gpui::size(px(look.min_width), px(look.padding * 2.0 + look.rows_height(&items)))
         );
     }
 }

@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::sync::{Arc, OnceLock};
 
 pub trait SplitViewTheme: Send + Sync {

@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use crate::style::PartRead;
-use gpui::{BoxShadow, Hsla};
 use xgpui_luma_style::{Overrides, PartId, Prop, Resolved};
 
 use crate::style::StyleBinding;
@@ -55,61 +54,6 @@ pub fn wrap_popover_panel(resolved: &Resolved, content: impl gpui::IntoElement) 
         .p(px(panel.number("padding")))
         .child(content)
         .into_any_element()
-}
-
-/// The panel a popover draws around its content.
-#[deprecated(note = "the popover draws its panel from its style; see `resolve_popover_panel` (#433)")]
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct PopoverPanelLook {
-    /// Whether the panel is drawn (`show_panel`); the rest is what it draws.
-    pub shown: bool,
-    pub background: Hsla,
-    /// The content's text color, on the panel's fill.
-    pub foreground: Hsla,
-    pub border: Hsla,
-    pub border_width: f32,
-    pub shadow: Vec<BoxShadow>,
-    pub radius: f32,
-    pub padding: f32,
-}
-
-#[allow(deprecated)]
-impl PopoverPanelLook {
-    /// The panel `binding` (a `popover` control) resolves to.
-    pub fn from_binding(binding: &StyleBinding) -> Self {
-        let resolved = resolve_popover_panel(binding);
-        let panel = resolved.part(PartId::new("panel"));
-        Self {
-            shown: popover_panel_shown(&resolved),
-            background: panel.color("background"),
-            foreground: panel.color("foreground"),
-            border: panel.color("border"),
-            border_width: panel.number("border_width"),
-            shadow: panel.box_shadow(),
-            radius: panel.number("radius"),
-            padding: panel.number("padding"),
-        }
-    }
-
-    /// The SDK's panel: off, with a floating surface's values for when a look turns it on.
-    pub fn sdk() -> Self {
-        Self::from_binding(&StyleBinding::sdk("popover"))
-    }
-
-    /// This look with the panel turned on or off.
-    pub fn shown(self, shown: bool) -> Self {
-        Self { shown, ..self }
-    }
-
-    /// The height the panel adds around its content: padding and border on both edges, or nothing when the
-    /// panel is off.
-    pub fn chrome_height(&self) -> f32 {
-        if self.shown {
-            2.0 * (self.padding + self.border_width)
-        } else {
-            0.0
-        }
-    }
 }
 
 #[cfg(test)]

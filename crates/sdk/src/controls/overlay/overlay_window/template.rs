@@ -4,8 +4,6 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, Stateful, Window, div, px, prelude::*};
 
-#[allow(deprecated)]
-use super::OverlayWindowLook;
 use super::{OverlayWindowRenderModel, OverlayWindowTheme, default_overlay_window_theme, resolve_overlay_window};
 use crate::style::PartRead;
 use xgpui_luma_style::{PartView, Resolved};
@@ -32,14 +30,6 @@ pub trait OverlayWindowTemplate: Send + Sync {
     /// The shell and placement style in `mode` (#433): what the control places and [`Self::render`] draws from.
     fn resolve_style(&self, mode: super::OverlayWindowMode) -> Arc<Resolved> {
         resolve_overlay_window(&default_overlay_window_theme().style(), mode)
-    }
-
-    /// The shell and placement look, built from [`Self::resolve_style`] for code that still reads an
-    /// [`OverlayWindowLook`].
-    #[deprecated(note = "the control draws from `resolve_style()` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        OverlayWindowLook::from_resolved(&self.resolve_style(mode))
     }
 
     /// The shell for `model`, drawn from `look`, the root of [`Self::resolve_style`].

@@ -16,7 +16,6 @@ pub use template::{
     ResizablePanelsTemplate, ResizablePanelsTemplateModifier, ThemedResizablePanelsTemplate,
     default_resizable_panels_template, render_resizable_panels_surface, render_resizable_panels_handle,
 };
-#[allow(deprecated)]
 pub use theme::{ResizablePanelsTheme, default_resizable_panels_theme};
 
 mod callback;

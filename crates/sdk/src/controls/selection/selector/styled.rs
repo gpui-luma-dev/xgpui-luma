@@ -78,20 +78,3 @@ pub(crate) fn metrics(binding: &StyleBinding) -> MetricTokens {
         ..MetricTokens::default()
     }
 }
-
-/// The trigger's look in `trigger_style` and `visual` state, built from `theme`'s resolved style (#433): for code
-/// that still reads a [`SelectorLook`](super::SelectorLook). Templates read the resolved style directly.
-#[deprecated(note = "read the trigger's values from `resolve_selector_trigger` instead (#433)")]
-#[allow(deprecated)]
-pub fn selector_look<T: SelectorTheme + ?Sized>(
-    theme: &T,
-    trigger_style: SelectorTriggerStyle,
-    visual: SelectorVisualState,
-    without_elevation: bool,
-) -> super::SelectorLook {
-    super::SelectorLook::from_resolved(
-        &resolve_trigger(&theme.style(), trigger_style, visual, 1.0),
-        crate::controls::selector_list::SelectorItemsPanelLook::from_style(&theme.menu()),
-        without_elevation,
-    )
-}

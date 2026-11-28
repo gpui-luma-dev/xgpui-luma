@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use crate::style::{PartRead, StyleBinding};
-use crate::theme::{LumaTextStyle, ThemeTokens};
+use crate::theme::LumaTextStyle;
 use gpui::{Context, Hsla, IntoElement, Pixels, Point, Render, SharedString, Window, div, prelude::*, px};
 use xgpui_luma_style::Resolved;
 
@@ -25,92 +25,8 @@ pub(crate) fn drag_marker_color(style: &Resolved, valid: bool) -> Hsla {
     style.root().color(if valid { "valid_marker" } else { "invalid_marker" })
 }
 
-#[deprecated(note = "templates draw from the resolved style; use `resolve_drag_preview` (#433)")]
-#[derive(Clone, Debug)]
-pub struct DragDropLook {
-    pub geometry: crate::theme::stylesheet::SharedGeometry,
-    pub background: Hsla,
-    pub foreground: Hsla,
-    pub valid_marker: Hsla,
-    pub invalid_marker: Hsla,
-    pub radius: f32,
-    pub typography: LumaTextStyle,
-    pub font_family: SharedString,
-}
-
-#[allow(deprecated)]
-impl DragDropLook {
-    #[deprecated(note = "use `resolve_drag_preview` (#433)")]
-    pub fn from_tokens(tokens: &ThemeTokens) -> Self {
-        let palette = tokens.stylesheet.recipes.palette("drag_drop", &tokens.palette);
-        Self {
-            geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
-            background: palette.surface.floating.background,
-            foreground: palette.surface.floating.foreground,
-            valid_marker: palette.focus.ring,
-            invalid_marker: palette.form.input.invalid_border,
-            radius: tokens.metrics.radius(),
-            typography: tokens.typography.text.label,
-            font_family: tokens.typography.font.sans.family.clone().into(),
-        }
-    }
-
-    /// The look `resolved` (see [`resolve_drag_preview`]) describes, with the SDK's shared helper geometry: the
-    /// compatibility path for code that still reads a `DragDropLook` (#433).
-    pub fn from_resolved(resolved: &Resolved) -> Self {
-        let root = resolved.root();
-        DragDropLook {
-            geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
-            background: root.color("background"),
-            foreground: root.color("foreground"),
-            valid_marker: root.color("valid_marker"),
-            invalid_marker: root.color("invalid_marker"),
-            radius: root.number("radius"),
-            typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(12.5),
-                line_height: root.line_height().unwrap_or(18.0),
-                weight: gpui::FontWeight(root.number("font_weight").max(100.0)),
-            },
-            font_family: root.font_family_name(),
-        }
-    }
-}
-
-/// The drag preview for `binding` (the `drag_preview` control): its colors, radius and text, with the SDK's
-/// shared helper geometry.
-#[deprecated(note = "templates draw from the resolved style; use `resolve_drag_preview` (#433)")]
-#[allow(deprecated)]
-pub fn styled_drag_drop_look(binding: &StyleBinding) -> DragDropLook {
-    DragDropLook::from_resolved(&resolve_drag_preview(binding))
-}
-
 #[cfg(test)]
-mod styled_tests {
-    use super::*;
-
-    #[test]
-    #[allow(deprecated)]
-    fn sdk_drag_preview_matches_the_token_preview() {
-        let lss = DragDropLook::from_resolved(&resolve_drag_preview(&sdk_drag_preview()));
-        let native = DragDropLook::from_tokens(&crate::theme::ThemeTokens::default());
-        let rgb = |c: gpui::Hsla| {
-            let c = c.to_rgb();
-            format!("{:.3},{:.3},{:.3},{:.3}", c.r, c.g, c.b, c.a)
-        };
-        for (got, want) in [
-            (lss.background, native.background),
-            (lss.foreground, native.foreground),
-            (lss.valid_marker, native.valid_marker),
-            (lss.invalid_marker, native.invalid_marker),
-        ] {
-            assert_eq!(rgb(got), rgb(want));
-        }
-        assert_eq!(
-            (lss.radius, lss.typography.size, lss.font_family),
-            (native.radius, native.typography.size, native.font_family)
-        );
-    }
-}
+mod styled_tests {}
 
 pub(crate) struct DragPreview {
     pub label: SharedString,

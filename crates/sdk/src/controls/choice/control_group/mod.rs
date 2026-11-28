@@ -30,8 +30,7 @@ pub use template::{
     control_group_template_with_theme, default_control_group_template, make_control_group_item_element_template,
     make_control_group_item_template, render_control_group_item_elements, shared_control_group_template,
 };
-#[allow(deprecated)]
-pub use theme::ControlGroupListLook;
+
 pub use theme::{ControlGroupItemPalette, ControlGroupItemVisualContext, ControlGroupTheme, default_control_group_theme};
 pub use themed_template::ThemedControlGroupTemplate;
 

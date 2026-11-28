@@ -1,6 +1,5 @@
 mod styled;
-#[allow(deprecated)]
-pub use styled::styled_progress_look;
+
 pub use styled::{StyledProgressTheme, resolve_progress};
 mod control;
 mod direction;
@@ -15,8 +14,7 @@ pub use template::{
     ThemedProgressTemplate, default_circular_progress_template, default_linear_progress_template,
     default_progress_template,
 };
-#[allow(deprecated)]
-pub use theme::ProgressLook;
+
 pub use theme::{ProgressTheme, default_progress_theme};
 
 use gpui::{Entity, SharedString};

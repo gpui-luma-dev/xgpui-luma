@@ -3,7 +3,6 @@
 //!
 //! Templates draw from each control's resolved root (#433); the Looks here are built from it for code that still
 //! reads them.
-#![allow(deprecated)]
 
 use std::sync::Arc;
 

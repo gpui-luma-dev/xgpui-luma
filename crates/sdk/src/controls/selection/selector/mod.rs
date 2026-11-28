@@ -40,8 +40,7 @@ mod control;
 mod item_template;
 mod model;
 mod styled;
-#[allow(deprecated)]
-pub use styled::{ItemsPanelSource, StyledSelectorTheme, resolve_trigger as resolve_selector_trigger, selector_look};
+pub use styled::{ItemsPanelSource, StyledSelectorTheme, resolve_trigger as resolve_selector_trigger};
 mod template;
 pub(crate) mod theme;
 
@@ -55,8 +54,7 @@ pub use template::{
     SelectorTemplate, SelectorTemplateHandlers, SelectorTemplateModifier, ThemedSelectorTemplate,
     default_selector_template,
 };
-#[allow(deprecated)]
-pub use theme::{SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState, default_selector_theme};
+pub use theme::{SelectorTheme, SelectorVisualState, default_selector_theme};
 
 pub use crate::infra::state::ControlFocusState;
 

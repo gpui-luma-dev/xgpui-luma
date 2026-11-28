@@ -1,7 +1,10 @@
 //! Radix ownership, state precedence, and shared geometry contracts.
 // These contracts read the compatibility Looks, which build from the resolved styles (#433).
-#![allow(deprecated)] // Parity tests still read the deprecated Looks (#433).
 use super::*;
+use xgpui_luma::controls::pager::resolve_pager;
+use xgpui_luma::controls::sidebar::resolve_sidebar_row;
+use xgpui_luma::controls::stepper::resolve_stepper;
+use xgpui_luma::style::lss::PartId;
 use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};
 use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
@@ -62,42 +65,45 @@ fn navigation_colors_and_disabled_precedence_follow_the_bound_look() {
                         ..Default::default()
                     };
                     let trigger = accordion.resolve_trigger(state);
-                    let item = sidebar.resolve_item(true, state);
+                    let item_style = resolve_sidebar_row(&sidebar.style(), true, state);
+                    let item = item_style.part(PartId::new("item"));
                     if state.disabled {
                         crate::control_group::assert_close(
                             trigger.foreground,
                             look.resolve_role(SemanticRole::MutedForeground).hsla(),
                         );
-                        crate::control_group::assert_close(item.foreground, trigger.foreground);
-                        assert_eq!(item.background, None);
-                        assert_eq!(item.focus_border, None);
+                        crate::control_group::assert_close(item.color("foreground"), trigger.foreground);
+                        assert_eq!(item.painted("background"), None);
+                        assert_eq!(item.painted("focus_border"), None);
                         assert_eq!(trigger.background, None);
                     } else {
                         crate::control_group::assert_close(
                             trigger.foreground,
                             look.resolve_role(SemanticRole::Foreground).hsla(),
                         );
-                        crate::control_group::assert_close(item.foreground, Tone::Accent.step(&look, 11));
-                        assert_eq!(item.focus_border.is_some(), state.focused);
+                        crate::control_group::assert_close(item.color("foreground"), Tone::Accent.step(&look, 11));
+                        assert_eq!(item.painted("focus_border").is_some(), state.focused);
                     }
                 }
-                let steps = stepper.resolve(true);
-                crate::control_group::assert_close(steps.complete_bg, Tone::Accent.step(&look, 9));
-                crate::control_group::assert_close(steps.complete_fg, Tone::Accent.contrast(&look));
-                crate::control_group::assert_close(steps.in_progress_fg, Tone::Accent.step(&look, 11));
-                let disabled = stepper.resolve(false);
-                assert_ne!(disabled.complete_bg, steps.complete_bg);
-                assert!(steps.step_badge_size > 0.0);
+                let steps_style = resolve_stepper(&stepper.style(), true);
+                let steps = steps_style.root();
+                crate::control_group::assert_close(steps.color("complete_background"), Tone::Accent.step(&look, 9));
+                crate::control_group::assert_close(steps.color("complete_foreground"), Tone::Accent.contrast(&look));
+                crate::control_group::assert_close(steps.color("current_foreground"), Tone::Accent.step(&look, 11));
+                let disabled_style = resolve_stepper(&stepper.style(), false);
+                assert_ne!(disabled_style.root().color("complete_background"), steps.color("complete_background"));
+                assert!(steps.number("step_badge_size") > 0.0);
             }
             for style in [PagerStyle::Minimal, PagerStyle::MinimalEdge, PagerStyle::Numeric] {
-                let resolved = pager.resolve(true, style);
+                let resolved = resolve_pager(&pager.style(), true, style);
+                let resolved = resolved.root();
                 crate::control_group::assert_close(
-                    resolved.panel_background,
+                    resolved.color("background"),
                     look.resolve_role(SemanticRole::Surface).hsla(),
                 );
-                crate::control_group::assert_close(resolved.selected_foreground, Tone::Accent.step(&look, 11));
+                crate::control_group::assert_close(resolved.color("selected_foreground"), Tone::Accent.step(&look, 11));
                 crate::control_group::assert_close(
-                    pager.resolve(false, style).body_text,
+                    resolve_pager(&pager.style(), false, style).root().color("foreground"),
                     look.resolve_role(SemanticRole::MutedForeground).hsla(),
                 );
             }
@@ -110,13 +116,20 @@ fn live_palette_edits_remain_local_to_forks() {
     let base = Look::built_in();
     let fork = base.fork();
     let sidebar = sidebar_theme(&fork);
-    let before = sidebar.resolve_item(true, Default::default());
+    let item = |theme: &std::sync::Arc<dyn xgpui_luma::controls::sidebar::SidebarTheme>| {
+        resolve_sidebar_row(&theme.style(), true, Default::default())
+    };
+    let before = item(&sidebar);
+    let (before_foreground, before_height) = (
+        before.part(PartId::new("item")).color("foreground"),
+        before.part(PartId::new("item")).number("height"),
+    );
     fork.set_mode(ThemeMode::Dark);
     fork.set_palettes(Accent::Red, Gray::Slate);
-    assert_ne!(sidebar.resolve_item(true, Default::default()).foreground, before.foreground);
-    let unchanged = sidebar_theme(&base).resolve_item(true, Default::default());
-    assert_eq!(unchanged.foreground, before.foreground);
-    assert_eq!(unchanged.height, before.height);
+    assert_ne!(item(&sidebar).part(PartId::new("item")).color("foreground"), before_foreground);
+    let unchanged = item(&sidebar_theme(&base));
+    assert_eq!(unchanged.part(PartId::new("item")).color("foreground"), before_foreground);
+    assert_eq!(unchanged.part(PartId::new("item")).number("height"), before_height);
     let drag = accordion_theme(&fork).drag_style();
     crate::control_group::assert_close(
         drag.root().color("valid_marker"),

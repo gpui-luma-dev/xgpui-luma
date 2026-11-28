@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::sync::{Arc, OnceLock};
 
 /// The dock splitter's geometry as its `.lss` resolves it.
