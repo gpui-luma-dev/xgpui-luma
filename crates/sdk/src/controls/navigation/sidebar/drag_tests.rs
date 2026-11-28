@@ -220,6 +220,8 @@ fn reparenting_animates_row_positions_without_changing_selection() {
     let (page, cx) = setup_animated(&mut app, true);
     let sidebar = cx.update(|_, cx| page.read(cx).sidebar.clone());
     let old = cx.debug_bounds("sidebar-drag-a").unwrap();
+    // Freeze the first frame of the drop so machine speed cannot advance the animation before the assertion.
+    sidebar.update(cx, |s, cx| s.drop_layout_motion(cx).elapse_for_test(Duration::ZERO));
     drag(cx, "a", "c", 0.2);
     assert!((cx.debug_bounds("sidebar-drag-a").unwrap().top() - old.top()).abs() < px(1.));
     cx.update(|_, cx| {

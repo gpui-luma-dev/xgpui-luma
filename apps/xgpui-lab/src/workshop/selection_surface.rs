@@ -765,6 +765,7 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
 
     use super::*;
+    use xgpui_luma::style::PartRead;
     use xgpui_luma::controls::selector::SelectorTriggerStyle;
     use xgpui_luma::theme::InteractionState;
     use crate::workshop::surface_page::WorkMode;
@@ -921,14 +922,15 @@ mod tests {
         let pinned = pin(&side, "invalid", false, cx);
         assert!(pinned.has("invalid"), "{pinned:?}");
         let theme = xgpui_luma::style::default_theme();
-        // Resolved the way the field draws (`resolve_look_with_scale`).
-        let (pinned_border, plain_border) = cx.update(|_, cx| {
-            let border = |pinned: Option<StateSet>, cx: &mut App| {
+        // Resolved the way the field draws (`resolve_style`).
+        let (pinned_border, plain_border) = cx.update(|_, _| {
+            let border = |pinned: Option<StateSet>| {
                 autocomplete_field(theme.clone(), pinned)
-                    .resolve_look_with_scale(Default::default(), true, 1.0, cx)
-                    .border
+                    .resolve_style(Default::default(), true, &xgpui_luma::style::lss::Overrides::new())
+                    .root()
+                    .color("border")
             };
-            (border(Some(pinned.clone()), cx), border(None, cx))
+            (border(Some(pinned.clone())), border(None))
         });
         assert_ne!(pinned_border, plain_border, "the pinned field draws the invalid border");
         side.update(cx, |side, cx| side.show_matrix(cx));
