@@ -21,13 +21,15 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, AnyView, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement,
-    MouseButton, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
+    MouseButton, Pixels, Render, SharedString, Subscription, Window, div, prelude::*, px,
 };
 use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::color::{ColorValue, Gamut};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
+use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::controls::tooltip::Tooltip;
-use xgpui_luma::infra::attachments::{TooltipEntityExt, TooltipHandle};
+use xgpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma_color::ColorSwatch;
 use xgpui_luma_look_radix as radix;
 
 use crate::theme::Look;
@@ -121,11 +123,12 @@ pub(crate) struct ColorStop {
     /// Held open by the host regardless of focus.
     open: bool,
     focus_handle: FocusHandle,
-    swatch_hovered: bool,
-    /// Swatch help for the closed and open states.
-    swatch_tooltips: [TooltipHandle; 2],
-    /// Focus in/out listeners; registered on first render (they need a window).
-    focus_subscriptions: Option<[Subscription; 2]>,
+    /// Luma button around the color swatch; toggles the editor and carries its tooltip.
+    swatch_button: Entity<Button>,
+    /// The current open came from the press that focused the swatch, so its click keeps it open.
+    opened_by_swatch_press: bool,
+    /// Focus in/out and swatch-click listeners; registered on first render (they need a window).
+    focus_subscriptions: Option<[Subscription; 3]>,
     remove_button: Option<Entity<Button>>,
     picker: Entity<InlineColorPicker>,
     /// Host text shown when the stop has no position (e.g. point coordinates).
@@ -161,7 +164,35 @@ impl ColorStop {
             button
         });
 
-        let swatch_tooltips = swatch_tooltips(&look, cx);
+        let swatch_button = {
+            let owner = cx.weak_entity();
+            let selector = format!("{id}-swatch");
+            radix::Button::new(format!("{id}-swatch"))
+                .look(look.as_ref())
+                .content_only()
+                .content(move |_, cx| match owner.upgrade() {
+                    Some(stop) => div()
+                        .w(px(template::SWATCH_SIZE))
+                        .child(
+                            ColorSwatch::new(stop.read(cx).color)
+                                .checkerboard(true)
+                                .height(px(template::SWATCH_SIZE))
+                                .rounded(px(6.0)),
+                        )
+                        .into_any_element(),
+                    None => div().into_any_element(),
+                })
+                .with_template_modifier(move |row, _| {
+                    let selector = selector.clone();
+                    row.w(px(template::SWATCH_SIZE))
+                        .h(px(template::SWATCH_SIZE))
+                        .flex_shrink_0()
+                        .p_0()
+                        .debug_selector(move || selector.clone())
+                })
+                .spawn(cx)
+                .tooltip(Tooltip::new(SWATCH_TOOLTIPS[0]), cx)
+        };
         let picker =
             InlineColorPicker::spawn(format!("{id}-picker"), look.as_ref(), builder.color, builder.edit_gamut, cx);
         subscriptions.push(cx.subscribe(&picker, |this, _, event: &InlineColorPickerEvent, cx| {
@@ -185,8 +216,8 @@ impl ColorStop {
             focus_within: false,
             open: false,
             focus_handle: cx.focus_handle(),
-            swatch_hovered: false,
-            swatch_tooltips,
+            swatch_button,
+            opened_by_swatch_press: false,
             focus_subscriptions: None,
             remove_button,
             picker,
@@ -259,7 +290,11 @@ impl ColorStop {
     pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
         if self.open != open {
             self.open = open;
-            self.expanded = self.open || self.focus_within;
+            let expanded = self.open || self.focus_within;
+            if self.expanded != expanded {
+                self.swatch_button.clone().tooltip(Tooltip::new(SWATCH_TOOLTIPS[usize::from(expanded)]), cx);
+            }
+            self.expanded = expanded;
             cx.notify();
         }
     }
@@ -288,7 +323,6 @@ impl ColorStop {
     }
 
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
-        self.swatch_tooltips = swatch_tooltips(&look, cx);
         self.look = look;
         cx.notify();
     }
@@ -322,6 +356,7 @@ impl ColorStop {
         let expanded = self.open || focus_within;
         if self.expanded != expanded {
             self.expanded = expanded;
+            self.swatch_button.clone().tooltip(Tooltip::new(SWATCH_TOOLTIPS[usize::from(expanded)]), cx);
             cx.emit(ColorStopEvent::ExpandedChanged(expanded));
             cx.notify();
         }
@@ -331,38 +366,36 @@ impl ColorStop {
         if self.focus_subscriptions.is_some() {
             return;
         }
-        let focus_in = cx.on_focus_in(&self.focus_handle, window, |this, _, cx| this.set_focus_within(true, cx));
-        let focus_out = cx.on_focus_out(&self.focus_handle, window, |this, _, _, cx| this.set_focus_within(false, cx));
-        self.focus_subscriptions = Some([focus_in, focus_out]);
+        let focus_in = cx.on_focus_in(&self.focus_handle, window, |this, window, cx| {
+            let was_expanded = this.expanded;
+            this.set_focus_within(true, cx);
+            // The press that focused the swatch also opens the editor; its click must not close it again.
+            this.opened_by_swatch_press =
+                !was_expanded && this.expanded && this.swatch_button.read(cx).focus_handle(cx).is_focused(window);
+        });
+        let focus_out = cx.on_focus_out(&self.focus_handle, window, |this, _, _, cx| {
+            this.opened_by_swatch_press = false;
+            this.set_focus_within(false, cx);
+        });
+        // A swatch press toggles the editor: focusing the stop opens it, and a
+        // press while open closes it and gives up focus and any host hold.
+        let swatch_click = cx.subscribe_in(&self.swatch_button, window, |this, _, event: &ButtonEvent, window, cx| {
+            if matches!(event, ButtonEvent::Click) {
+                if std::mem::take(&mut this.opened_by_swatch_press) {
+                    // Already opened by this press.
+                } else if this.expanded {
+                    this.close_by_user(window, cx);
+                } else {
+                    window.focus(&this.focus_handle, cx);
+                }
+            }
+        });
+        self.focus_subscriptions = Some([focus_in, focus_out, swatch_click]);
     }
 
     fn handlers(&self, cx: &mut Context<Self>) -> ColorStopTemplateHandlers {
         let entity = cx.entity().downgrade();
-        let focus = self.focus_handle.clone();
         ColorStopTemplateHandlers {
-            swatch_click: Box::new({
-                let entity = entity.clone();
-                move |_, window, cx| {
-                    let _ = entity.update(cx, |this, cx| {
-                        if this.expanded {
-                            this.close_by_user(window, cx);
-                        } else {
-                            window.focus(&focus, cx);
-                        }
-                    });
-                }
-            }),
-            swatch_hover: Box::new({
-                let entity = entity.clone();
-                move |hovered, _, cx| {
-                    let _ = entity.update(cx, |this, cx| {
-                        if this.swatch_hovered != hovered {
-                            this.swatch_hovered = hovered;
-                            cx.notify();
-                        }
-                    });
-                }
-            }),
             bounds: Box::new(move |bounds: Bounds<Pixels>, _, cx| {
                 let height = bounds.size.height.as_f32();
                 let _ = entity.update(cx, |this, cx| {
@@ -402,8 +435,16 @@ impl Render for ColorStop {
                     .children(self.editor_extra.clone());
                 self.isolated("editor", editor)
             }),
-            swatch_tooltip: Some(self.swatch_tooltips[usize::from(self.expanded)].clone()),
-            swatch_hovered: self.swatch_hovered,
+            swatch: Some(
+                div()
+                    .id(format!("{}-swatch-slot", self.id))
+                    .flex_shrink_0()
+                    .w(px(template::SWATCH_SIZE))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    .on_click(|_, _, cx| cx.stop_propagation())
+                    .child(self.swatch_button.clone())
+                    .into_any_element(),
+            ),
         };
         let handlers = self.handlers(cx);
         let content = self.template.render(model, handlers, window, cx);
@@ -428,11 +469,8 @@ impl Focusable for ColorStop {
     }
 }
 
-fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
-    let theme = radix::tooltip_theme(look);
-    ["Edit color", "Close color editor"]
-        .map(|text| TooltipHandle::new_with_theme(Tooltip::new(text), theme.clone(), cx))
-}
+/// Swatch help for the closed and open states.
+const SWATCH_TOOLTIPS: [&str; 2] = ["Edit color", "Close color editor"];
 
 /// CSS `hsl()` text with alpha, e.g. `hsl(312 48% 44% / 100%)`.
 ///

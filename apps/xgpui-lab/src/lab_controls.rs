@@ -2,7 +2,7 @@
 use std::{cell::RefCell, rc::Rc};
 use gpui::{prelude::*, Context, Entity, SharedString, div};
 use xgpui_luma::controls::selector::{Selector, SelectorItem};
-use xgpui_luma_look_radix::{Look, Selector as RadixSelector};
+use xgpui_luma_look_radix::{ButtonSize, Look, Selector as RadixSelector};
 
 #[derive(Clone)]
 pub(crate) struct Choice {
@@ -33,10 +33,26 @@ impl Choice {
         cx: &mut Context<M>,
         on_change: impl Fn(&mut M, usize, &mut Context<M>) + 'static,
     ) -> Self {
+        Self::sized(id, label, look, ButtonSize::default(), options, selected, cx, on_change)
+    }
+
+    /// Like [`Self::new`], at an explicit Radix size.
+    #[allow(clippy::too_many_arguments)]
+    pub fn sized<M: 'static>(
+        id: impl Into<SharedString>,
+        label: &str,
+        look: &Look,
+        size: ButtonSize,
+        options: Vec<String>,
+        selected: usize,
+        cx: &mut Context<M>,
+        on_change: impl Fn(&mut M, usize, &mut Context<M>) + 'static,
+    ) -> Self {
         let labels = Rc::new(RefCell::new(options));
         let callback_labels = labels.clone();
         let selector = RadixSelector::new(id)
             .look(look)
+            .size(size)
             .enabled(!labels.borrow().is_empty())
             .items(items(&labels.borrow()))
             .selected_id(selected.to_string())
