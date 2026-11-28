@@ -77,14 +77,6 @@ pub trait SliderTemplate: Send + Sync {
         super::resolve_slider(&super::theme::default_slider_theme().style(), state)
     }
 
-    /// The look in `state`, built from [`Self::resolve_style`] for code that still reads a
-    /// [`SliderLook`](super::SliderLook).
-    #[deprecated(note = "templates draw from `resolve_style()` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
-        super::SliderLook::from_resolved(&self.resolve_style(state))
-    }
-
     fn render(
         &self,
         model: &SliderRenderModel<'_>,
