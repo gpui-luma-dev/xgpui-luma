@@ -20,8 +20,8 @@ use gpui::{App, Context, EventEmitter, Focusable, IntoElement, ListOffset, ListS
 
 use super::layout::{clamp_page, page_after_size_change, page_count};
 use super::model::{
-    TableBuilder, TableHeaderTemplate, TableLabel, TableLookOverride, TableModel, TableRenderModel,
-    TableRowRenderModel, TableScrollMode, TableSelectionMode, make_table_header_template, make_table_row_template,
+    TableBuilder, TableHeaderTemplate, TableLabel, TableModel, TableRenderModel, TableRowRenderModel, TableScrollMode,
+    TableSelectionMode, make_table_header_template, make_table_row_template,
 };
 use super::template::TableTemplate;
 use super::theme::TableTheme;
@@ -474,8 +474,9 @@ where
         cx.notify();
     }
 
-    pub fn set_look_override(&mut self, look_override: Option<TableLookOverride>, cx: &mut Context<Self>) {
-        self.model.look_override = look_override;
+    /// Values set on the theme's style, over its `.lss` (#433).
+    pub fn set_style_overrides(&mut self, overrides: Option<xgpui_luma_style::Overrides>, cx: &mut Context<Self>) {
+        self.model.style_overrides = overrides;
         self.list_state.remeasure();
         cx.notify();
     }

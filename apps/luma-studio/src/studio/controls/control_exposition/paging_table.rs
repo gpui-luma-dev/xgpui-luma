@@ -159,17 +159,20 @@ impl PagingTableControlExposition {
                 }),
             };
             row_template = |model, cells, _window, _cx| {
+                use xgpui_luma::style::PartRead;
+                let row = model.style.part(xgpui_luma::style::lss::PartId::new("row"));
+                let typography = row.typography(14.0, 20.0);
                 div()
                     .w_full()
                     .flex()
                     .items_center()
-                    .min_h(px(model.look.min_height))
-                    .py(px(model.look.padding_y))
-                    .bg(model.look.background)
-                    .text_color(model.look.label_color)
-                    .text_size(px(model.look.label_typography.size))
-                    .line_height(px(model.look.label_typography.line_height))
-                    .font_weight(model.look.label_typography.weight)
+                    .min_h(px(model.layout.min_height))
+                    .py(px(model.layout.padding_y))
+                    .bg(row.color("background"))
+                    .text_color(row.color("foreground"))
+                    .text_size(px(typography.size))
+                    .line_height(px(typography.line_height))
+                    .font_weight(typography.weight)
                     .child(cells)
             };
         }

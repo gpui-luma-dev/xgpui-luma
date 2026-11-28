@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+use xgpui_luma::style::PartRead;
 use gpui::{
     AnyElement, App, Hsla, MouseButton, Pixels, SharedString, Stateful, Window, div, prelude::*, px, transparent_black,
 };
@@ -123,12 +124,15 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
         } = handlers;
 
         let interaction = selector_interaction(&model);
-        let look = xgpui_luma::controls::selector::selector_look(
-            &*self.selector_theme,
+        let resolved = xgpui_luma::controls::selector::resolve_selector_trigger(
+            &self.selector_theme.style(),
             xgpui_luma::controls::selector::SelectorTriggerStyle::Outline,
             xgpui_luma::controls::selector::SelectorVisualState { interaction, ..Default::default() },
-            false,
+            1.0,
         );
+        let trigger_style = resolved.root();
+        let typography = trigger_style.typography(14.0, 20.0);
+        let (foreground, icon) = (trigger_style.color("foreground"), trigger_style.color("icon"));
         let selected_id = self.selected_id.read().expect("theme selector selected id lock").clone();
         let selected_swatches = self.swatches.read().expect("theme selector swatches lock").get(&selected_id);
 
@@ -148,22 +152,22 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
             .bg(transparent_black())
             .cursor_pointer()
             .relative()
-            .text_color(look.trigger_foreground)
-            .text_size(px(look.trigger_typography.size))
-            .line_height(px(look.trigger_typography.line_height))
-            .font_weight(look.trigger_typography.weight)
+            .text_color(foreground)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .font_weight(typography.weight)
             .on_hover(trigger_hover)
             .on_mouse_down(MouseButton::Left, trigger_mouse_down)
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
             .on_click(trigger_click)
             .child(trigger_content)
-            .child(div().flex().items_center().justify_end().flex_shrink_0().text_color(look.trigger_icon).child(
+            .child(div().flex().items_center().justify_end().flex_shrink_0().text_color(icon).child(
                 render_disclosure_icon(
                     &DisclosureIcons::new(LucideIcon::ChevronUp, LucideIcon::ChevronDown),
                     model.disclosure_progress,
-                    look.trigger_icon,
-                    look.trigger_icon_size,
+                    icon,
+                    trigger_style.number("icon_size"),
                 ),
             ));
 
@@ -298,28 +302,31 @@ impl SearchSelectorPanelTemplate for ThemeSearchSelectorPanelTemplate {
             return self.inner.render(model, cx);
         };
 
-        let look = model.popup_look;
+        let style = xgpui_luma::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+        let surface = style.panel();
+        let window_margin =
+            xgpui_luma::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
         let popup_width = bounds.size.width.max(px(POPUP_MIN_WIDTH));
 
         let panel_content = div()
             .id(format!("{}-panel-content", model.id))
             .w_full()
             .when_some(model.search_content, |panel, search| {
-                panel.child(div().p(px(8.0)).child(search)).child(div().h(px(1.0)).bg(look.border))
+                panel.child(div().p(px(8.0)).child(search)).child(div().h(px(1.0)).bg(surface.color("border")))
             })
             .child(model.list_content);
 
         let shell = div()
             .id(format!("{}-popup-shell", model.id))
             .w(popup_width)
-            .bg(look.background)
+            .bg(surface.color("background"))
             .border_1()
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
+            .border_color(surface.color("border"))
+            .rounded(px(surface.number("radius")))
+            .shadow(surface.box_shadow())
             .overflow_hidden()
             .occlude()
             .child(panel_content);
-        anchored_popup(&placement, px(look.window_margin), shell).into_any_element()
+        anchored_popup(&placement, px(window_margin), shell).into_any_element()
     }
 }

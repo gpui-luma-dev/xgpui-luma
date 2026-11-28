@@ -241,7 +241,12 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
     if kind == Kind::SelectionPanel {
         return panel(look, &id, size, state, cx);
     }
-    let chrome = radix::autocomplete_theme(look).resolve();
+    let chrome = radix::autocomplete_theme(look).style().resolve(&[], 1.0);
+    let chrome = chrome.root();
+    let (status_color, muted_text_color) = {
+        use xgpui_luma::style::PartRead;
+        (chrome.color("status"), chrome.color("muted_text"))
+    };
     let field_state = TextFieldState {
         hovered: state.hovered,
         focused: state.focused,
@@ -250,7 +255,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
         ..Default::default()
     };
     let sheet = look.common_stylesheet();
-    let popup_look = radix::selector_items_panel_look_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
+    let popup_look = radix::selector_items_panel_style_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
     let trigger = match kind {
         Kind::Autocomplete => autocomplete::default_autocomplete_template()
             .render(
@@ -271,11 +276,11 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                     popup_width: px(preview_width(kind)),
                     status_label: "Searching".into(),
                     status_detail: "3 options".into(),
-                    status_color: chrome.status_color,
-                    status_typography: chrome.status_typography,
-                    muted_text_color: chrome.muted_text_color,
+                    status_color: status_color,
+                    status_typography: xgpui_luma::controls::autocomplete::status_typography(chrome),
+                    muted_text_color: muted_text_color,
                     popup_placement: None,
-                    popup_look,
+                    popup_menu: popup_look,
                     popup_content: None,
                     presence: OverlayPresence::new(false, false),
                 },
@@ -304,10 +309,10 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                 minimum_trigger_width: px(preview_width(kind)),
                 status_label: "".into(),
                 status_detail: "".into(),
-                status_color: chrome.status_color,
-                muted_text_color: chrome.muted_text_color,
+                status_color: status_color,
+                muted_text_color: muted_text_color,
                 popup_bounds: None,
-                popup_look,
+                popup_menu: popup_look,
                 popup_content: None,
                 presence: OverlayPresence::new(false, false),
             },
@@ -350,8 +355,8 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                         minimum_trigger_width: px(preview_width(kind)),
                         status_label: "".into(),
                         status_detail: "".into(),
-                        status_color: chrome.status_color,
-                        muted_text_color: chrome.muted_text_color,
+                        status_color: status_color,
+                        muted_text_color: muted_text_color,
                         popup_content: None,
                         presence: OverlayPresence::new(false, false),
                         disclosure_progress: 0.0,
@@ -399,7 +404,7 @@ fn panel(look: &Look, id: &SharedString, size: RadixSize, state: InteractionStat
         enabled: !state.disabled,
         focus: ControlFocusState { focused: state.focused, focus_visible: state.focused },
         item_template: None,
-        look: radix::selection_panel_look(look, size),
+        menu: radix::selection_panel_style(look, size),
         show_selection_marker: true,
         icons: &icons,
         show_panel_chrome: true,
@@ -429,9 +434,13 @@ fn expanded_panel(
         autocomplete::SelectionItem::new("disabled", "Unavailable").enabled(false),
     ];
     let indices = [0, 1, 2];
-    let mut panel_look = radix::selector_items_panel_look_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
+    let mut panel_look = radix::selector_items_panel_style_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
     if compact_selection(kind) {
-        panel_look.min_width = preview_width(kind);
+        panel_look = panel_look.overrides(xgpui_luma::style::lss::Overrides::new().set(
+            xgpui_luma::style::lss::PartId::ROOT,
+            xgpui_luma::style::lss::Prop::<f32>::new("min_width"),
+            preview_width(kind),
+        ));
     }
     if kind == Kind::SearchSelector {
         let geometry = xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk();
@@ -447,7 +456,7 @@ fn expanded_panel(
                 open: true,
                 enabled: true,
                 item_template: None,
-                look: panel_look.clone(),
+                menu: panel_look.clone(),
             },
             search_selector::SearchSelectorItemsTemplateHandlers {
                 item_hovers: (0..items.len())
@@ -475,7 +484,7 @@ fn expanded_panel(
                 item_template: None,
                 popup_bounds: None,
                 popup_placement: None,
-                popup_look: panel_look,
+                popup_menu: panel_look,
                 search_content: Some(field),
                 list_content: list.into_any_element(),
             },
@@ -492,7 +501,7 @@ fn expanded_panel(
                 &autocomplete::AutocompleteItemsRenderModel {
                     id,
                     items: &selector_items,
-                    look: panel_look.clone(),
+                    menu: panel_look.clone(),
                     highlighted_index: Some(1),
                 },
                 autocomplete::AutocompleteItemsTemplateHandlers {
@@ -518,7 +527,7 @@ fn expanded_panel(
                     open: true,
                     enabled: true,
                     item_template: None,
-                    look: panel_look.clone(),
+                    menu: panel_look.clone(),
                 },
                 combobox::ComboBoxItemsTemplateHandlers {
                     item_hovers: (0..items.len())
@@ -544,7 +553,7 @@ fn expanded_panel(
             item_template: None,
             popup_bounds: None,
             popup_placement: None,
-            popup_look: panel_look,
+            popup_menu: panel_look,
             list_content: list,
         },
         cx,

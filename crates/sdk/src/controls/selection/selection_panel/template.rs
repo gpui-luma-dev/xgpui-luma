@@ -1,7 +1,7 @@
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
-use gpui::{App, Div, SharedString, Stateful, div, prelude::*, px};
+use gpui::{App, Div, SharedString, Stateful, div, prelude::*};
 
 pub use super::item_template::{
     SelectionPanelClickHandler, SelectionPanelHoverHandler, SelectionPanelMouseDownHandler,
@@ -12,7 +12,6 @@ use super::item_template::{
     render_selection_panel_item_row,
 };
 use super::model::SelectionPanelItemLike;
-use super::theme::SelectionPanelLook;
 use crate::infra::state::ControlFocusState;
 use crate::infra::icon::SelectionStatusIcons;
 
@@ -43,7 +42,9 @@ where
     pub enabled: bool,
     pub focus: ControlFocusState,
     pub item_template: Option<&'a SelectionPanelItemTemplate<T>>,
-    pub look: SelectionPanelLook,
+    /// The panel's style (a `selection_panel` binding, which extends `floating_menu`, #433): the template
+    /// resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
     pub show_selection_marker: bool,
     pub icons: &'a SelectionStatusIcons,
     pub show_panel_chrome: bool,
@@ -113,20 +114,12 @@ where
             item_mouse_up_outs,
             item_clicks,
         } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
 
         let mut root = div().id((model.panel_id.clone(), 0usize)).relative().flex().flex_col().w_full();
 
         if model.show_panel_chrome {
-            root = root
-                .min_w(px(look.min_width))
-                .p(px(look.padding))
-                .bg(look.background)
-                .border(px(look.border_width))
-                .border_color(look.border)
-                .rounded(px(look.radius))
-                .shadow(look.shadow.clone())
-                .occlude();
+            root = style.pane(root);
         }
 
         let mut mouse_downs = item_mouse_downs.into_iter();
@@ -162,7 +155,7 @@ where
                     enabled: row_enabled,
                     sibling_count: model.visible_indices.len(),
                     item_template: model.item_template,
-                    look,
+                    style: &style,
                     show_selection_marker: model.show_selection_marker,
                     icons: model.icons.clone(),
                 },

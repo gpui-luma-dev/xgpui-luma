@@ -9,7 +9,8 @@ use gpui::{AnyElement, App, AppContext, Div, Entity, ListAlignment, SharedString
 
 use super::control::TableControl;
 use super::template::{TableTemplate, default_table_template, modified_table_template};
-use super::theme::{TableLook, TableRowLook, TableTheme, default_table_theme};
+use super::styled::TableRowLayout;
+use super::theme::{TableTheme, default_table_theme};
 use crate::infra::state::ControlFocusState;
 
 pub type TableLabelFn<T> = Arc<dyn Fn(&T) -> SharedString + Send + Sync + 'static>;
@@ -67,8 +68,12 @@ impl TableScrollMode {
 
 pub struct TableRenderModel<'a> {
     pub id: &'a SharedString,
-    pub look: TableLook,
-    pub row_look: TableRowLook,
+    /// The frame and header's resolved style (#433): its root and `header` parts, and the table's properties.
+    pub style: std::sync::Arc<xgpui_luma_style::Resolved>,
+    /// A resting row's resolved style: its `row` part.
+    pub row_style: std::sync::Arc<xgpui_luma_style::Resolved>,
+    /// A row's padding and height.
+    pub row_layout: TableRowLayout,
     pub row_count: usize,
     pub selection_mode: TableSelectionMode,
     pub scroll_mode: TableScrollMode,
@@ -83,8 +88,6 @@ pub struct TableRenderModel<'a> {
     pub enabled: bool,
     pub focus: ControlFocusState,
 }
-
-pub type TableLookOverride = Arc<dyn Fn(TableLook) -> TableLook + Send + Sync + 'static>;
 
 pub type TableHeaderTemplate =
     Arc<dyn for<'a> Fn(&TableRenderModel<'a>, &mut Window, &mut App) -> AnyElement + Send + Sync + 'static>;
@@ -113,7 +116,10 @@ where
     pub focused: bool,
     pub focus_visible: bool,
     pub enabled: bool,
-    pub look: TableRowLook,
+    /// The row's resolved style in its state (#433): its `row` part, and the table's properties from its root.
+    pub style: std::sync::Arc<xgpui_luma_style::Resolved>,
+    /// The row's padding and height.
+    pub layout: TableRowLayout,
 }
 
 pub type TableRowTemplate<T> = Arc<
@@ -318,7 +324,8 @@ where
     pub(crate) column_resizing: bool,
     pub(crate) row_template: Option<TableRowTemplate<T>>,
     pub(crate) theme: Arc<dyn TableTheme>,
-    pub(crate) look_override: Option<TableLookOverride>,
+    /// Values set on the theme's style, over its `.lss` (#433).
+    pub(crate) style_overrides: Option<xgpui_luma_style::Overrides>,
     pub(crate) columns: Vec<TableColumn<T>>,
     pub(crate) scroll_mode: TableScrollMode,
     pub(crate) visible_rows: Option<usize>,
@@ -673,7 +680,7 @@ where
                 column_resizing: false,
                 row_template: None,
                 theme: default_table_theme(),
-                look_override: None,
+                style_overrides: None,
                 columns: Vec::new(),
                 scroll_mode: TableScrollMode::ScrollSmooth,
                 visible_rows: None,
@@ -849,19 +856,16 @@ where
         self
     }
 
-    pub fn look_override<F>(mut self, override_fn: F) -> Self
-    where
-        F: Fn(TableLook) -> TableLook + Send + Sync + 'static,
-    {
-        self.model.look_override = Some(Arc::new(override_fn));
+    /// Values set on the theme's style, over its `.lss` (#433): the frame's `radius`, the table's
+    /// `column_resize_hit_width`, ...
+    pub fn style_overrides(mut self, overrides: xgpui_luma_style::Overrides) -> Self {
+        self.model.style_overrides = Some(overrides);
         self
     }
 
     pub fn square_corners(self) -> Self {
-        self.look_override(|mut look| {
-            look.radius = 0.0;
-            look
-        })
+        use xgpui_luma_style::{Overrides, PartId, Prop};
+        self.style_overrides(Overrides::new().set(PartId::ROOT, Prop::<f32>::new("radius"), 0.0))
     }
 
     pub fn with_template_modifier<F>(mut self, modifier: F) -> Self
@@ -972,7 +976,10 @@ where
             column.width(),
             column.fill_weight,
             column.cell_layout(),
-            model.look.column_padding_x,
+            {
+                use crate::style::PartRead;
+                model.style.root().number("column_padding_x")
+            },
             column.render_cell(model, window, cx),
         ));
     }

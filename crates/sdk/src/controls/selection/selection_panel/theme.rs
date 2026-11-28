@@ -1,7 +1,14 @@
+#![allow(deprecated)] // SelectionPanelLook is this module's compatibility type.
+
 use gpui::{BoxShadow, Hsla};
 
 use crate::theme::{LumaTextStyle, ThemeTokens};
 
+/// A selection panel's values, copied out of its `selection_panel` style (#433). A compatibility type: the template
+/// draws from the style itself (see [`SelectionPanelRenderModel::menu`](super::SelectionPanelRenderModel::menu)).
+#[deprecated(
+    note = "the template draws from the `selection_panel` style; resolve it and read its parts instead (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct SelectionPanelLook {
     pub background: Hsla,
@@ -27,12 +34,14 @@ pub struct SelectionPanelLook {
 }
 
 /// The SDK's selection panel: the SDK's `.lss` `selection_panel` with `tokens`' metrics and geometry.
+#[deprecated(note = "use `StyleBinding::sdk(\"selection_panel\")`; the template draws from the style (#433)")]
 pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook {
     styled_selection_panel_look(&crate::style::StyleBinding::sdk("selection_panel"), &tokens.metrics)
 }
 
 /// A selection panel from a `.lss` `selection_panel` binding (the floating menu's surface and rows unless a
 /// look restyles it), through the selector items panel.
+#[deprecated(note = "the template draws from the `selection_panel` binding itself (#433)")]
 pub fn styled_selection_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
@@ -42,6 +51,11 @@ pub fn styled_selection_panel_look(
 }
 
 impl SelectionPanelLook {
+    /// The panel `menu` (a `selection_panel` binding) describes.
+    pub fn from_style(menu: &crate::style::StyleBinding) -> Self {
+        Self::from_items_panel(crate::controls::selector_list::SelectorItemsPanelLook::from_style(menu))
+    }
+
     /// The panel's surface and rows from a selector items panel.
     pub fn from_items_panel(panel: crate::controls::selector_list::SelectorItemsPanelLook) -> Self {
         Self {

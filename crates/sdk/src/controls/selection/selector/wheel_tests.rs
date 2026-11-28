@@ -252,7 +252,7 @@ fn default_popup_geometry_scrolling_and_reopening_match_the_legacy_native_templa
             mut handlers: SelectorItemsTemplateHandlers,
             cx: &mut App,
         ) -> gpui::Stateful<gpui::Div> {
-            let legacy = SelectorItemsRenderModel { scroll_handle: None, look: model.look.clone(), ..*model };
+            let legacy = SelectorItemsRenderModel { scroll_handle: None, menu: model.menu.clone(), ..*model };
             handlers.scroll_wheel = None;
             default_selector_items_template().render(&legacy, handlers, cx)
         }

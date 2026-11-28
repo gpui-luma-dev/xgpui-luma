@@ -1,7 +1,7 @@
 //! Radix listbox composition over persistent SDK state, input, and scrolling.
 
 use std::{hash::Hash, sync::Arc};
-use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, prelude::*, px};
+use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, prelude::*};
 use xgpui_luma::controls::listbox::{
     ListBoxBuilder as SdkListBoxBuilder, ListBoxControl, ListBoxFlow, ListBoxTemplate, ListBoxRenderModel,
     ListBoxRowRenderModel, ListBoxDragLook, ListBoxMotion, ListBoxItemRenderModel, ListBoxItemState,
@@ -82,15 +82,10 @@ struct RadixListBoxTemplate {
 }
 impl ListBoxTemplate for RadixListBoxTemplate {
     fn render(&self, model: &ListBoxRenderModel, _: &mut App) -> Stateful<Div> {
-        let surface = styled_listbox(&self.look).surface(true, model.focused);
-        div()
-            .bg(surface.background)
-            .border(px(surface.border_width))
-            .border_color(surface.border)
-            .rounded(px(surface.radius))
+        styled_listbox(&self.look)
+            .paint_surface(div().id(model.id), model.focused)
             .overflow_hidden()
             .p_1()
-            .id(model.id)
             .w_full()
             .min_w_0()
     }
@@ -187,6 +182,8 @@ mod lss_tests {
 
     #[test]
     fn lss_rows_match_the_native_rows() {
+        use xgpui_luma::style::PartRead;
+        let part = xgpui_luma::style::lss::PartId::new("row");
         let look = Look::built_in();
         let styled = super::styled_listbox(&look);
         let step = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
@@ -194,26 +191,34 @@ mod lss_tests {
         for selected in [false, true] {
             for enabled in [true, false] {
                 let state = ListBoxItemState { selected, active: true, enabled };
-                let row = styled.row(state, false, false, false);
+                let row = styled.resolve_row(state, false, false, false);
+                let row = row.part(part);
                 let fill = if selected { step(4) } else { gpui::transparent_black() };
-                assert_close(row.background, fill);
+                assert_close(row.color("background"), fill);
                 let text = if enabled {
                     SemanticRole::Foreground
                 } else {
                     SemanticRole::MutedForeground
                 };
-                assert_close(row.foreground, role(text));
-                assert_close(styled.row(state, true, false, false).border, role(SemanticRole::Focus));
+                assert_close(row.color("foreground"), role(text));
+                assert_close(
+                    styled.resolve_row(state, true, false, false).part(part).color("border"),
+                    role(SemanticRole::Focus),
+                );
                 if enabled {
-                    assert_close(styled.row(state, false, true, false).background, step(5));
-                    assert_close(styled.row(state, false, false, true).background, step(6));
+                    assert_close(styled.resolve_row(state, false, true, false).part(part).color("background"), step(5));
+                    assert_close(styled.resolve_row(state, false, false, true).part(part).color("background"), step(6));
                 }
-                assert_eq!((row.radius, row.padding_x, row.font_size), (4.0, 8.0, 14.0));
+                assert_eq!(
+                    (row.number("radius"), row.number("padding_x"), row.font_size().unwrap_or(0.0)),
+                    (4.0, 8.0, 14.0)
+                );
             }
         }
-        let surface = styled.surface(true, true);
-        assert_close(surface.background, look.resolve_step(ScaleFamily::Gray, 1).hsla());
-        assert_close(surface.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
-        assert_eq!(surface.radius, 8.0);
+        let surface = styled.resolve_surface(true, true);
+        let surface = surface.root();
+        assert_close(surface.color("background"), look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close(surface.color("border"), look.resolve_step(ScaleFamily::Gray, 6).hsla());
+        assert_eq!(surface.number("radius"), 8.0);
     }
 }

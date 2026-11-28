@@ -15,8 +15,8 @@ pub(crate) mod theme;
 
 pub use model::{FloatingMenuActivateResult, FloatingMenuState, FloatingMenuStepDirection};
 pub use template::{
-    FloatingMenuClickHandler, FloatingMenuHighlight, FloatingMenuHoverHandler, FloatingMenuRenderModel,
-    FloatingMenuSeparatorTemplate, ThemedFloatingMenuSeparatorTemplate, FloatingMenuTemplate,
+    FloatingMenuClickHandler, FloatingMenuHighlight, FloatingMenuHoverHandler, FloatingMenuRenderModel, MenuStyle,
+    RowColors, FloatingMenuSeparatorTemplate, ThemedFloatingMenuSeparatorTemplate, FloatingMenuTemplate,
     FloatingMenuTemplateHandlers, FloatingMenuTemplateModifier, ThemedFloatingMenuTemplate,
     default_floating_menu_template, floating_menu_size, floating_menu_template_with_modifier,
     floating_menu_window_margin, render_floating_menu, render_floating_menu_with_submenu_hovers_and_icons,

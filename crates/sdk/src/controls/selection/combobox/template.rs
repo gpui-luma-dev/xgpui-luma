@@ -6,7 +6,6 @@ use gpui::{
     SharedString, Window, div, prelude::*, px,
 };
 
-use crate::controls::selector_list::SelectorItemsPanelLook;
 use crate::motion::overlay_presence::OverlayPresence;
 
 pub type ComboBoxKeyDownHandler = Box<dyn Fn(&KeyDownEvent, &mut Window, &mut App) + 'static>;
@@ -61,7 +60,8 @@ pub struct ComboBoxRenderModel {
     pub status_color: Hsla,
     pub muted_text_color: Hsla,
     pub popup_bounds: Option<Bounds<Pixels>>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub popup_content: Option<AnyElement>,
     pub presence: OverlayPresence,
 }

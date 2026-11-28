@@ -904,13 +904,15 @@ fn resize_hit_target_uses_resolved_width_and_remains_centered_with_hidden_stroke
     let (table, cx) = resizable_grid(&mut app, true, false);
     let original = cx.debug_bounds("table-column-resize-0").unwrap();
     table.update(cx, |table, cx| {
-        table.set_look_override(
-            Some(std::sync::Arc::new(|mut look| {
-                look.column_resize_hit_width = 24.0;
-                look.column_resize_line_width = 0.0;
-                look.column_resize_vertical_extension = 7.0;
-                look
-            })),
+        use xgpui_luma_style::{Overrides, PartId, Prop};
+        let root = PartId::ROOT;
+        table.set_style_overrides(
+            Some(
+                Overrides::new()
+                    .set(root, Prop::<f32>::new("column_resize_hit_width"), 24.0)
+                    .set(root, Prop::<f32>::new("column_resize_line_width"), 0.0)
+                    .set(root, Prop::<f32>::new("column_resize_vertical_extension"), 7.0),
+            ),
             cx,
         );
     });
@@ -926,9 +928,13 @@ fn resize_hit_target_uses_resolved_width_and_remains_centered_with_hidden_stroke
 fn a_state_override_draws_one_row_hovered_without_changing_state() {
     let mut app = TestAppContext::single();
     let (table, cx) = setup(&mut app, 8, TableSelectionMode::Single);
-    let hover = crate::controls::table::StyledTable::sdk()
-        .row(false, crate::theme::InteractionState { hovered: true, ..Default::default() })
-        .background;
+    let hover = {
+        use crate::style::PartRead;
+        crate::controls::table::StyledTable::sdk()
+            .resolve_row(false, crate::theme::InteractionState { hovered: true, ..Default::default() })
+            .part(xgpui_luma_style::PartId::new("row"))
+            .color("background")
+    };
     let hovered_rows = |cx: &mut VisualTestContext| {
         cx.run_until_parked();
         cx.update(|window, _| {

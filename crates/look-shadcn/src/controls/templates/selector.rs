@@ -19,11 +19,7 @@ fn styled_selector_theme(theme: ShadcnLook) -> StyledSelectorTheme {
     StyledSelectorTheme::new(
         ThemeSource::Live(Arc::new(move || style.style_theme())),
         Arc::new(move || {
-            crate::controls::selector_items_panel::selector_items_panel_look(
-                panel.mode_tokens().as_ref(),
-                panel.mode(),
-                size,
-            )
+            crate::controls::selector_items_panel::selector_items_panel_style(panel.mode_tokens().as_ref(), size)
         }),
     )
     .with(|binding| {

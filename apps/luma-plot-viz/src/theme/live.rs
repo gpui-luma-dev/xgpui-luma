@@ -30,14 +30,13 @@ struct Snapshot {
 impl Snapshot {
     /// `style` is the SDK's `.lss` theme for the same mode as `tokens`.
     fn new(tokens: ThemeTokens, style: xgpui_luma::style::lss::Theme) -> Self {
-        let panel_tokens = tokens.clone();
         let binding = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
         Self {
             scrollbar: StyledScrollbarTheme::new(binding("scrollbar"), tokens.metrics),
             tabs: StyledTabsTheme::new(binding("tabs")),
             selector: StyledSelectorTheme::new(
                 ThemeSource::Fixed(style),
-                Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
+                Arc::new(|| xgpui_luma::style::StyleBinding::sdk("floating_menu")),
             ),
             tooltip: TooltipLook::from_tokens(&tokens),
             tokens,
@@ -135,8 +134,8 @@ impl SelectorTheme for AppTheme {
     fn style(&self) -> xgpui_luma::style::StyleBinding {
         self.current().selector.style()
     }
-    fn items_panel(&self) -> xgpui_luma::controls::selector_list::SelectorItemsPanelLook {
-        self.current().selector.items_panel()
+    fn menu(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().selector.menu()
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
@@ -208,16 +207,20 @@ mod tests {
             assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
             let tab = tabs.resolve_item(true, state);
             assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
-            let selector = xgpui_luma::controls::selector::selector_look(
-                &*selectors,
+            let selector = xgpui_luma::controls::selector::resolve_selector_trigger(
+                &selectors.style(),
                 SelectorTriggerStyle::default(),
                 xgpui_luma::controls::selector::SelectorVisualState { interaction: state, ..Default::default() },
-                false,
+                1.0,
             );
+            let selector_background = {
+                use xgpui_luma::style::PartRead;
+                selector.root().color("background")
+            };
             // The selector trigger is the SDK's base `.lss` trigger for the mode: the outline variant is a
             // look's, not the SDK's (#287).
             let expected = tokens.palette.surface.subtle.background.to_rgb();
-            let got = selector.trigger_background.to_rgb();
+            let got = selector_background.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
             let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
             assert_eq!(
@@ -232,7 +235,7 @@ mod tests {
                 button.foreground,
                 radio_label,
                 tab.label_color,
-                selector.trigger_background,
+                selector_background,
                 scrollbar.thumb_background,
                 tip.background,
             ]);

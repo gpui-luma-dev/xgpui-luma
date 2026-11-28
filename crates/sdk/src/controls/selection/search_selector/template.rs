@@ -11,7 +11,7 @@ use gpui::{
 
 use crate::controls::button::face::{Face, FaceLook, FaceShape};
 use crate::style::PartRead;
-use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 
 use super::behavior::SelectionItem;
@@ -261,7 +261,8 @@ pub struct SearchSelectorItemsRenderModel<'a> {
     pub open: bool,
     pub enabled: bool,
     pub item_template: Option<&'a SearchSelectorItemTemplate<SelectionItem>>,
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
 }
 
 pub struct SearchSelectorItemsTemplateHandlers {
@@ -335,10 +336,17 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let colors = style.row_colors();
+        let typography = style.item().typography(14.0, 20.0);
 
-        let mut root =
-            div().id((model.menu_id.clone(), 0usize)).relative().flex().flex_col().w_full().p(px(look.padding));
+        let mut root = div()
+            .id((model.menu_id.clone(), 0usize))
+            .relative()
+            .flex()
+            .flex_col()
+            .w_full()
+            .p(px(style.panel().number("padding")));
         let mut clicks = item_clicks.into_iter();
 
         for (visible_index, (source_index, hover)) in model.visible_indices.iter().copied().zip(item_hovers).enumerate()
@@ -350,9 +358,9 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
 
             let enabled_item = model.enabled && item.enabled;
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let selected = model.selected_source_index == Some(source_index);
             let active = enabled_item && model.active_visible_index == Some(visible_index);
@@ -373,8 +381,11 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
             } else {
                 let mut content = div().flex().items_center().justify_between().flex_1().child(item.label.clone());
                 if let Some(icon) = item.trailing_icon {
-                    content =
-                        content.child(crate::infra::icon::lucide_icon(icon, look.positive, model.trailing_icon_size));
+                    content = content.child(crate::infra::icon::lucide_icon(
+                        icon,
+                        style.panel().color("positive"),
+                        model.trailing_icon_size,
+                    ));
                 }
                 content.into_any_element()
             };
@@ -383,31 +394,31 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
                 .id(("row", visible_index))
                 .flex()
                 .items_center()
-                .min_h(px(look.item_height))
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
+                .min_h(px(style.item().number("height")))
+                .px(px(style.item().number("padding_x")))
+                .rounded(px(style.item_radius()))
                 .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(content);
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let hover_background = colors.hover_background;
+                    let hover_foreground = colors.hover_foreground;
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if active {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(click) = click {
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             root = root.child(row);
@@ -444,6 +455,7 @@ mod tests {
     /// The face matches the selector's compatibility look in every state, except the border width, which is the
     /// search selector's own.
     #[test]
+    #[allow(deprecated)]
     fn the_trigger_face_matches_the_selector_look() {
         use crate::controls::selector::{
             SelectorLook, SelectorTriggerStyle, SelectorVisualState, default_selector_theme, resolve_selector_trigger,
@@ -478,7 +490,11 @@ mod tests {
             for visual in states {
                 for without_elevation in [false, true] {
                     let resolved = resolve_selector_trigger(&theme.style(), style, visual, 1.0);
-                    let look = SelectorLook::from_resolved(&resolved, theme.items_panel(), without_elevation);
+                    let look = SelectorLook::from_resolved(
+                        &resolved,
+                        crate::controls::selector_list::SelectorItemsPanelLook::from_style(&theme.menu()),
+                        without_elevation,
+                    );
                     let face = trigger_face_look(&resolved, &geometry, without_elevation, None);
                     let case = format!("{style:?} {visual:?} without_elevation={without_elevation}");
                     assert_eq!(face.background, look.trigger_background, "{case}");

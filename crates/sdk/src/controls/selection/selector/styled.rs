@@ -7,34 +7,28 @@ use std::sync::Arc;
 
 use super::model::SelectorTriggerStyle;
 use super::theme::{SelectorTheme, SelectorVisualState};
-use crate::controls::selector_list::SelectorItemsPanelLook;
 use crate::style::{StyleBinding, ThemeSource};
 use crate::theme::{FocusMetricTokens, MetricTokens};
 
-/// Supplies the selector's popup panel look.
-pub type ItemsPanelSource = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync>;
+/// Supplies the selector's popup panel style: a `floating_menu` binding (#433).
+pub type ItemsPanelSource = crate::controls::popup_menu::MenuSource;
 
 /// A selector theme whose trigger is read from `.lss`.
 #[derive(Clone)]
 pub struct StyledSelectorTheme {
     binding: StyleBinding,
-    items_panel: ItemsPanelSource,
+    menu: ItemsPanelSource,
 }
 
 impl StyledSelectorTheme {
-    /// The `selector` control from `source`, with its popup panel from `items_panel`.
-    pub fn new(source: ThemeSource, items_panel: ItemsPanelSource) -> Self {
-        Self { binding: StyleBinding::new("selector", source), items_panel }
+    /// The `selector` control from `source`, with its popup panel's style from `menu`.
+    pub fn new(source: ThemeSource, menu: ItemsPanelSource) -> Self {
+        Self { binding: StyleBinding::new("selector", source), menu }
     }
 
     /// The SDK alone.
     pub fn sdk() -> Self {
-        Self {
-            binding: StyleBinding::sdk("selector"),
-            items_panel: Arc::new(|| {
-                crate::controls::selector_list::default_selector_items_panel_look(&Default::default())
-            }),
-        }
+        Self { binding: StyleBinding::sdk("selector"), menu: Arc::new(|| StyleBinding::sdk("floating_menu")) }
     }
 
     /// Change the binding (a look's size).
@@ -48,8 +42,8 @@ impl SelectorTheme for StyledSelectorTheme {
         self.binding.clone()
     }
 
-    fn items_panel(&self) -> SelectorItemsPanelLook {
-        (self.items_panel)()
+    fn menu(&self) -> StyleBinding {
+        (self.menu)()
     }
 }
 
@@ -87,6 +81,8 @@ pub(crate) fn metrics(binding: &StyleBinding) -> MetricTokens {
 
 /// The trigger's look in `trigger_style` and `visual` state, built from `theme`'s resolved style (#433): for code
 /// that still reads a [`SelectorLook`](super::SelectorLook). Templates read the resolved style directly.
+#[deprecated(note = "read the trigger's values from `resolve_selector_trigger` instead (#433)")]
+#[allow(deprecated)]
 pub fn selector_look<T: SelectorTheme + ?Sized>(
     theme: &T,
     trigger_style: SelectorTriggerStyle,
@@ -95,7 +91,7 @@ pub fn selector_look<T: SelectorTheme + ?Sized>(
 ) -> super::SelectorLook {
     super::SelectorLook::from_resolved(
         &resolve_trigger(&theme.style(), trigger_style, visual, 1.0),
-        theme.items_panel(),
+        crate::controls::selector_list::SelectorItemsPanelLook::from_style(&theme.menu()),
         without_elevation,
     )
 }

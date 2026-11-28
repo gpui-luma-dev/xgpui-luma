@@ -94,7 +94,9 @@ mod tests {
         let dark = styled_floating_menu_look(&StyleBinding::new("floating_menu", ThemeSource::Fixed(dark_theme())));
         assert_eq!((menu.background, menu.foreground, menu.border), (dark.background, dark.foreground, dark.border));
 
-        let panel = crate::controls::selector_list::selector_items_panel_source(ThemeSource::Fixed(dark_theme()))();
+        let panel = styled_floating_menu_look(&crate::controls::selector_list::selector_items_panel_source(
+            ThemeSource::Fixed(dark_theme()),
+        )());
         assert_eq!((panel.background, panel.foreground, panel.border), (dark.background, dark.foreground, dark.border));
     }
 }

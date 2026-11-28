@@ -3,7 +3,7 @@
 use gpui::{App, Context, Entity, IntoElement, SharedString};
 use xgpui_luma::controls::selection_panel::{
     SelectionPanelBuilder, SelectionPanelControl, SelectionPanelItem, SelectionPanelItemLike,
-    SelectionPanelItemRenderModel, SelectionPanelLookProvider,
+    SelectionPanelItemRenderModel,
 };
 use xgpui_luma::infra::icon::SelectionStatusIcons;
 use crate::look::{ShadcnLook, resolve_look_from};
@@ -18,7 +18,7 @@ where
 
     look: Option<ShadcnLook>,
     builder: SelectionPanelBuilder<T>,
-    custom_look_provider: bool,
+    custom_menu: bool,
     size: ShadcnSize,
 }
 
@@ -122,7 +122,7 @@ where
 
             look: None,
             builder: SelectionPanelBuilder::new(id),
-            custom_look_provider: false,
+            custom_menu: false,
             size: ShadcnSize::Md,
         }
     }
@@ -273,9 +273,10 @@ where
         self
     }
 
-    pub fn look_provider(mut self, provider: SelectionPanelLookProvider) -> Self {
-        self.custom_look_provider = true;
-        self.builder = self.builder.look_provider(provider);
+    /// Where the panel's style comes from, in place of the look's `selection_panel` (#433).
+    pub fn menu(mut self, menu: xgpui_luma::controls::popup_menu::MenuSource) -> Self {
+        self.custom_menu = true;
+        self.builder = self.builder.menu(menu);
         self
     }
 
@@ -294,8 +295,8 @@ where
         let theme = look.clone();
         let mut builder =
             self.builder.stylesheet(look.mode_tokens().common()).scrollbar_template(theme.scrollbar_template());
-        if !self.custom_look_provider {
-            builder = builder.look_provider(theme.selection_panel_look_provider());
+        if !self.custom_menu {
+            builder = builder.menu(theme.selection_panel_menu());
         }
         builder
     }

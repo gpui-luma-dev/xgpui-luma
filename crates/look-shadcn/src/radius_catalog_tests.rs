@@ -28,7 +28,10 @@ fn radii(look: &ShadcnLook) -> Radii {
     Radii {
         floating_menu: menu.radius,
         floating_menu_item: menu.item_radius,
-        selector_panel: look.selector_items_panel_look(ShadcnSize::Md).radius,
+        selector_panel: {
+            use xgpui_luma::style::PartRead;
+            look.selector_items_panel_style(ShadcnSize::Md).resolve(&[], 1.0).root().number("radius")
+        },
         tooltip: crate::tooltip::tooltip_theme(look).resolve().radius,
         toolbar: look.toolbar_theme().resolve(true, ToolbarVariant::Outline).radius,
         overlay_window: look.overlay_window_theme().resolve(OverlayWindowMode::Modal).radius,

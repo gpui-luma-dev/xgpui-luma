@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::table::{StyledTable, TableTheme, table_drag_look, table_template_with_theme};
-use xgpui_luma::theme::{InteractionState};
 
 use crate::look::ShadcnLook;
 
@@ -17,21 +16,8 @@ impl TableTheme for ShadcnTableTheme {
         table_drag_look(super::drag::drag_look(&self.theme), self.styled.drag_geometry())
     }
 
-    fn resolve_look(&self, enabled: bool, focused: bool) -> xgpui_luma::controls::table::TableLook {
-        self.styled.look(enabled, focused)
-    }
-
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> xgpui_luma::controls::table::TableRowPalette {
-        self.styled.row(selected, state)
-    }
-
-    fn resolve_row_look(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        scale: &xgpui_luma::theme::ListRowScale,
-    ) -> xgpui_luma::controls::table::TableRowLook {
-        self.styled.row_look(selected, state, scale)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.styled.binding()
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {

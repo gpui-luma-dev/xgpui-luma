@@ -3,6 +3,7 @@ use crate::infra::template::RootModifiers;
 use crate::infra::template::ModifiedTemplate;
 use crate::infra::template::RenderModel;
 use crate::infra::template::ModifiedElementTemplate;
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -10,9 +11,7 @@ use gpui::{
     prelude::*, px,
 };
 
-use crate::controls::selector_list::{
-    SelectorItem, SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler,
-};
+use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::theme::LumaTextStyle;
 
@@ -62,7 +61,8 @@ pub struct AutocompleteRenderModel {
     pub muted_text_color: Hsla,
     /// Where the popup opens beside the field; without it the popup is not drawn.
     pub popup_placement: Option<crate::infra::popup_placement::ResolvedPopupPlacement>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub popup_content: Option<AnyElement>,
     pub presence: OverlayPresence,
 }
@@ -209,19 +209,16 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
             )
             .when_some(model.popup_content, |root, popup_content| {
                 root.when_some(model.popup_placement, |root, placement| {
-                    let look = &model.popup_look;
-                    let shell = div()
-                        .id("prototype-autocomplete-popup-shell")
+                    let style = crate::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+                    let window_margin =
+                        crate::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
+                    let shell = style
+                        .surface(div().id("prototype-autocomplete-popup-shell"))
                         .w(model.popup_width)
-                        .bg(look.background)
-                        .border(px(look.border_width))
-                        .border_color(look.border)
-                        .rounded(px(look.radius))
-                        .shadow(look.shadow.clone())
                         .overflow_hidden()
                         .block_mouse_except_scroll()
                         .child(div().opacity(model.presence.opacity()).child(popup_content));
-                    root.child(crate::infra::popup_placement::anchored_popup(&placement, px(look.window_margin), shell))
+                    root.child(crate::infra::popup_placement::anchored_popup(&placement, px(window_margin), shell))
                 })
             });
 
@@ -232,7 +229,8 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
 pub struct AutocompleteItemsRenderModel<'a> {
     pub id: &'a SharedString,
     pub items: &'a [SelectorItem],
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
     pub highlighted_index: Option<usize>,
 }
 
@@ -299,53 +297,55 @@ impl AutocompleteItemsTemplate for DefaultAutocompleteItemsTemplate {
         handlers: AutocompleteItemsTemplateHandlers,
     ) -> Stateful<gpui::Div> {
         let AutocompleteItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let colors = style.row_colors();
+        let typography = style.item().typography(14.0, 20.0);
 
         let mut root = div()
             .id((model.id.clone(), 1usize))
             .relative()
             .flex()
             .flex_col()
-            .min_w(px(look.min_width))
-            .p(px(look.padding));
+            .min_w(px(style.panel().number("min_width")))
+            .p(px(style.panel().number("padding")));
         let mut clicks = item_clicks.into_iter();
 
         for (index, (item, hover)) in model.items.iter().zip(item_hovers).enumerate() {
             let enabled_item = item.is_enabled();
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let mut row = div()
                 .id(("row", index))
                 .flex()
                 .items_center()
-                .min_h(px(look.item_height))
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
+                .min_h(px(style.item().number("height")))
+                .px(px(style.item().number("padding_x")))
+                .rounded(px(style.item_radius()))
                 .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(div().flex_1().min_w(px(0.0)).truncate().child(item.label_text().clone()));
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let hover_background = colors.hover_background;
+                    let hover_foreground = colors.hover_foreground;
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if model.highlighted_index.is_some_and(|active| active == index) {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(click) = clicks.next() {
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             root = root.child(row);

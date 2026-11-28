@@ -4,7 +4,7 @@ use gpui::{
 };
 
 use super::super::model::{TableColumnWidth, render_grid_view_header_column_slot};
-use super::super::theme::TableLook;
+use crate::style::PartRead;
 use super::TableControl;
 
 const MIN_COLUMN_WIDTH: f32 = 48.0;
@@ -27,14 +27,23 @@ impl Render for ColumnResizeDrag {
 }
 
 impl<T: 'static> TableControl<T> {
-    pub(super) fn render_grid_header(&self, look: &TableLook, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn render_grid_header(&self, style: &xgpui_luma_style::Resolved, cx: &mut Context<Self>) -> AnyElement {
+        let root = style.root();
+        let (column_padding_x, hit_width, line_width, extension) = (
+            root.number("column_padding_x"),
+            root.number("column_resize_hit_width"),
+            root.number("column_resize_line_width"),
+            root.number("column_resize_vertical_extension"),
+        );
+        let (active_color, border) =
+            (style.part(xgpui_luma_style::PartId::new("header")).color("foreground"), root.color("border"));
         let mut row = div().w_full().flex().items_center();
         for (index, column) in self.model.columns.iter().enumerate() {
             let slot = render_grid_view_header_column_slot(
                 column.width(),
                 column.fill_weight,
                 column.cell_layout(),
-                look.column_padding_x,
+                column_padding_x,
                 column.header().clone().into_any_element(),
             )
             .id(("table-column", index));
@@ -76,21 +85,21 @@ impl<T: 'static> TableControl<T> {
                         .absolute()
                         // Center the hit target on the divider. A target ending
                         // at the divider excludes clicks on its right edge.
-                        .left(px(divider_x - look.column_resize_hit_width * 0.5))
-                        .top(px(-look.column_resize_vertical_extension))
-                        .bottom(px(-look.column_resize_vertical_extension))
-                        .w(px(look.column_resize_hit_width))
+                        .left(px(divider_x - hit_width * 0.5))
+                        .top(px(-extension))
+                        .bottom(px(-extension))
+                        .w(px(hit_width))
                         .cursor_col_resize()
                         .group("table-column-resize")
                         .child(
                             div()
                                 .absolute()
-                                .left(px((look.column_resize_hit_width - look.column_resize_line_width) * 0.5))
-                                .top(px(look.column_resize_vertical_extension))
-                                .bottom(px(look.column_resize_vertical_extension))
-                                .w(px(look.column_resize_line_width))
-                                .bg(if active { look.header_label_color } else { look.border })
-                                .group_hover("table-column-resize", |style| style.bg(look.header_label_color)),
+                                .left(px((hit_width - line_width) * 0.5))
+                                .top(px(extension))
+                                .bottom(px(extension))
+                                .w(px(line_width))
+                                .bg(if active { active_color } else { border })
+                                .group_hover("table-column-resize", |style| style.bg(active_color)),
                         )
                         .on_mouse_down(
                             MouseButton::Left,

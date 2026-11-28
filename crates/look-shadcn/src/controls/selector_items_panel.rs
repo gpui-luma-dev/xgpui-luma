@@ -1,5 +1,7 @@
 //! Selector / combobox dropdown panel — same surface as floating menu (`popover` + accent item hover).
 
+#![allow(deprecated)] // `selector_items_panel_look` is a compatibility path.
+
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
 use xgpui_luma::theme::{ThemeMode};
 
@@ -20,17 +22,20 @@ pub(crate) fn mode_binding(
     }
 }
 
-/// The selector and combobox dropdown panel: the `.lss` floating menu (`style/floating_menu.lss`) with the
-/// size's metrics and panel geometry.
+/// The selector and combobox dropdown panel's style (#433): the `.lss` floating menu (`style/floating_menu.lss`) at
+/// `size`, which the SDK's panel templates resolve and draw from.
+pub fn selector_items_panel_style(mode: &ShadcnModeTokens, size: crate::ShadcnSize) -> xgpui_luma::style::StyleBinding {
+    mode_binding(mode, "floating_menu", size)
+}
+
+/// The selector and combobox dropdown panel, built from [`selector_items_panel_style`].
+#[deprecated(note = "use `selector_items_panel_style`; the SDK's panel templates draw from the style (#433)")]
 pub fn selector_items_panel_look(
     mode: &ShadcnModeTokens,
     _theme_mode: ThemeMode,
     size: crate::ShadcnSize,
 ) -> SelectorItemsPanelLook {
-    xgpui_luma::controls::selector_list::styled_selector_items_panel_look(
-        &mode_binding(mode, "floating_menu", size),
-        &mode.metrics_for(size),
-    )
+    SelectorItemsPanelLook::from_style(&selector_items_panel_style(mode, size))
 }
 
 #[cfg(test)]
@@ -75,5 +80,22 @@ mod tests {
         crate::assert_close(look.background, catalog.color("popover").expect("popover"));
         crate::assert_close(look.item_hover_background, catalog.color("accent").expect("accent"));
         crate::assert_close(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
+    }
+}
+
+/// The panel style draws the border width the old look took from the size's metrics, at every size (#433).
+#[cfg(test)]
+mod parity_tests {
+    use xgpui_luma::style::PartRead;
+
+    #[test]
+    fn the_style_keeps_each_sizes_border_width() {
+        let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
+        let mode = look.mode_tokens();
+        for size in [crate::ShadcnSize::Sm, crate::ShadcnSize::Md, crate::ShadcnSize::Lg] {
+            let style = super::selector_items_panel_style(mode.as_ref(), size);
+            let border_width = style.resolve(&[], 1.0).root().number("border_width");
+            assert_eq!(border_width, mode.metrics_for(size).border_width, "{size:?}");
+        }
     }
 }

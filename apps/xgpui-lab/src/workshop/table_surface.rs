@@ -10,12 +10,10 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::pager;
-use xgpui_luma::controls::table::{
-    self, StyledTable, TableControl, TableEvent, TableLook, TableRowLook, TableRowPalette, TableTheme,
-};
+use xgpui_luma::controls::table::{self, StyledTable, TableControl, TableEvent, TableTheme};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
-use xgpui_luma::theme::{InteractionState, ListRowScale, MetricTokens};
+use xgpui_luma::theme::MetricTokens;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -91,31 +89,30 @@ impl PinnedTableTheme {
         Self { rows: false, ..self }
     }
 
-    /// A row's selection and state: the picked ones (`:selected` keeps the row's own), or the row's.
-    fn row_states(&self, selected: bool, state: InteractionState) -> (bool, InteractionState) {
-        match self.pinned.as_ref().filter(|_| self.rows) {
-            Some(states) => (selected && states.has("selected"), states.interaction()),
-            None => (selected, state),
+    /// The base binding with the picked `names` pinned in its key (#433).
+    fn pinned(&self, names: &[&str]) -> StyleBinding {
+        let base = self.base.binding();
+        match &self.pinned {
+            Some(states) => names.iter().fold(base, |binding, name| binding.state(name, states.has(name))),
+            None => base,
         }
     }
 }
 
 impl TableTheme for PinnedTableTheme {
-    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook {
-        match &self.pinned {
-            Some(states) => self.base.look(!states.has("disabled"), states.has("focused")),
-            None => self.base.look(enabled, focused),
+    /// The frame in its picked focus and disabled states.
+    fn style(&self) -> StyleBinding {
+        self.pinned(&["focused", "disabled"])
+    }
+
+    /// The rows in their picked states (matrix cells), or their own (the live table, whose rows a state override
+    /// pins).
+    fn row_style(&self) -> StyleBinding {
+        if self.rows {
+            self.pinned(&["hover", "pressed", "focused", "disabled", "selected"])
+        } else {
+            self.base.binding()
         }
-    }
-
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
-        let (selected, state) = self.row_states(selected, state);
-        self.base.row(selected, state)
-    }
-
-    fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        let (selected, state) = self.row_states(selected, state);
-        self.base.row_look(selected, state, scale)
     }
 
     fn metrics(&self) -> MetricTokens {
