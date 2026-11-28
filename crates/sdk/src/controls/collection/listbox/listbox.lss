@@ -4,6 +4,9 @@
 
 /// A keyed, selectable list.
 listbox {
+  /// The insertion marker, and the outline over the surface while a drag can drop there.
+  drag_marker: color = palette.focus.ring
+
   /// The surface.
   part root {
     background   = palette.form.input.background
