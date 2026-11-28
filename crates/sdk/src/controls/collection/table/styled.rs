@@ -1,6 +1,8 @@
 //! The table read from `.lss` (issue #285): `table.lss`. Looks keep their drag preview (the shared
 //! `drag_preview`) and delegate the frame, header and rows to [`StyledTable`].
 
+#![allow(deprecated)] // `look`, `row` and `row_look` build the compatibility looks.
+
 use crate::style::StyleStates;
 use crate::style::PartRead;
 use xgpui_luma_style::{PartId, PartView};
@@ -27,6 +29,24 @@ pub fn table_drag_look(preview: DragDropLook, geometry: TableGeometry) -> TableD
     }
 }
 
+/// A table row's layout from the row scale (#433): its padding and minimum height. Its colors, text and divider
+/// are the resolved style's `row` part.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub struct TableRowLayout {
+    pub padding_x: f32,
+    pub padding_y: f32,
+    /// The row's laid-out height (its padding sits inside it).
+    pub min_height: f32,
+}
+
+impl TableRowLayout {
+    /// The layout `scale` gives.
+    pub fn new(scale: &ListRowScale) -> Self {
+        Self { padding_x: scale.padding_x, padding_y: scale.padding_y, min_height: scale.min_height }
+    }
+}
+
 /// The table's `.lss` values for one binding (the `table` control).
 #[derive(Clone)]
 pub struct StyledTable {
@@ -43,16 +63,28 @@ impl StyledTable {
         Self { binding: StyleBinding::sdk("table") }
     }
 
-    /// The frame and header, enabled or not, focused or not.
-    pub fn look(&self, enabled: bool, focused: bool) -> TableLook {
-        let resolved = self.binding.resolve_states(
+    /// The binding this reads.
+    pub fn binding(&self) -> StyleBinding {
+        self.binding.clone()
+    }
+
+    /// The frame and header's resolved style, enabled or not, focused or not (#433): read its root and `header`
+    /// parts, and the table's properties (`row_divider_width`, `column_padding_x`, ...) from its root.
+    pub fn resolve(&self, enabled: bool, focused: bool) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve_states(
             StyleStates::new(InteractionState {
                 focused: focused && enabled,
                 disabled: !enabled,
                 ..Default::default()
             }),
             1.0,
-        );
+        )
+    }
+
+    /// The frame and header, enabled or not, focused or not.
+    #[deprecated(note = "read `resolve` instead (#433)")]
+    pub fn look(&self, enabled: bool, focused: bool) -> TableLook {
+        let resolved = self.resolve(enabled, focused);
         let (root, header) = (resolved.root(), resolved.part(PartId::new("header")));
         TableLook {
             row_divider_width: root.number("row_divider_width"),
@@ -74,7 +106,8 @@ impl StyledTable {
         }
     }
 
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+    /// A body row's resolved style, selected or not, in `state` (#433): read its `row` part.
+    pub fn resolve_row(&self, selected: bool, state: InteractionState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
         let states = StyleStates::new(state).selected(selected);
         self.binding.resolve_states(states, 1.0)
     }
@@ -94,6 +127,7 @@ impl StyledTable {
     }
 
     /// A body row's colors, selected or not, in `state`.
+    #[deprecated(note = "read `resolve_row` instead (#433)")]
     pub fn row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
         let resolved = self.resolve_row(selected, state);
         let row = resolved.part(PartId::new("row"));
@@ -106,6 +140,7 @@ impl StyledTable {
     }
 
     /// A body row's colors and layout, with padding and height from `scale`.
+    #[deprecated(note = "read `resolve_row` and a `TableRowLayout` instead (#433)")]
     pub fn row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
         let resolved = self.resolve_row(selected, state);
         let (root, row) = (resolved.root(), resolved.part(PartId::new("row")));
@@ -138,6 +173,10 @@ impl StyledTableTheme {
 }
 
 impl TableTheme for StyledTableTheme {
+    fn style(&self) -> StyleBinding {
+        self.0.binding.clone()
+    }
+
     fn resolve_drag(&self) -> TableDragLook {
         table_drag_look(
             crate::infra::drag_drop::styled_drag_drop_look(&StyleBinding::sdk("drag_preview")),
@@ -145,19 +184,69 @@ impl TableTheme for StyledTableTheme {
         )
     }
 
-    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook {
-        self.0.look(enabled, focused)
-    }
-
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
-        self.0.row(selected, state)
-    }
-
-    fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        self.0.row_look(selected, state, scale)
-    }
-
     fn metrics(&self) -> MetricTokens {
         MetricTokens::default()
+    }
+}
+
+/// The table draws from the resolved style (#433): every value it reads matches what the old looks held, for the
+/// frame and header in each state and a row in each state.
+#[cfg(test)]
+mod parity_tests {
+    use super::*;
+
+    #[test]
+    fn the_frame_and_rows_draw_what_the_looks_held() {
+        let styled = StyledTable::sdk();
+        for (enabled, focused) in [(true, false), (true, true), (false, false)] {
+            let look = styled.look(enabled, focused);
+            let resolved = styled.resolve(enabled, focused);
+            let (root, header) = (resolved.root(), resolved.part(PartId::new("header")));
+            assert_eq!(
+                (
+                    root.color("background"),
+                    root.color("border"),
+                    header.color("background"),
+                    header.color("foreground")
+                ),
+                (look.background, look.border, look.header_background, look.header_label_color)
+            );
+            assert_eq!(
+                (root.number("border_width"), root.number("radius"), root.number("padding_y"), typography(header)),
+                (look.border_width, look.radius, look.padding_y, look.header_typography)
+            );
+            assert_eq!(
+                (root.number("column_resize_hit_width"), root.number("header_divider_width")),
+                (look.column_resize_hit_width, look.header_divider_width)
+            );
+        }
+        let scale = ListRowScale::compute(&MetricTokens::default(), 1.0);
+        let layout = TableRowLayout::new(&scale);
+        for selected in [false, true] {
+            for state in [
+                InteractionState::default(),
+                InteractionState { hovered: true, ..Default::default() },
+                InteractionState { pressed: true, ..Default::default() },
+                InteractionState { focused: true, ..Default::default() },
+                InteractionState { disabled: true, ..Default::default() },
+            ] {
+                let look = styled.row_look(selected, state, &scale);
+                let resolved = styled.resolve_row(selected, state);
+                let (root, row) = (resolved.root(), resolved.part(PartId::new("row")));
+                assert_eq!(
+                    (row.color("background"), row.color("foreground"), row.color("border"), typography(row)),
+                    (look.background, look.label_color, look.divider, look.label_typography),
+                    "{selected} {state:?}"
+                );
+                assert_eq!(
+                    (row.opacity(), root.number("row_divider_width"), root.number("label_baseline_shift")),
+                    (look.opacity, look.row_divider_width, look.label_baseline_shift)
+                );
+                assert_eq!(
+                    (layout.padding_x, layout.padding_y, layout.min_height),
+                    (look.padding_x, look.padding_y, look.min_height)
+                );
+            }
+        }
     }
 }

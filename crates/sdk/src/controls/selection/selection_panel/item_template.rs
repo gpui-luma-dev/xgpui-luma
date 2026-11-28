@@ -8,7 +8,6 @@ use gpui::{
 use crate::infra::icon::lucide_icon;
 use crate::infra::icon::{SelectionStatusIcons, render_icon_source};
 use super::model::SelectionPanelItemLike;
-use super::theme::SelectionPanelLook;
 
 #[derive(Clone, Debug)]
 pub struct SelectionPanelItemRenderModel<'a, T>
@@ -91,7 +90,8 @@ where
     pub enabled: bool,
     pub sibling_count: usize,
     pub item_template: Option<&'a SelectionPanelItemTemplate<T>>,
-    pub look: &'a SelectionPanelLook,
+    /// The panel's resolved style (#433): rows draw from its `item` part.
+    pub style: &'a crate::controls::floating_menu::MenuStyle,
     pub show_selection_marker: bool,
     pub icons: SelectionStatusIcons,
 }
@@ -106,10 +106,12 @@ where
 {
     let SelectionPanelItemRowHandlers { hover, mouse_down, mouse_up, mouse_up_out, click } = handlers;
 
+    let colors = model.style.row_colors();
+    let icon_size = model.style.icon_size();
     let color = if model.enabled {
-        model.look.foreground
+        colors.foreground
     } else {
-        model.look.item_disabled_foreground
+        colors.disabled_foreground
     };
 
     let content = if let Some(item_template) = model.item_template {
@@ -135,23 +137,14 @@ where
         div().flex_1().min_w(px(0.0)).truncate().child(model.item.label().clone()).into_any_element()
     };
 
-    let mut row = div()
-        .id((model.panel_id.clone(), model.visible_index))
-        .flex()
-        .items_center()
-        .gap(px(model.look.item_gap))
-        .min_h(px(model.look.item_height))
-        .px(px(model.look.item_padding_x))
-        .rounded(px(model.look.item_radius))
-        .text_color(color)
-        .text_size(px(model.look.item_typography.size))
-        .line_height(px(model.look.item_typography.line_height))
-        .font_weight(model.look.item_typography.weight)
+    let mut row = model
+        .style
+        .row(div().id((model.panel_id.clone(), model.visible_index)), color)
         .when_some(model.item.icon(), |row, icon| {
             if let Some(icon) = icon.lucide() {
-                row.child(lucide_icon(icon, color, model.look.item_icon_size))
+                row.child(lucide_icon(icon, color, icon_size))
             } else if let Some(path) = icon.svg_path() {
-                row.child(gpui::svg().external_path(path.clone()).size(px(model.look.item_icon_size)).text_color(color))
+                row.child(gpui::svg().external_path(path.clone()).size(px(icon_size)).text_color(color))
             } else {
                 row
             }
@@ -160,21 +153,20 @@ where
 
     if model.show_selection_marker {
         if model.selected {
-            row = row.child(render_icon_source(&model.icons.selected, color, model.look.item_icon_size));
+            row = row.child(render_icon_source(&model.icons.selected, color, icon_size));
         } else {
-            row = row.child(div().size(px(model.look.item_icon_size)));
+            row = row.child(div().size(px(icon_size)));
         }
     }
 
     if model.enabled {
         row = row.cursor_pointer().on_hover(hover).hover({
-            let hover_background = model.look.item_hover_background;
-            let hover_foreground = model.look.item_hover_foreground;
+            let (hover_background, hover_foreground) = (colors.hover_background, colors.hover_foreground);
             move |style| style.bg(hover_background).text_color(hover_foreground)
         });
 
         if model.active || model.pressed {
-            row = row.bg(model.look.item_hover_background).text_color(model.look.item_hover_foreground);
+            row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
         }
 
         if let Some(mouse_down) = mouse_down {
@@ -190,7 +182,7 @@ where
             row = row.on_click(click);
         }
     } else {
-        row = crate::style::fade(row, model.look.item_disabled_opacity);
+        row = crate::style::fade(row, model.style.disabled_opacity());
     }
 
     row

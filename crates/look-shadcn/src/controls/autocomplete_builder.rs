@@ -219,7 +219,7 @@ impl Autocomplete {
             .textfield_template(theme.primary_textfield_template())
             .autocomplete_theme(theme.autocomplete_theme())
             .scrollbar_template(theme.scrollbar_template())
-            .popup_look_provider(Arc::new(move || theme.selector_items_panel_look(theme.size())))
+            .popup_menu(Arc::new(move || theme.selector_items_panel_style(theme.size())))
     }
 }
 

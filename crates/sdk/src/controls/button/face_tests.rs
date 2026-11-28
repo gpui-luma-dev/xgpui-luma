@@ -75,7 +75,7 @@ fn a_disabled_trigger_button_fades(cx: &mut TestAppContext) {
 #[gpui::test]
 fn a_disabled_selector_fades(cx: &mut TestAppContext) {
     let template = || {
-        let panel = Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default()));
+        let panel = Arc::new(|| crate::style::StyleBinding::sdk("floating_menu"));
         Arc::new(ThemedSelectorTemplate::new(
             Arc::new(StyledSelectorTheme::new(ThemeSource::Fixed(faded_theme()), panel)),
             crate::controls::selector_list::default_selector_items_template(),
@@ -121,7 +121,8 @@ fn a_disabled_popup_menu_fades(cx: &mut TestAppContext) {
 #[test]
 fn the_sdk_chevron_dims_when_disabled() {
     use crate::controls::selector::{SelectorTriggerStyle, default_selector_theme};
-    use crate::controls::selector::{SelectorLook, SelectorVisualState, resolve_selector_trigger};
+    use crate::controls::selector::{SelectorVisualState, resolve_selector_trigger};
+    use crate::style::PartRead;
     use crate::theme::InteractionState;
     let theme = default_selector_theme();
     let look = |disabled| {
@@ -129,13 +130,13 @@ fn the_sdk_chevron_dims_when_disabled() {
             interaction: InteractionState { disabled, ..Default::default() },
             ..Default::default()
         };
-        let resolved = resolve_selector_trigger(&theme.style(), SelectorTriggerStyle::Outline, visual, 1.0);
-        SelectorLook::from_resolved(&resolved, theme.items_panel(), false)
+        resolve_selector_trigger(&theme.style(), SelectorTriggerStyle::Outline, visual, 1.0)
     };
     let (resting, disabled) = (look(false), look(true));
-    assert_ne!(resting.trigger_icon, disabled.trigger_icon);
-    assert_eq!(disabled.trigger_icon, disabled.trigger_foreground, "the disabled label color");
-    assert_eq!(disabled.trigger_opacity, 1.0, "the SDK draws colors, no fade");
+    let (resting, disabled) = (resting.root(), disabled.root());
+    assert_ne!(resting.color("icon"), disabled.color("icon"));
+    assert_eq!(disabled.color("icon"), disabled.color("foreground"), "the disabled label color");
+    assert_eq!(disabled.opacity(), 1.0, "the SDK draws colors, no fade");
 }
 
 /// The SDK with an open trigger fill (`:hover:open`: an open trigger draws hovered), and a green chevron, on the trigger button (so its specializations).
@@ -178,7 +179,7 @@ fn the_open_state_reaches_every_trigger(cx: &mut TestAppContext) {
     use crate::controls::popup_menu::PopupMenuTriggerStyle;
     use crate::controls::selector::{SelectorTheme, SelectorTriggerStyle, SelectorVisualState, resolve_selector_trigger};
     use crate::theme::InteractionState;
-    let panel = Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default()));
+    let panel = Arc::new(|| crate::style::StyleBinding::sdk("floating_menu"));
     let selector = StyledSelectorTheme::new(ThemeSource::Fixed(open_theme()), panel);
     let at = |open| {
         let visual = SelectorVisualState { open, ..Default::default() };

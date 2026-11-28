@@ -75,16 +75,16 @@ impl FloatingMenuSeparatorTemplate for ThemedFloatingMenuSeparatorTemplate {
     }
 }
 
-/// The menu's resolved style for one render (#433): at rest, with a row hovered and with a row disabled.
-/// The template reads parts from these directly.
-struct MenuStyle {
+/// A menu's resolved style for one render (#433): at rest, with a row hovered and with a row disabled. Menu,
+/// selector panel and selection panel templates read parts from these directly.
+pub struct MenuStyle {
     rest: Arc<Resolved>,
     hover: Arc<Resolved>,
     disabled: Arc<Resolved>,
 }
 
 impl MenuStyle {
-    fn resolve(binding: &StyleBinding) -> Self {
+    pub fn resolve(binding: &StyleBinding) -> Self {
         let resolve = |interaction| binding.resolve_states(StyleStates::new(interaction), 1.0);
         Self {
             rest: resolve(InteractionState::default()),
@@ -93,15 +93,15 @@ impl MenuStyle {
         }
     }
 
-    fn panel(&self) -> PartView<'_> {
+    pub fn panel(&self) -> PartView<'_> {
         self.rest.root()
     }
 
-    fn item(&self) -> PartView<'_> {
+    pub fn item(&self) -> PartView<'_> {
         self.rest.part(PartId::new("item"))
     }
 
-    fn separator(&self) -> PartView<'_> {
+    pub fn separator(&self) -> PartView<'_> {
         self.rest.part(PartId::new("separator"))
     }
 
@@ -115,7 +115,7 @@ impl MenuStyle {
         }
     }
 
-    fn row_colors(&self) -> RowColors {
+    pub fn row_colors(&self) -> RowColors {
         let (hover, disabled) = (self.hover.part(PartId::new("item")), self.disabled.part(PartId::new("item")));
         RowColors {
             foreground: self.panel().color("foreground"),
@@ -125,37 +125,41 @@ impl MenuStyle {
         }
     }
 
-    fn disabled_opacity(&self) -> f32 {
+    pub fn disabled_opacity(&self) -> f32 {
         self.disabled.part(PartId::new("item")).opacity()
     }
 
-    fn item_radius(&self) -> f32 {
+    pub fn item_radius(&self) -> f32 {
         self.item().number("radius")
     }
 
-    fn icon_size(&self) -> f32 {
+    pub fn icon_size(&self) -> f32 {
         self.panel().number("item_icon_size")
     }
 
-    fn window_margin(&self) -> f32 {
+    pub fn window_margin(&self) -> f32 {
         self.panel().number("window_margin")
     }
 
-    /// The panel around the rows: fill, stroke, corners, shadow, padding and minimum width.
-    fn pane(&self, pane: Stateful<Div>) -> Stateful<Div> {
+    /// The panel's surface: fill, stroke, corners and shadow.
+    pub fn surface(&self, surface: Stateful<Div>) -> Stateful<Div> {
         let panel = self.panel();
-        pane.min_w(px(panel.number("min_width")))
-            .p(px(panel.number("padding")))
+        surface
             .bg(panel.color("background"))
             .border(px(panel.number("border_width")))
             .border_color(panel.color("border"))
             .rounded(px(panel.number("radius")))
             .shadow(panel.box_shadow())
-            .occlude()
+    }
+
+    /// The panel around the rows: its surface, padding and minimum width.
+    pub fn pane(&self, pane: Stateful<Div>) -> Stateful<Div> {
+        let panel = self.panel();
+        self.surface(pane.min_w(px(panel.number("min_width"))).p(px(panel.number("padding")))).occlude()
     }
 
     /// A row's box and text, before its paint.
-    fn row(&self, row: Stateful<Div>, color: gpui::Hsla) -> Stateful<Div> {
+    pub fn row(&self, row: Stateful<Div>, color: gpui::Hsla) -> Stateful<Div> {
         let item = self.item();
         let typography = item.typography(14.0, 20.0);
         row.flex()
@@ -201,11 +205,11 @@ impl MenuGeometry {
 
 /// The colors a row draws in: at rest, hovered or active, and disabled.
 #[derive(Clone, Copy, Debug)]
-struct RowColors {
-    foreground: gpui::Hsla,
-    hover_background: gpui::Hsla,
-    hover_foreground: gpui::Hsla,
-    disabled_foreground: gpui::Hsla,
+pub struct RowColors {
+    pub foreground: gpui::Hsla,
+    pub hover_background: gpui::Hsla,
+    pub hover_foreground: gpui::Hsla,
+    pub disabled_foreground: gpui::Hsla,
 }
 
 /// The size a menu of `items` opens at in `style`: its minimum width, and its rows plus padding (#433). For

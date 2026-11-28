@@ -92,4 +92,5 @@ pub use slide_panel::{slide_panel_background, slide_panel_panels_look};
 pub use textfield::ShadcnTextFieldStyle;
 pub use toolbar_item::{ShadcnToolbarItemExt, ToolbarTextFieldItemBuilder};
 
+#[allow(deprecated)]
 pub(crate) use selector_items_panel::selector_items_panel_look;

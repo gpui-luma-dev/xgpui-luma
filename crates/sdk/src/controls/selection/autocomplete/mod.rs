@@ -2,7 +2,9 @@ mod behavior;
 mod control;
 mod model;
 mod styled;
+#[allow(deprecated)]
 pub use styled::{StyledAutocompleteTheme, styled_autocomplete_look};
+pub use styled::status_typography;
 mod template;
 mod text_selection;
 pub(crate) mod theme;
@@ -16,6 +18,7 @@ pub use template::{
     AutocompleteTemplateModifier, DefaultAutocompleteItemsTemplate, DefaultAutocompleteTemplate,
     default_autocomplete_items_template, default_autocomplete_template,
 };
+#[allow(deprecated)]
 pub use theme::{AutocompleteLook, AutocompleteTheme, default_autocomplete_theme};
 
 mod callback;

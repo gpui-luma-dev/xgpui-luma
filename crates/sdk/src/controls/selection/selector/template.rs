@@ -14,8 +14,8 @@ use crate::controls::button::face::{Face, FaceShape};
 use crate::infra::ElementExt;
 use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::selector_list::{
-    SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
-    default_selector_items_template,
+    PanelGeometry, SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate,
+    SelectorItemsTemplateHandlers, default_selector_items_template,
 };
 use crate::controls::button::face::FaceLook;
 use crate::style::PartRead;
@@ -191,10 +191,11 @@ where
             face_look.shadow = None;
         }
         let trigger_icon_size = snap_to_pixel(root.number("icon_size"), scale_factor);
+        let menu = self.theme.menu();
         let anchor = SelectorAnchor {
             trigger_height: face_look.height,
             offset_y: root.number("menu_offset_y"),
-            panel: self.theme.items_panel(),
+            panel: PanelGeometry::of(&menu),
         };
         // The trigger is a button face (#430): its fill, border, shadow, focus ring and fade come from one place.
         let face = Face {
@@ -294,7 +295,7 @@ where
                     enabled: model.enabled,
                     focus: model.focus,
                     item_template: model.item_template,
-                    look: anchor.panel.clone(),
+                    menu: menu.clone(),
                     max_height: popup_metrics.max_height,
                     scrolling: popup_metrics.scrolling,
                     scroll_handle: model.popup_scroll,
@@ -329,7 +330,7 @@ where
 pub(crate) struct SelectorAnchor {
     trigger_height: f32,
     offset_y: f32,
-    panel: crate::controls::selector_list::SelectorItemsPanelLook,
+    panel: PanelGeometry,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -458,7 +459,7 @@ mod tests {
         SelectorAnchor {
             trigger_height: root.number("height"),
             offset_y: root.number("menu_offset_y"),
-            panel: theme.items_panel(),
+            panel: PanelGeometry::of(&theme.menu()),
         }
     }
 
@@ -466,7 +467,9 @@ mod tests {
     /// with the values the `SelectorLook` compatibility type reads: at rest, hovered, pressed, disabled, focused,
     /// open and invalid.
     #[test]
+    #[allow(deprecated)]
     fn the_trigger_face_matches_the_look() {
+        use crate::controls::selector_list::SelectorItemsPanelLook;
         use crate::controls::button::face::FaceLook;
         use crate::controls::selector::{SelectorLook, SelectorVisualState};
         use crate::theme::InteractionState;
@@ -483,7 +486,8 @@ mod tests {
         ] {
             for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
                 let resolved = super::super::styled::resolve_trigger(&theme.style(), style, visual, 1.0);
-                let look = SelectorLook::from_resolved(&resolved, theme.items_panel(), false);
+                let look =
+                    SelectorLook::from_resolved(&resolved, SelectorItemsPanelLook::from_style(&theme.menu()), false);
                 let root = resolved.root();
                 let face = FaceLook::from_part(root);
                 let case = format!("{style:?} {visual:?}");

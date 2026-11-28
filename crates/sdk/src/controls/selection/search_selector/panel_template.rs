@@ -1,11 +1,10 @@
 use crate::infra::template::ModifiedElementTemplate;
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Bounds, Pixels, SharedString, div, prelude::*, px};
 
 use crate::infra::popup_placement::{ResolvedPopupPlacement, anchored_popup};
-
-use crate::controls::selector_list::SelectorItemsPanelLook;
 
 use super::behavior::SelectionItem;
 use super::item_template::SearchSelectorItemTemplate;
@@ -23,7 +22,8 @@ pub struct SearchSelectorPanelRenderModel<'a> {
     pub popup_bounds: Option<Bounds<Pixels>>,
     /// Where the popup opens; `None` draws the panel inline.
     pub popup_placement: Option<ResolvedPopupPlacement>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub search_content: Option<AnyElement>,
     pub list_content: AnyElement,
 }
@@ -60,7 +60,8 @@ where
 
 impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {
     fn render(&self, model: SearchSelectorPanelRenderModel<'_>, _cx: &mut App) -> AnyElement {
-        let look = model.popup_look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+        let window_margin = crate::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
 
         let panel_content = div()
             .id("panel-content")
@@ -68,33 +69,23 @@ impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {
             .when_some(model.search_content, |panel, search| {
                 panel
                     .child(div().p(px(model.geometry.search_padding)).child(search))
-                    .child(div().h(px(model.geometry.search_separator_height)).bg(look.border))
+                    .child(div().h(px(model.geometry.search_separator_height)).bg(style.panel().color("border")))
             })
             .child(model.list_content);
 
         if let (Some(bounds), Some(placement)) = (model.popup_bounds, model.popup_placement) {
-            let panel = div()
-                .id((model.id.clone(), 1usize))
+            let panel = style
+                .surface(div().id((model.id.clone(), 1usize)))
                 .w(bounds.size.width)
-                .bg(look.background)
-                .border(px(look.border_width))
-                .border_color(look.border)
-                .rounded(px(look.radius))
-                .shadow(look.shadow)
                 .overflow_hidden()
                 .block_mouse_except_scroll()
                 .child(panel_content);
-            return anchored_popup(&placement, px(look.window_margin), panel).into_any_element();
+            return anchored_popup(&placement, px(window_margin), panel).into_any_element();
         }
 
-        div()
-            .id((model.id.clone(), 0usize))
+        style
+            .surface(div().id((model.id.clone(), 0usize)))
             .w_full()
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
             .overflow_hidden()
             .block_mouse_except_scroll()
             .child(panel_content)

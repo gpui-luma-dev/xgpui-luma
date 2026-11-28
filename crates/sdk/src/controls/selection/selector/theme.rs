@@ -1,3 +1,5 @@
+#![allow(deprecated)] // SelectorLook, SelectorPalette and the panel look are this module's compatibility types.
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
@@ -7,6 +9,10 @@ use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxSca
 
 use super::model::SelectorTriggerStyle;
 
+/// A compatibility type (#433): the template draws from the trigger's resolved style.
+#[deprecated(
+    note = "the template draws from `SelectorTheme::style()`; resolve it with `resolve_selector_trigger` (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct SelectorPalette {
     /// Independent focus paint; transparency retains the configured focus space.
@@ -20,7 +26,11 @@ pub struct SelectorPalette {
     pub items_panel: SelectorItemsPanelLook,
 }
 
-/// Build one with a theme's `resolve_look`; it may gain fields.
+/// A compatibility type (#433): the template draws from the trigger's resolved style. Build one with
+/// [`SelectorLook::from_resolved`]; it may gain fields.
+#[deprecated(
+    note = "the template draws from `SelectorTheme::style()`; resolve it with `resolve_selector_trigger` (#433)"
+)]
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct SelectorLook {
@@ -104,9 +114,15 @@ pub trait SelectorTheme: Send + Sync {
         crate::style::StyleBinding::sdk("selector")
     }
 
-    /// The popup panel the trigger opens.
+    /// The popup panel's style (#433): a `floating_menu` binding the panel template resolves and draws from.
+    fn menu(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("floating_menu")
+    }
+
+    /// The popup panel built from [`Self::menu`], for code that still reads a [`SelectorItemsPanelLook`].
+    #[deprecated(note = "the panel template draws from `menu()`; resolve it and read its parts instead (#433)")]
     fn items_panel(&self) -> SelectorItemsPanelLook {
-        crate::controls::selector_list::default_selector_items_panel_look(&Default::default())
+        SelectorItemsPanelLook::from_style(&self.menu())
     }
 
     /// The trigger's colors, built from [`Self::style`] for code that still reads a [`SelectorPalette`].
@@ -298,7 +314,7 @@ mod tests {
         for lss in fixture::themes() {
             let theme = super::super::styled::StyledSelectorTheme::new(
                 ThemeSource::Fixed(lss.clone()),
-                Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default())),
+                Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
             );
             let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
             let look = theme.resolve_visual_look(

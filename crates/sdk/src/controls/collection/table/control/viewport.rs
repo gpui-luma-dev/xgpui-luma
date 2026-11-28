@@ -5,7 +5,7 @@ use super::super::layout::{
     visible_item_count, visible_row_height,
 };
 use super::super::model::{TableModel, TableScrollMode};
-use super::super::theme::TableRowLook;
+use super::super::styled::TableRowLayout;
 use super::selection::TableDirection;
 use super::{TableControl, TableEvent};
 
@@ -116,12 +116,12 @@ where
         }
     }
 
-    pub(super) fn row_scroll_increment(&self, row_look: &TableRowLook) -> f32 {
-        self.fill_row_height.unwrap_or_else(|| visible_row_height(row_look, self.model.visible_row_height))
+    pub(super) fn row_scroll_increment(&self, layout: &TableRowLayout) -> f32 {
+        self.fill_row_height.unwrap_or_else(|| visible_row_height(layout, self.model.visible_row_height))
     }
 
     pub(super) fn token_row_height(&self, scale_factor: f32) -> f32 {
-        visible_row_height(&self.resolve_row_look_for_metrics(scale_factor), self.model.visible_row_height)
+        visible_row_height(&self.row_layout(scale_factor), self.model.visible_row_height)
     }
 
     pub(super) fn visible_row_capacity(&self) -> usize {
@@ -210,8 +210,8 @@ where
     }
 
     pub(super) fn snap_scroll_position(&mut self) {
-        let row_look = self.resolve_row_look_for_metrics(1.0);
-        let row_height = self.row_scroll_increment(&row_look);
+        let layout = self.row_layout(1.0);
+        let row_height = self.row_scroll_increment(&layout);
         let offset = self.list_state.logical_scroll_top();
         let mut item_ix = offset.item_ix;
         if row_height > 0.0 && offset.offset_in_item >= px(row_height * 0.5) {
@@ -225,7 +225,7 @@ where
         if viewport_height > px(0.0) {
             viewport_height * 0.9
         } else {
-            px(self.row_scroll_increment(&self.resolve_row_look_for_metrics(1.0)))
+            px(self.row_scroll_increment(&self.row_layout(1.0)))
         }
     }
 

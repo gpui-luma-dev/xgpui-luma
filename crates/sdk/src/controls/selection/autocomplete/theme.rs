@@ -1,9 +1,14 @@
+#![allow(deprecated)] // AutocompleteLook is this module's compatibility type.
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
 use crate::controls::floating_menu::FloatingMenuLook;
 
+/// The autocomplete's values, copied out of its style (#433). A compatibility type: the controls read the
+/// resolved style itself.
+#[deprecated(note = "read `AutocompleteTheme::style()` and `menu()` instead (#433)")]
 #[derive(Clone, Debug)]
 pub struct AutocompleteLook {
     pub status_color: Hsla,
@@ -16,7 +21,24 @@ pub struct AutocompleteLook {
 }
 
 pub trait AutocompleteTheme: Send + Sync {
-    fn resolve(&self) -> AutocompleteLook;
+    /// The status line and clear button's style (#433): an `autocomplete` binding the controls resolve and read.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("autocomplete")
+    }
+
+    /// The popup menu's style: a `floating_menu` binding.
+    fn menu(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("floating_menu")
+    }
+
+    /// The look built from [`Self::style`] and [`Self::menu`], for code that still reads an [`AutocompleteLook`].
+    #[deprecated(note = "read `style()` and `menu()` instead (#433)")]
+    fn resolve(&self) -> AutocompleteLook {
+        super::styled::styled_autocomplete_look(
+            &self.style(),
+            crate::controls::floating_menu::styled_floating_menu_look(&self.menu()),
+        )
+    }
 }
 
 pub fn default_autocomplete_theme() -> Arc<dyn AutocompleteTheme> {

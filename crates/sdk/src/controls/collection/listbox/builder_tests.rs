@@ -117,10 +117,13 @@ fn build_default_draws_the_sdk_listbox_lss() {
     cx.update(|_, app| view.update(app, |host, cx| host.list.apply(ListBoxInput::Select(1), cx)));
     settle(cx);
     let styled = crate::controls::listbox::StyledListBox::sdk();
-    let surface = styled.surface(true, false).background;
-    let selected = styled.row(ListBoxItemState { selected: true, active: true, enabled: true }, false, false, false);
+    use crate::style::PartRead;
+    let surface = styled.resolve_surface(true, false).root().color("background");
+    let selected =
+        styled.resolve_row(ListBoxItemState { selected: true, active: true, enabled: true }, false, false, false);
+    let selected = selected.part(xgpui_luma_style::PartId::new("row")).color("background");
     let fills: Vec<gpui::Hsla> =
         cx.update(|window, _| window.painted_quads().iter().filter_map(|quad| quad.background.as_solid()).collect());
     assert!(fills.contains(&surface), "the surface: {fills:?}");
-    assert!(fills.contains(&selected.background), "the selected row: {fills:?}");
+    assert!(fills.contains(&selected), "the selected row: {fills:?}");
 }

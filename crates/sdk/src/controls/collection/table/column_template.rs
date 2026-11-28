@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::style::PartRead;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*};
 
 use super::model::{TableColumnCellTemplate, TableRowRenderModel};
@@ -26,7 +27,11 @@ where
 {
     Arc::new(move |model, _window, _cx| {
         let value = value_fn(model.row);
-        div().opacity(model.look.column_muted_opacity).truncate().child(value.into()).into_any_element()
+        div()
+            .opacity(model.style.root().number("column_muted_opacity"))
+            .truncate()
+            .child(value.into())
+            .into_any_element()
     })
 }
 
@@ -39,7 +44,7 @@ where
     Arc::new(move |model, _window, _cx| {
         let value = value_fn(model.row);
         div()
-            .font_weight(model.look.column_emphasis_weight)
+            .font_weight(gpui::FontWeight(model.style.root().number("column_emphasis_weight").max(100.0)))
             .truncate()
             .child(value.into())
             .into_any_element()

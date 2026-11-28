@@ -1,4 +1,5 @@
 use crate::infra::focus_report::ReportsFocus as _;
+use crate::style::PartRead;
 use gpui::{
     App, AppContext, ClickEvent, Context, Entity, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
     MouseDownEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Subscription, Window, div, prelude::*, px,
@@ -8,8 +9,8 @@ use crate::controls::popup_scroll_surface::PopupScrollSurface;
 use crate::controls::scrollbar::{ScrollbarEvent, ScrollbarTemplate};
 use super::item_template::{SelectionPanelItemTemplate, make_selection_panel_item_template};
 use super::model::{
-    SelectionPanelRole, HoverActivationPolicy, SelectionPanelBuilder, SelectionPanelLookProvider, SelectionPanelItem,
-    SelectionPanelItemLike, SelectionPanelModel, default_selection_panel_model,
+    SelectionPanelRole, HoverActivationPolicy, SelectionPanelBuilder, SelectionPanelItem, SelectionPanelItemLike,
+    SelectionPanelModel, default_selection_panel_model,
 };
 use super::template::SelectionPanelTemplate;
 use super::template::{
@@ -269,8 +270,9 @@ where
         cx.notify();
     }
 
-    pub fn set_look_provider(&mut self, provider: SelectionPanelLookProvider, cx: &mut Context<Self>) {
-        self.model.look_provider = provider;
+    /// Replace where the panel's style comes from: a `selection_panel` binding, read each time it is drawn (#433).
+    pub fn set_menu(&mut self, menu: crate::controls::popup_menu::MenuSource, cx: &mut Context<Self>) {
+        self.model.menu = menu;
         cx.notify();
     }
 
@@ -662,15 +664,17 @@ where
         self.focus_subscriptions
             .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
-        let look = (self.model.look_provider)();
-        let panel_min_width = look.min_width;
+        let menu = (self.model.menu)();
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&menu);
+        let panel_min_width = style.panel().number("min_width");
+        let item_height = style.item().number("height");
 
         let item_count = self.model.visible_indices.len();
         let min_visible_rows = self.model.min_visible_rows.max(1);
         let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
         let visible_rows = item_count.max(1).clamp(min_visible_rows, max_visible_rows) as f32;
-        let viewport_height = px(look.item_height * visible_rows);
-        let row_height = px(look.item_height);
+        let viewport_height = px(item_height * visible_rows);
+        let row_height = px(item_height);
         let content_top_padding = px(0.0);
         let allow_scrolling = self.model.scrolling && item_count > max_visible_rows;
 
@@ -697,7 +701,7 @@ where
                 enabled: self.model.enabled,
                 focus,
                 item_template: self.model.item_template.as_ref(),
-                look: look.clone(),
+                menu: menu.clone(),
                 show_selection_marker: self.model.show_selection_marker,
                 icons: &self.model.icons,
                 show_panel_chrome: false,
@@ -723,14 +727,10 @@ where
                 0.0
             };
 
-        let panel_shell = div()
+        let panel_shell = style
+            .surface(div().id("selection-panel-shell"))
             .min_w(px(content_width))
-            .p(px(look.padding))
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
+            .p(px(style.panel().number("padding")))
             .block_mouse_except_scroll()
             .child(rows_content);
 

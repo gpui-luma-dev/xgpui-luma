@@ -3,6 +3,7 @@ use crate::infra::focus_report::ReportsFocus as _;
 #[path = "click_tests.rs"]
 mod click_tests;
 
+use crate::style::PartRead;
 use gpui::App;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, MouseDownEvent, Pixels, Render,
@@ -613,9 +614,12 @@ impl Render for ComboBoxControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let autocomplete_style = self.model.autocomplete_theme.style().resolve(&[], 1.0);
+        let autocomplete = autocomplete_style.root();
+        let (status_color, muted_text_color) = (autocomplete.color("status"), autocomplete.color("muted_text"));
         let geometry = self.model.geometry;
-        let look = (self.model.popup_look_provider)();
+        let menu = (self.model.popup_menu)();
+        let panel = crate::controls::selector_list::PanelGeometry::of(&menu);
         let selected_label = self
             .behavior
             .state
@@ -630,7 +634,7 @@ impl Render for ComboBoxControl {
             let placeholder_run = TextRun {
                 len: self.model.placeholder.len(),
                 font: text_font,
-                color: autocomplete_look.muted_text_color,
+                color: muted_text_color,
                 background_color: None,
                 underline: None,
                 strikethrough: None,
@@ -683,20 +687,20 @@ impl Render for ComboBoxControl {
 
         let popup_content = if self.model.enabled && self.presence.should_paint() && !visible_indices.is_empty() {
             let menu_id = SharedString::from("combobox-menu");
-            let row_height = px(look.item_height);
-            let content_top_padding = px(look.padding);
+            let row_height = px(panel.item_height);
+            let content_top_padding = px(panel.padding);
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
             let wanted_rows = item_count.clamp(min_visible_rows, max_visible_rows);
             let fit = self.trigger_bounds.map(|trigger| {
-                fit_list_popup(trigger, trigger.size.width, &look, px(0.0), wanted_rows, PopupSpace::of(window, cx))
+                fit_list_popup(trigger, trigger.size.width, &panel, px(0.0), wanted_rows, PopupSpace::of(window, cx))
             });
             // Rows beyond the space on the opening side scroll.
             let max_visible_rows = fit.map_or(max_visible_rows, |fit| max_visible_rows.min(fit.max_rows));
             let popup_placement = fit.map(|fit| fit.placement);
             let visible_rows = wanted_rows.min(max_visible_rows) as f32;
-            let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
+            let viewport_height = px((panel.padding * 2.0) + (panel.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > max_visible_rows;
 
             self.popup_surface.set_scrolling_enabled(allow_scrolling);
@@ -714,7 +718,7 @@ impl Render for ComboBoxControl {
                     open: self.presence.should_paint(),
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
-                    look: look.clone(),
+                    menu: menu.clone(),
                 },
                 ComboBoxItemsTemplateHandlers { item_hovers, item_clicks },
                 cx,
@@ -732,7 +736,7 @@ impl Render for ComboBoxControl {
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
                     popup_placement,
-                    popup_look: look.clone(),
+                    popup_menu: menu.clone(),
                     list_content: self.popup_surface.render_with_scroll_wheel(
                         list_content.into_any_element(),
                         cx.listener(Self::handle_popup_scroll_wheel),
@@ -758,7 +762,7 @@ impl Render for ComboBoxControl {
 
         // Disabled, the arrow and clear button take the field's disabled icon color, and don't brighten on hover.
         let (status_color, muted_text_color) = if self.model.enabled {
-            (autocomplete_look.status_color, autocomplete_look.muted_text_color)
+            (status_color, muted_text_color)
         } else {
             let icon = self.model.textfield_template.resolve_look(TextFieldState::default(), false).icon;
             (icon, icon)
@@ -777,7 +781,7 @@ impl Render for ComboBoxControl {
             status_color,
             muted_text_color,
             popup_bounds: self.trigger_bounds,
-            popup_look: look,
+            popup_menu: menu,
             popup_content,
             presence: self.presence.clone(),
         };

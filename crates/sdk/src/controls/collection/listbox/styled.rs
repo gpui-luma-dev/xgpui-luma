@@ -1,6 +1,8 @@
 //! Listbox chrome read from `.lss` (issue #285): `listbox.lss`. Looks paint the surface from
 //! [`StyledListBox::surface`] and rows with [`StyledListBox::paint_row`]; item content stays the host's.
 
+#![allow(deprecated)] // ListBoxSurfaceLook and ListBoxRowLook are this module's compatibility types.
+
 use crate::theme::InteractionState;
 use crate::style::StyleStates;
 use crate::style::PartRead;
@@ -10,7 +12,9 @@ use xgpui_luma_style::{PartId, Resolved};
 use super::ListBoxItemState;
 use crate::style::StyleBinding;
 
-/// The listbox surface's colors and frame.
+/// The listbox surface's colors and frame, copied out of its style (#433). A compatibility type: templates read
+/// [`StyledListBox::resolve_surface`].
+#[deprecated(note = "read `StyledListBox::resolve_surface` instead (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ListBoxSurfaceLook {
     pub background: Hsla,
@@ -19,7 +23,9 @@ pub struct ListBoxSurfaceLook {
     pub radius: f32,
 }
 
-/// One row's colors, focus border, layout and text.
+/// One row's colors, focus border, layout and text, copied out of its style (#433). A compatibility type:
+/// templates read [`StyledListBox::resolve_row`].
+#[deprecated(note = "read `StyledListBox::resolve_row` instead (#433)")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ListBoxRowLook {
     pub background: Hsla,
@@ -55,12 +61,29 @@ impl StyledListBox {
         self.binding.theme()
     }
 
-    /// The surface, enabled or not, with or without focus.
-    pub fn surface(&self, enabled: bool, focused: bool) -> ListBoxSurfaceLook {
-        let resolved = self.binding.resolve_states(
+    /// The surface's resolved style, enabled or not, with or without focus (#433): read its root part.
+    pub fn resolve_surface(&self, enabled: bool, focused: bool) -> std::sync::Arc<Resolved> {
+        self.binding.resolve_states(
             StyleStates::new(InteractionState { focused, disabled: !enabled, ..Default::default() }),
             1.0,
-        );
+        )
+    }
+
+    /// The surface's fill, border and corners on `surface`, with or without focus (#433).
+    pub fn paint_surface(&self, surface: Stateful<Div>, focused: bool) -> Stateful<Div> {
+        let resolved = self.resolve_surface(true, focused);
+        let root = resolved.root();
+        surface
+            .bg(root.color("background"))
+            .border(px(root.number("border_width")))
+            .border_color(root.color("border"))
+            .rounded(px(root.number("radius")))
+    }
+
+    /// The surface, enabled or not, with or without focus.
+    #[deprecated(note = "read `resolve_surface` instead (#433)")]
+    pub fn surface(&self, enabled: bool, focused: bool) -> ListBoxSurfaceLook {
+        let resolved = self.resolve_surface(enabled, focused);
         let root = resolved.root();
         ListBoxSurfaceLook {
             background: root.color("background"),
@@ -70,7 +93,9 @@ impl StyledListBox {
         }
     }
 
-    fn resolve_row(
+    /// A row's resolved style in `state` (#433): read its `row` part. `focused` is the active row while focus is
+    /// visible.
+    pub fn resolve_row(
         &self,
         state: ListBoxItemState,
         focused: bool,
@@ -83,6 +108,7 @@ impl StyledListBox {
     }
 
     /// A row in `state`; `focused` is the active row while focus is visible.
+    #[deprecated(note = "read `resolve_row` instead (#433)")]
     pub fn row(&self, state: ListBoxItemState, focused: bool, hover: bool, pressed: bool) -> ListBoxRowLook {
         let resolved = self.resolve_row(state, focused, hover, pressed);
         let row = resolved.part(PartId::new("row"));
@@ -104,25 +130,32 @@ impl StyledListBox {
     /// selection and keyboard input.
     pub fn paint_row(&self, id: impl Into<ElementId>, state: ListBoxItemState, focus_visible: bool) -> Stateful<Div> {
         let focused = state.active && focus_visible;
-        let base = self.row(state, focused, false, false);
-        let hover = self.row(state, focused, true, false);
-        let pressed = self.row(state, focused, false, true);
+        let (base, hover, pressed) = (
+            self.resolve_row(state, focused, false, false),
+            self.resolve_row(state, focused, true, false),
+            self.resolve_row(state, focused, false, true),
+        );
+        let part = PartId::new("row");
+        let (base, hover, pressed) = (base.part(part), hover.part(part), pressed.part(part));
+        let font_family = base.font_family_name();
+        let (hover_fill, hover_text) = (hover.color("background"), hover.color("foreground"));
+        let (pressed_fill, pressed_text) = (pressed.color("background"), pressed.color("foreground"));
         let row = div()
             .id(id)
-            .bg(base.background)
-            .text_color(base.foreground)
-            .text_size(px(base.font_size))
-            .line_height(px(base.line_height))
-            .font_weight(base.font_weight)
-            .border(px(base.border_width))
-            .border_color(base.border)
-            .rounded(px(base.radius))
-            .px(px(base.padding_x))
-            .when(!base.font_family.is_empty(), |row| row.font_family(base.font_family.clone()));
+            .bg(base.color("background"))
+            .text_color(base.color("foreground"))
+            .text_size(px(base.font_size().unwrap_or(14.0)))
+            .line_height(px(base.line_height().unwrap_or(20.0)))
+            .font_weight(base.font_weight())
+            .border(px(base.number("border_width")))
+            .border_color(base.color("border"))
+            .rounded(px(base.number("radius")))
+            .px(px(base.number("padding_x")))
+            .when(!font_family.is_empty(), |row| row.font_family(font_family));
         row.when(state.enabled, |row| {
             row.cursor_pointer()
-                .hover(|style| style.bg(hover.background).text_color(hover.foreground))
-                .active(|style| style.bg(pressed.background).text_color(pressed.foreground))
+                .hover(move |style| style.bg(hover_fill).text_color(hover_text))
+                .active(move |style| style.bg(pressed_fill).text_color(pressed_text))
         })
     }
 }

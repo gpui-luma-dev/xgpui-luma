@@ -6,6 +6,7 @@ mod click_tests;
 
 use crate::infra::popup_placement::PopupSpace;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
+use crate::style::PartRead;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, KeyDownEvent,
     MouseDownEvent, Pixels, Render, ScrollEvent, SharedString, Subscription, TextRun, Window, div, font, prelude::*,
@@ -25,7 +26,7 @@ use crate::theme::observe_theme_revision;
 
 use super::behavior::{SelectionBehavior, SelectionEvent, SelectionStatus, SubmitResult};
 use super::item_template::SearchSelectorItemTemplate;
-use super::model::{SearchSelectorBuilder, SearchSelectorPopupLookProvider};
+use super::model::SearchSelectorBuilder;
 use super::panel_template::{SearchSelectorPanelRenderModel, SearchSelectorPanelTemplate};
 use super::template::{
     SearchSelectorItemsRenderModel, SearchSelectorItemsTemplate, SearchSelectorItemsTemplateHandlers,
@@ -634,8 +635,9 @@ impl SearchSelectorControl {
         cx.notify();
     }
 
-    pub fn set_popup_look_provider(&mut self, provider: SearchSelectorPopupLookProvider, cx: &mut Context<Self>) {
-        self.model.popup_look_provider = provider;
+    /// Replace where the popup panel's style comes from, e.g. to rebind it to a look's `floating_menu.lss`.
+    pub fn set_popup_menu(&mut self, menu: crate::controls::popup_menu::MenuSource, cx: &mut Context<Self>) {
+        self.model.popup_menu = menu;
         cx.notify();
     }
 
@@ -719,9 +721,12 @@ impl Render for SearchSelectorControl {
         }
 
         let trigger_focused = self.interaction.focus_handle().is_focused(window);
-        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let autocomplete_style = self.model.autocomplete_theme.style().resolve(&[], 1.0);
+        let autocomplete = autocomplete_style.root();
+        let (status_color, muted_text_color) = (autocomplete.color("status"), autocomplete.color("muted_text"));
         let geometry = self.model.geometry;
-        let look = (self.model.popup_look_provider)();
+        let menu = (self.model.popup_menu)();
+        let panel = crate::controls::selector_list::PanelGeometry::of(&menu);
         let selected_label = self
             .committed_selection
             .and_then(|index| self.model.items.get(index))
@@ -734,7 +739,7 @@ impl Render for SearchSelectorControl {
             let placeholder_run = TextRun {
                 len: self.model.placeholder.len(),
                 font: text_font,
-                color: autocomplete_look.muted_text_color,
+                color: muted_text_color,
                 background_color: None,
                 underline: None,
                 strikethrough: None,
@@ -789,8 +794,8 @@ impl Render for SearchSelectorControl {
 
         let popup_content = if self.model.enabled && self.presence.should_paint() {
             let list_id = SharedString::from("search-selector-menu");
-            let row_height = px(look.item_height);
-            let content_top_padding = px(look.padding);
+            let row_height = px(panel.item_height);
+            let content_top_padding = px(panel.padding);
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
@@ -805,7 +810,7 @@ impl Render for SearchSelectorControl {
                 fit_list_popup(
                     trigger,
                     trigger.size.width,
-                    &look,
+                    &panel,
                     px(geometry.search_chrome_height),
                     wanted_rows,
                     PopupSpace::of(window, cx),
@@ -819,7 +824,7 @@ impl Render for SearchSelectorControl {
             };
             let min_visible_rows = min_visible_rows.min(effective_max_visible_rows);
             let visible_rows = item_count.max(1).clamp(min_visible_rows, effective_max_visible_rows) as f32;
-            let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
+            let viewport_height = px((panel.padding * 2.0) + (panel.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > effective_max_visible_rows;
 
             self.popup_surface.set_scrolling_enabled(allow_scrolling);
@@ -830,12 +835,12 @@ impl Render for SearchSelectorControl {
                 div()
                     .flex()
                     .items_center()
-                    .min_h(px(look.item_height))
-                    .px(px(look.item_padding_x))
-                    .text_size(px(look.item_typography.size))
-                    .line_height(px(look.item_typography.line_height))
-                    .font_weight(look.item_typography.weight)
-                    .text_color(autocomplete_look.muted_text_color)
+                    .min_h(px(panel.item_height))
+                    .px(px(panel.item_padding_x))
+                    .text_size(px(panel.item_typography.size))
+                    .line_height(px(panel.item_typography.line_height))
+                    .font_weight(panel.item_typography.weight)
+                    .text_color(muted_text_color)
                     .child("No matches")
                     .into_any_element()
             } else {
@@ -853,7 +858,7 @@ impl Render for SearchSelectorControl {
                             open: self.presence.should_paint(),
                             enabled: self.model.enabled,
                             item_template: self.model.item_template.as_ref(),
-                            look: look.clone(),
+                            menu: menu.clone(),
                         },
                         SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks },
                         cx,
@@ -874,7 +879,7 @@ impl Render for SearchSelectorControl {
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
                     popup_placement,
-                    popup_look: look.clone(),
+                    popup_menu: menu.clone(),
                     search_content: Some(self.popup_search_textfield.clone().into_any_element()),
                     list_content: self
                         .popup_surface
@@ -934,8 +939,8 @@ impl Render for SearchSelectorControl {
             minimum_trigger_width,
             status_label,
             status_detail,
-            status_color: autocomplete_look.status_color,
-            muted_text_color: autocomplete_look.muted_text_color,
+            status_color: status_color,
+            muted_text_color: muted_text_color,
             popup_content,
             presence: self.presence.clone(),
             disclosure_progress: self.disclosure_transition.progress(),

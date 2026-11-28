@@ -5,8 +5,6 @@ use gpui::{AnyElement, App, Bounds, Pixels, SharedString, div, prelude::*, px};
 
 use crate::infra::popup_placement::{ResolvedPopupPlacement, anchored_popup};
 
-use crate::controls::selector_list::SelectorItemsPanelLook;
-
 use super::behavior::SelectionItem;
 use super::item_template::ComboBoxItemTemplate;
 
@@ -22,7 +20,8 @@ pub struct ComboBoxPanelRenderModel<'a> {
     pub popup_bounds: Option<Bounds<Pixels>>,
     /// Where the popup opens; `None` draws the panel inline.
     pub popup_placement: Option<ResolvedPopupPlacement>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub list_content: AnyElement,
 }
 
@@ -58,31 +57,21 @@ where
 
 impl ComboBoxPanelTemplate for DefaultComboBoxPanelTemplate {
     fn render(&self, model: ComboBoxPanelRenderModel<'_>, _cx: &mut App) -> AnyElement {
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+        let window_margin = crate::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
         if let (Some(bounds), Some(placement)) = (model.popup_bounds, model.popup_placement) {
-            let look = model.popup_look;
-            let panel = div()
-                .id((model.id.clone(), 1usize))
+            let panel = style
+                .surface(div().id((model.id.clone(), 1usize)))
                 .w(bounds.size.width)
-                .bg(look.background)
-                .border(px(look.border_width))
-                .border_color(look.border)
-                .rounded(px(look.radius))
-                .shadow(look.shadow)
                 .overflow_hidden()
                 .block_mouse_except_scroll()
                 .child(model.list_content);
-            return anchored_popup(&placement, px(look.window_margin), panel).into_any_element();
+            return anchored_popup(&placement, px(window_margin), panel).into_any_element();
         }
 
-        let look = model.popup_look;
-        div()
-            .id((model.id.clone(), 0usize))
+        style
+            .surface(div().id((model.id.clone(), 0usize)))
             .w_full()
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
             .overflow_hidden()
             .block_mouse_except_scroll()
             .child(model.list_content)

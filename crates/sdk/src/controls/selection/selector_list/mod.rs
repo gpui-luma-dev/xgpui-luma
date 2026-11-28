@@ -8,13 +8,15 @@ mod items_template;
 mod model;
 
 pub use item_template::{SelectorItemRenderModel, SelectorItemTemplate, make_selector_item_template};
+#[allow(deprecated)]
 pub use items_template::{
-    SelectorPopupGeometry, SelectorPopupGeometryHandler, DefaultSelectorItemsTemplate, SelectorItemsPanelLook,
+    DefaultSelectorItemsTemplate, SelectorItemsPanelLook, SelectorPopupGeometry, SelectorPopupGeometryHandler,
     SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers, SelectorItemsTemplateModifier,
     SelectorPanelClickHandler, SelectorPanelHoverHandler, SelectorPanelMouseDownHandler,
     SelectorPanelScrollWheelHandler, default_selector_items_panel_look, default_selector_items_template,
-    selector_items_panel_source, styled_selector_items_panel_look,
+    selector_items_panel_source, selector_panel_placement, styled_selector_items_panel_look,
 };
+pub(crate) use items_template::PanelGeometry;
 pub use model::{SelectorItem, SelectorItemLike, SelectorPath, normalize_selector_items};
 pub(crate) use items_template::items_template_with_modifier;
 
@@ -32,7 +34,7 @@ pub(crate) struct ListPopupFit {
 pub(crate) fn fit_list_popup(
     trigger: gpui::Bounds<gpui::Pixels>,
     width: gpui::Pixels,
-    look: &SelectorItemsPanelLook,
+    look: &PanelGeometry,
     chrome: gpui::Pixels,
     wanted_rows: usize,
     viewport: impl Into<crate::infra::popup_placement::PopupSpace>,
@@ -63,13 +65,17 @@ mod fit_tests {
 
     use super::*;
 
-    fn look() -> SelectorItemsPanelLook {
-        let mut look = default_selector_items_panel_look(&crate::theme::ThemeTokens::default());
-        look.padding = 4.0;
-        look.item_height = 20.0;
-        look.popup_offset_y = 4.0;
-        look.window_margin = 8.0;
-        look
+    fn look() -> PanelGeometry {
+        PanelGeometry {
+            padding: 4.0,
+            border_width: 1.0,
+            item_height: 20.0,
+            item_padding_x: 8.0,
+            item_typography: crate::theme::ThemeTokens::default().typography.text.body,
+            min_width: 0.0,
+            popup_offset_y: 4.0,
+            window_margin: 8.0,
+        }
     }
 
     #[test]

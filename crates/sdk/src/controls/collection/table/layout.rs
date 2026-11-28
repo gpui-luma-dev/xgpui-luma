@@ -1,24 +1,28 @@
 use super::model::TableScrollMode;
-use super::theme::{TableLook, TableRowLook};
+use super::styled::TableRowLayout;
+use crate::style::PartRead;
 
 /// GPUI row elements use `min_h(min_height)` with `py(padding_y)` on the same node, so the
-/// laid-out row height is [`TableRowLook::min_height`], not min_height + padding.
+/// laid-out row height is [`TableRowLayout::min_height`], not min_height + padding.
 ///
-/// Per-row layout height for [`TableRowLook::min_height`] rows (see module comment).
-pub fn default_row_height(row_look: &TableRowLook) -> f32 {
-    row_look.min_height
+/// Per-row layout height for [`TableRowLayout::min_height`] rows (see module comment).
+pub fn default_row_height(layout: &TableRowLayout) -> f32 {
+    layout.min_height
 }
 
-pub fn visible_row_height(row_look: &TableRowLook, override_height: Option<f32>) -> f32 {
-    override_height.unwrap_or_else(|| default_row_height(row_look))
+pub fn visible_row_height(layout: &TableRowLayout, override_height: Option<f32>) -> f32 {
+    override_height.unwrap_or_else(|| default_row_height(layout))
 }
 
-/// Matches [`DefaultTableShellTemplate::paint_shell`] header slot padding.
-pub fn header_height(list_look: &TableLook) -> f32 {
-    list_look.header_typography.line_height
-        + list_look.padding_y
-        + (list_look.padding_y * list_look.header_padding_bottom_scale)
-        + list_look.header_divider_width
+/// Matches [`DefaultTableShellTemplate::paint_shell`] header slot padding, from the frame's resolved style
+/// (#433).
+pub fn header_height(style: &xgpui_luma_style::Resolved) -> f32 {
+    let (root, header) = (style.root(), style.part(xgpui_luma_style::PartId::new("header")));
+    let padding_y = root.number("padding_y");
+    header.typography(14.0, 20.0).line_height
+        + padding_y
+        + (padding_y * root.number("header_padding_bottom_scale"))
+        + root.number("header_divider_width")
 }
 
 /// Total scroll-body height for `visible_rows` data rows, including inter-row dividers.
@@ -71,14 +75,21 @@ pub fn distributed_row_height(viewport_height: f32, row_count: usize) -> Option<
     Some(viewport_height / row_count as f32)
 }
 
-pub fn compute_shell_height(visible_rows: usize, row_height: f32, list_look: &TableLook, has_header: bool) -> f32 {
-    let mut total_height = body_rows_height(visible_rows, row_height, list_look.row_divider_width);
+/// The shell's height for `visible_rows`, from the frame's resolved style (#433).
+pub fn compute_shell_height(
+    visible_rows: usize,
+    row_height: f32,
+    style: &xgpui_luma_style::Resolved,
+    has_header: bool,
+) -> f32 {
+    let root = style.root();
+    let mut total_height = body_rows_height(visible_rows, row_height, root.number("row_divider_width"));
 
     if has_header {
-        total_height += header_height(list_look);
+        total_height += header_height(style);
     }
 
-    total_height + (2.0 * list_look.border_width)
+    total_height + (2.0 * root.number("border_width"))
 }
 
 /// Resolves the row count used for fixed shell/body height.
@@ -183,51 +194,23 @@ pub fn page_after_size_change(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::LumaTextStyle;
+    use crate::style::StyleBinding;
+    use xgpui_luma_style::{Overrides, PartId, Prop};
 
-    fn sample_row_look() -> TableRowLook {
-        TableRowLook {
-            column_emphasis_weight: gpui::FontWeight::SEMIBOLD,
-            row_divider_width: 1.0,
-            column_padding_x: 12.0,
-            column_muted_opacity: 0.65,
-            opacity: 1.0,
-            background: gpui::transparent_black(),
-            label_color: gpui::black(),
-            divider: gpui::black(),
-            label_typography: LumaTextStyle { size: 13.0, line_height: 18.0, weight: gpui::FontWeight::NORMAL },
-            radius: 0.0,
-            padding_x: 8.0,
-            padding_y: 8.0,
-            min_height: 36.0,
-            label_baseline_shift: 1.0,
-        }
-    }
-
-    fn sample_list_look() -> TableLook {
-        TableLook {
-            row_divider_width: 1.0,
-            column_padding_x: 12.0,
-            column_resize_hit_width: 10.0,
-            column_resize_line_width: 1.0,
-            column_resize_vertical_extension: 4.0,
-            background: gpui::white(),
-            border: gpui::black(),
-            border_width: 1.0,
-            header_divider_width: 1.0,
-            header_padding_bottom_scale: 0.75,
-            header_background: gpui::white(),
-            header_label_color: gpui::black(),
-            header_typography: LumaTextStyle { size: 11.0, line_height: 14.0, weight: gpui::FontWeight::MEDIUM },
-            radius: 6.0,
-            padding_x: 0.0,
-            padding_y: 4.0,
-        }
+    /// The SDK frame with a 14px header line, 4px padding, a 0.75 bottom scale and a 1px divider.
+    fn sample_frame() -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        let root = PartId::ROOT;
+        let overrides = Overrides::new()
+            .set(root, Prop::<f32>::new("padding_y"), 4.0)
+            .set(root, Prop::<f32>::new("header_padding_bottom_scale"), 0.75)
+            .set(root, Prop::<f32>::new("header_divider_width"), 1.0)
+            .set(PartId::new("header"), Prop::<f32>::new("line_height"), 14.0);
+        super::super::StyledTable::new(StyleBinding::sdk("table").overrides(overrides)).resolve(true, false)
     }
 
     #[test]
     fn default_row_height_matches_gpui_min_h_layout() {
-        let row = sample_row_look();
+        let row = TableRowLayout { padding_x: 8.0, padding_y: 8.0, min_height: 36.0 };
         assert_eq!(default_row_height(&row), 36.0);
     }
 
@@ -240,8 +223,7 @@ mod tests {
 
     #[test]
     fn header_height_matches_shell_header_slot() {
-        let list = sample_list_look();
-        assert_eq!(header_height(&list), 14.0 + 4.0 + 3.0 + 1.0);
+        assert_eq!(header_height(&sample_frame()), 14.0 + 4.0 + 3.0 + 1.0);
     }
 
     #[test]
@@ -329,15 +311,21 @@ mod tests {
 mod stroke_layout_tests {
     #[test]
     fn shell_height_uses_resolved_strokes_and_header_padding() {
-        use crate::controls::table::{StyledTableTheme, TableTheme};
-        let mut look = StyledTableTheme::sdk().resolve_look(true, false);
-        look.border_width = 0.0;
-        look.header_divider_width = 3.0;
-        look.padding_y = 8.0;
-        look.header_padding_bottom_scale = 0.5;
-        let header = look.header_typography.line_height + 8.0 + 4.0 + 3.0;
-        assert_eq!(super::compute_shell_height(1, 30.0, &look, true), 30.0 + header);
-        look.border_width = 2.0;
-        assert_eq!(super::compute_shell_height(1, 30.0, &look, false), 34.0);
+        use crate::style::{PartRead, StyleBinding};
+        use xgpui_luma_style::{Overrides, PartId, Prop};
+        let frame = |border_width: f32| {
+            let root = PartId::ROOT;
+            let overrides = Overrides::new()
+                .set(root, Prop::<f32>::new("border_width"), border_width)
+                .set(root, Prop::<f32>::new("header_divider_width"), 3.0)
+                .set(root, Prop::<f32>::new("padding_y"), 8.0)
+                .set(root, Prop::<f32>::new("header_padding_bottom_scale"), 0.5);
+            crate::controls::table::StyledTable::new(StyleBinding::sdk("table").overrides(overrides))
+                .resolve(true, false)
+        };
+        let style = frame(0.0);
+        let header = style.part(PartId::new("header")).typography(14.0, 20.0).line_height + 8.0 + 4.0 + 3.0;
+        assert_eq!(super::compute_shell_height(1, 30.0, &style, true), 30.0 + header);
+        assert_eq!(super::compute_shell_height(1, 30.0, &frame(2.0), false), 34.0);
     }
 }

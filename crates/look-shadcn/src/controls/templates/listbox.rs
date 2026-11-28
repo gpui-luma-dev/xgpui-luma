@@ -1,5 +1,6 @@
 //! Shadcn chrome for the shared SDK listbox builder.
 use std::sync::Arc;
+use xgpui_luma::style::PartRead;
 use gpui::{App, Div, Stateful, prelude::*, px};
 use xgpui_luma::controls::frame::FrameBuilder;
 use xgpui_luma::controls::listbox::{
@@ -11,16 +12,17 @@ struct ShadcnListBoxTemplate {
 }
 impl ListBoxTemplate for ShadcnListBoxTemplate {
     fn render(&self, model: &ListBoxRenderModel, cx: &mut App) -> Stateful<Div> {
-        let surface = self.look.styled_listbox().surface(true, model.focused);
+        let surface = self.look.styled_listbox().resolve_surface(true, model.focused);
+        let surface = surface.root();
         FrameBuilder::new(format!("{}-surface", model.id))
             // The viewport plus inset determines height, not Frame's full-size default.
             .h_auto()
             // Keep flex parents from shrinking the surface below its fixed viewport.
             .min_h(gpui::Length::Auto)
-            .bg(surface.background)
-            .border(px(surface.border_width))
-            .border_color(surface.border)
-            .rounded(px(surface.radius))
+            .bg(surface.color("background"))
+            .border(px(surface.number("border_width")))
+            .border_color(surface.color("border"))
+            .rounded(px(surface.number("radius")))
             .px(px(model.layout.inset_x))
             .py(px(model.layout.inset_y))
             .render(cx)

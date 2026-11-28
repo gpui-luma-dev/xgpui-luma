@@ -17,7 +17,7 @@
 //! - Resizing: [`dock_splitter_builder`], [`split_view_builder`].
 //! - Panels: [`resizable_panels_builder`], [`slide_panel_state`], [`render_slide_panel_overlay`], [`render_slide_panel_inset`].
 //! - Split actions: [`split_button_builder`], [`split_button_template`], [`split_button_theme`].
-//! - Shared chrome: [`floating_menu_look`], [`selector_items_panel_look`], [`scrollbar_template`].
+//! - Shared chrome: [`floating_menu_look`], [`selector_items_panel_style`], [`scrollbar_template`].
 //! - Popup content: [`HoverCard`] (interactive hover details), with [`hover_card_look`].
 //! - Composition: [`segmented_radio_template`] and [`LookControlExt::overlay_window`].
 //!
@@ -224,10 +224,15 @@ pub use ext::LookControlExt;
 pub use overlay_window::overlay_window_theme;
 pub use segmented::segmented_radio_template;
 pub use selector::{Selector, selector_template, selector_theme};
-pub use selector_list::{selector_items_panel_look, selector_items_panel_look_for};
+#[allow(deprecated)]
+pub use selector_list::{
+    selector_items_panel_look, selector_items_panel_look_for, selector_items_panel_style,
+    selector_items_panel_style_for,
+};
+#[allow(deprecated)]
 pub use selection::{
     autocomplete_builder, autocomplete_theme, combobox_builder, search_selector_builder, selection_panel_builder,
-    selection_panel_look,
+    selection_panel_look, selection_panel_style,
 };
 pub use scrollbar::{scrollbar_template, scrollbar_theme};
 

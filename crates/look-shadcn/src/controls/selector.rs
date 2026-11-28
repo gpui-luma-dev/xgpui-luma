@@ -3,7 +3,10 @@
 #[cfg(test)]
 mod tests {
     use gpui::Hsla;
-    use xgpui_luma::controls::selector::{SelectorLook, SelectorTriggerStyle, SelectorVisualState};
+    use std::sync::Arc;
+    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState, resolve_selector_trigger};
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::Resolved;
     use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::ShadcnLook;
@@ -23,9 +26,9 @@ mod tests {
         look.mode_tokens().catalog.color(name).unwrap()
     }
 
-    fn trigger(look: &ShadcnLook, style: SelectorTriggerStyle, state: SelectorVisualState, flat: bool) -> SelectorLook {
-        let theme = look.selector_theme();
-        xgpui_luma::controls::selector::selector_look(&*theme, style, state, flat)
+    /// The trigger's resolved style: what the SDK template draws from (#433).
+    fn trigger(look: &ShadcnLook, style: SelectorTriggerStyle, state: SelectorVisualState) -> Arc<Resolved> {
+        resolve_selector_trigger(&look.selector_theme().style(), style, state, 1.0)
     }
 
     fn with(interaction: InteractionState) -> SelectorVisualState {
@@ -35,13 +38,17 @@ mod tests {
     #[test]
     fn outline_is_the_outline_button_with_its_shadow_and_a_muted_chevron() {
         let look = look();
-        let outline = trigger(&look, SelectorTriggerStyle::Outline, Default::default(), false);
-        assert!(close(outline.trigger_background, css(&look, "background")));
-        assert!(close(outline.trigger_border.unwrap(), css(&look, "border")));
-        assert!(close(outline.trigger_icon, css(&look, "muted-foreground")));
-        assert!(outline.trigger_shadow.as_ref().is_some_and(|layers| !layers.is_empty()));
-        assert!(trigger(&look, SelectorTriggerStyle::Outline, Default::default(), true).trigger_shadow.is_none());
-        assert_eq!(outline.trigger_padding_x, look.mode_tokens().control_sizes.md.padding_x, "the md control padding");
+        let outline = trigger(&look, SelectorTriggerStyle::Outline, Default::default());
+        let outline = outline.root();
+        assert!(close(outline.color("background"), css(&look, "background")));
+        assert!(close(outline.color("border"), css(&look, "border")));
+        assert!(close(outline.color("icon"), css(&look, "muted-foreground")));
+        assert!(outline.box_shadow_opt().as_ref().is_some_and(|layers| !layers.is_empty()));
+        assert_eq!(
+            outline.number("padding_x"),
+            look.mode_tokens().control_sizes.md.padding_x,
+            "the md control padding"
+        );
     }
 
     /// shadcn fades a disabled trigger over its resting colors, chevron included (#430).
@@ -49,61 +56,65 @@ mod tests {
     fn disabled_fades_over_the_resting_trigger_and_chevron() {
         let look = look();
         let style = SelectorTriggerStyle::Outline;
-        let rest = trigger(&look, style, Default::default(), false);
-        let disabled = trigger(&look, style, with(InteractionState { disabled: true, ..Default::default() }), false);
-        assert!(disabled.trigger_opacity < 1.0, "{}", disabled.trigger_opacity);
-        assert!(close(disabled.trigger_icon, rest.trigger_icon));
-        assert!(close(disabled.trigger_foreground, rest.trigger_foreground));
-        assert_eq!(rest.trigger_opacity, 1.0);
+        let rest = trigger(&look, style, Default::default());
+        let rest = rest.root();
+        let disabled = trigger(&look, style, with(InteractionState { disabled: true, ..Default::default() }));
+        let disabled = disabled.root();
+        assert!(disabled.opacity() < 1.0, "{}", disabled.opacity());
+        assert!(close(disabled.color("icon"), rest.color("icon")));
+        assert!(close(disabled.color("foreground"), rest.color("foreground")));
+        assert_eq!(rest.opacity(), 1.0);
     }
 
     #[test]
     fn ghost_has_no_face_edge_or_shadow() {
         let look = look();
-        let ghost = trigger(&look, SelectorTriggerStyle::Ghost, Default::default(), false);
-        assert_eq!(ghost.trigger_background.a, 0.0);
-        assert!(ghost.trigger_border.is_none_or(|border| border.a == 0.0));
-        assert!(ghost.trigger_shadow.is_none());
+        let ghost = trigger(&look, SelectorTriggerStyle::Ghost, Default::default());
+        let ghost = ghost.root();
+        assert_eq!(ghost.color("background").a, 0.0);
+        assert!(ghost.color_opt("border").is_none_or(|border| border.a == 0.0));
+        assert!(ghost.box_shadow_opt().is_none());
     }
 
     #[test]
     fn open_looks_hovered_but_disabled_still_wins() {
         let look = look();
         let style = SelectorTriggerStyle::Outline;
-        let open = trigger(&look, style, SelectorVisualState { open: true, ..Default::default() }, false);
-        let hover = trigger(&look, style, with(InteractionState { hovered: true, ..Default::default() }), false);
-        assert_eq!(open.trigger_background, hover.trigger_background);
+        let open = trigger(&look, style, SelectorVisualState { open: true, ..Default::default() });
+        let open = open.root();
+        let hover = trigger(&look, style, with(InteractionState { hovered: true, ..Default::default() }));
+        let hover = hover.root();
+        assert_eq!(open.color("background"), hover.color("background"));
         let disabled_state = InteractionState { disabled: true, ..Default::default() };
         let disabled_open = trigger(
             &look,
             style,
             SelectorVisualState { open: true, interaction: disabled_state, ..Default::default() },
-            false,
         );
-        let disabled = trigger(&look, style, with(disabled_state), false);
-        assert_eq!(disabled_open.trigger_background, disabled.trigger_background);
-        assert_ne!(disabled.trigger_background, hover.trigger_background);
+        let disabled_open = disabled_open.root();
+        let disabled = trigger(&look, style, with(disabled_state));
+        let disabled = disabled.root();
+        assert_eq!(disabled_open.color("background"), disabled.color("background"));
+        assert_ne!(disabled.color("background"), hover.color("background"));
     }
 
     #[test]
     fn invalid_marks_the_edge_and_ring_destructive() {
         let look = look();
-        let invalid = trigger(
-            &look,
-            SelectorTriggerStyle::Outline,
-            SelectorVisualState { invalid: true, ..Default::default() },
-            false,
-        );
-        assert!(close(invalid.trigger_border.unwrap(), css(&look, "destructive")));
-        assert!(close(invalid.trigger_focus_border, css(&look, "destructive")));
+        let invalid =
+            trigger(&look, SelectorTriggerStyle::Outline, SelectorVisualState { invalid: true, ..Default::default() });
+        let invalid = invalid.root();
+        assert!(close(invalid.color("border"), css(&look, "destructive")));
+        assert!(close(invalid.color("focus_border"), css(&look, "destructive")));
     }
 
     #[test]
     fn sizes_scale_the_label_font() {
         let look = look();
         let size = |s| {
-            trigger(&look.with_size(s), SelectorTriggerStyle::Outline, Default::default(), false)
-                .trigger_typography
+            trigger(&look.with_size(s), SelectorTriggerStyle::Outline, Default::default())
+                .root()
+                .typography(14.0, 20.0)
                 .size
         };
         assert_eq!(
