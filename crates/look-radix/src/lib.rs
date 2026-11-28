@@ -240,7 +240,7 @@ pub use scrollbar::{scrollbar_template, scrollbar_theme};
 pub use tooltip::tooltip_theme;
 
 pub use panels::{
-    resizable_panels_builder, resizable_panels_template, resizable_panels_theme, slide_panel_state, slide_panel_look,
+    resizable_panels_builder, resizable_panels_template, resizable_panels_theme, slide_panel_state, slide_panel_style,
     render_slide_panel_overlay, render_slide_panel_surface, render_slide_panel_inset,
 };
 pub use split_button::{split_button_builder, split_button_template, split_button_theme};

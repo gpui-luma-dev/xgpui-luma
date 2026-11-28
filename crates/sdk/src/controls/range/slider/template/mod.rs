@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 mod angular_dial;
 mod circular_ring;
 mod linear;
@@ -71,9 +72,17 @@ impl From<SliderTemplateHandlers> for (SliderBoundsHandler, SliderInteractionHan
 }
 
 pub trait SliderTemplate: Send + Sync {
-    /// Resolve the same geometry for pointer hit testing and painted chrome.
+    /// The style in `state` (#433): the same geometry for pointer hit testing and painted chrome.
+    fn resolve_style(&self, state: crate::theme::InteractionState) -> Arc<xgpui_luma_style::Resolved> {
+        super::resolve_slider(&super::theme::default_slider_theme().style(), state)
+    }
+
+    /// The look in `state`, built from [`Self::resolve_style`] for code that still reads a
+    /// [`SliderLook`](super::SliderLook).
+    #[deprecated(note = "templates draw from `resolve_style()` (#433)")]
+    #[allow(deprecated)]
     fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
-        super::theme::default_slider_theme().resolve(state)
+        super::SliderLook::from_resolved(&self.resolve_style(state))
     }
 
     fn render(
@@ -98,8 +107,8 @@ where
 }
 
 impl SliderTemplate for ModifiedTemplate<dyn SliderTemplate> {
-    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
-        self.base.resolve_look(state)
+    fn resolve_style(&self, state: crate::theme::InteractionState) -> Arc<xgpui_luma_style::Resolved> {
+        self.base.resolve_style(state)
     }
 
     fn render(
@@ -119,39 +128,41 @@ pub(crate) fn uses_static_track_surface(model: &SliderRenderModel<'_>) -> bool {
     model.thumb_policy.is_multi_thumb() || model.presentation == super::model::TrackPresentation::Domain
 }
 
-pub(crate) fn track_surface_background(
-    model: &SliderRenderModel<'_>,
-    look: &crate::controls::slider::SliderLook,
-) -> Hsla {
+pub(crate) fn track_surface_background(model: &SliderRenderModel<'_>, look: &xgpui_luma_style::Resolved) -> Hsla {
     if uses_static_track_surface(model) {
-        look.fill_background
+        look.part(xgpui_luma_style::PartId::new("fill")).color("background")
     } else {
-        look.track_background
+        look.part(xgpui_luma_style::PartId::new("track")).color("background")
     }
 }
 
-pub(crate) fn track_muted_background(look: &crate::controls::slider::SliderLook) -> Hsla {
-    look.track_background
+pub(crate) fn track_muted_background(look: &xgpui_luma_style::Resolved) -> Hsla {
+    look.part(xgpui_luma_style::PartId::new("track")).color("background")
 }
 
 pub(crate) fn effective_thumb_radius(
     model: &SliderRenderModel<'_>,
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     rem_size: Pixels,
 ) -> f32 {
-    model.thumb_radius.map(|radius| f32::from(radius.to_pixels(rem_size))).unwrap_or(look.radius)
+    model
+        .thumb_radius
+        .map(|radius| f32::from(radius.to_pixels(rem_size)))
+        .unwrap_or(look.root().number("radius"))
 }
 
 pub(crate) fn render_slider_thumb_at(
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     id: impl Into<gpui::ElementId>,
     center_x: f32,
     center_y: f32,
     thumb_radius: f32,
     thumb: Option<&SliderThumbValue>,
 ) -> Stateful<Div> {
-    let thumb_fill = thumb.and_then(|thumb| thumb.preview).unwrap_or(look.thumb_background);
-    let offset = look.thumb_size * 0.5;
+    let thumb_fill = thumb
+        .and_then(|thumb| thumb.preview)
+        .unwrap_or(look.part(xgpui_luma_style::PartId::new("thumb")).color("background"));
+    let offset = look.root().number("thumb_size") * 0.5;
 
     div()
         .id(id)
@@ -164,19 +175,19 @@ pub(crate) fn render_slider_thumb_at(
         .rounded(px(thumb_radius))
         .child(
             div()
-                .size(px(look.thumb_size))
+                .size(px(look.root().number("thumb_size")))
                 .bg(thumb_fill)
-                .border(px(look.thumb_border_width))
-                .border_color(look.thumb_border)
+                .border(px(look.part(xgpui_luma_style::PartId::new("thumb")).number("border_width")))
+                .border_color(look.part(xgpui_luma_style::PartId::new("thumb")).color("border"))
                 .rounded(px(thumb_radius))
-                .shadow(look.thumb_shadow.clone()),
+                .shadow(look.part(xgpui_luma_style::PartId::new("thumb")).box_shadow()),
         )
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn render_linear_thumb(
     model: &SliderRenderModel<'_>,
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     id: impl Into<gpui::ElementId>,
     display_percentage: f32,
     top: f32,
@@ -188,7 +199,9 @@ pub(crate) fn render_linear_thumb(
     use super::model::SliderOrientation;
     use gpui::relative;
 
-    let thumb_fill = thumb.and_then(|thumb| thumb.preview).unwrap_or(look.thumb_background);
+    let thumb_fill = thumb
+        .and_then(|thumb| thumb.preview)
+        .unwrap_or(look.part(xgpui_luma_style::PartId::new("thumb")).color("background"));
     let mut thumb = div()
         .id(id)
         .absolute()
@@ -199,12 +212,12 @@ pub(crate) fn render_linear_thumb(
         .rounded(px(thumb_radius))
         .child(
             div()
-                .size(px(look.thumb_size))
+                .size(px(look.root().number("thumb_size")))
                 .bg(thumb_fill)
-                .border(px(look.thumb_border_width))
-                .border_color(look.thumb_border)
+                .border(px(look.part(xgpui_luma_style::PartId::new("thumb")).number("border_width")))
+                .border_color(look.part(xgpui_luma_style::PartId::new("thumb")).color("border"))
                 .rounded(px(thumb_radius))
-                .shadow(look.thumb_shadow.clone()),
+                .shadow(look.part(xgpui_luma_style::PartId::new("thumb")).box_shadow()),
         );
 
     thumb = match model.orientation {

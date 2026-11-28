@@ -132,20 +132,22 @@ impl Card {
         } else {
             binding
         };
-        let card = xgpui_luma::controls::card::StyledCard::new(binding).look();
+        use xgpui_luma::style::PartRead;
+        let resolved = xgpui_luma::controls::card::StyledCard::new(binding).resolve();
+        let card = resolved.root();
         let mut style = CardStyle {
-            padding: card.padding,
-            radius: card.radius,
+            padding: card.number("padding_x"),
+            radius: card.number("radius"),
             // Ghost cancels its padding, as in Radix Themes.
             margin: if self.variant == CardVariant::Ghost {
-                -card.padding
+                -card.number("padding_x")
             } else {
                 0.0
             },
-            background: card.background,
-            foreground: card.body_color,
-            font_family: card.font_family,
-            shadows: card.shadow,
+            background: card.painted("background"),
+            foreground: card.color("foreground"),
+            font_family: card.font_family_name(),
+            shadows: card.box_shadow(),
         };
         if let Some(customize) = &self.style_override {
             customize(&mut style);

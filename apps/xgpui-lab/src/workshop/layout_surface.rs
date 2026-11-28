@@ -11,19 +11,17 @@ use std::sync::Arc;
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::DockPanel;
 use xgpui_luma::controls::dock_splitter::{
-    DockSplitter, DockSplitterBuilder, DockSplitterEvent, DockSplitterLook, DockSplitterTheme, SplitterOrientation,
+    DockSplitter, DockSplitterBuilder, DockSplitterEvent, DockSplitterTheme, SplitterOrientation,
     StyledDockSplitterTheme, ThemedDockSplitterTemplate,
 };
 use xgpui_luma::controls::resizable_panels::{
-    ResizablePanelSpec, ResizablePanels, ResizablePanelsBuilder, ResizablePanelsEvent, ResizablePanelsLook,
-    ResizablePanelsTheme, ResizeHandleMetrics, StyledResizablePanelsTheme,
+    ResizablePanelSpec, ResizablePanels, ResizablePanelsBuilder, ResizablePanelsEvent, ResizablePanelsTheme,
+    ResizeHandleMetrics, StyledResizablePanelsTheme,
 };
-use xgpui_luma::controls::split_view::{
-    SplitView, SplitViewBuilder, SplitViewEvent, SplitViewLook, SplitViewTheme, StyledSplitViewTheme,
-};
+use xgpui_luma::controls::split_view::{SplitView, SplitViewBuilder, SplitViewEvent, SplitViewTheme, StyledSplitViewTheme};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
-use xgpui_luma::theme::{InteractionState, ThemeTokens};
+use xgpui_luma::theme::ThemeTokens;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -65,6 +63,16 @@ impl Cells {
     }
 }
 
+/// `binding` drawn disabled when `enabled` pins it off. Binding states only add, so a pinned enabled state draws as
+/// the control is.
+fn pin_disabled(binding: StyleBinding, enabled: Option<bool>) -> StyleBinding {
+    if enabled == Some(false) {
+        binding.state("disabled", true)
+    } else {
+        binding
+    }
+}
+
 // --- DockPanel ---------------------------------------------------------------------------------------------
 
 struct PinnedDockSplitterTheme {
@@ -73,8 +81,9 @@ struct PinnedDockSplitterTheme {
 }
 
 impl DockSplitterTheme for PinnedDockSplitterTheme {
-    fn resolve(&self, enabled: bool) -> DockSplitterLook {
-        self.base.resolve(self.enabled.unwrap_or(enabled))
+    /// The base style, drawn disabled when the picked state is (#433).
+    fn style(&self) -> StyleBinding {
+        pin_disabled(self.base.style(), self.enabled)
     }
 }
 
@@ -266,9 +275,9 @@ impl ResizablePanelsTheme for PinnedResizablePanelsTheme {
         self.base.resize_handle_metrics()
     }
 
-    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let disabled = self.enabled.map_or(state.disabled, |enabled| !enabled);
-        self.base.resolve(InteractionState { disabled, ..state })
+    /// The base style, drawn disabled when the picked state is (#433).
+    fn style(&self) -> StyleBinding {
+        pin_disabled(self.base.style(), self.enabled)
     }
 }
 
@@ -421,8 +430,9 @@ struct PinnedSplitViewTheme {
 }
 
 impl SplitViewTheme for PinnedSplitViewTheme {
-    fn resolve(&self, hovered: bool, enabled: bool) -> SplitViewLook {
-        self.base.resolve(hovered, self.enabled.unwrap_or(enabled))
+    /// The base style, drawn disabled when the picked state is (#433).
+    fn style(&self) -> StyleBinding {
+        pin_disabled(self.base.style(), self.enabled)
     }
 }
 

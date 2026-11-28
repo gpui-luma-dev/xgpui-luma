@@ -12,24 +12,34 @@ pub fn callout(look: &Look, text: impl Into<SharedString>, icon: impl Into<Contr
         ControlIcon::Lucide(icon) => SharedString::from(icon.asset_path()),
         ControlIcon::SvgPath(path) => path,
     };
-    let style = callout_look(look);
+    use xgpui_luma::style::PartRead;
+    let resolved = callout_style(look).resolve();
+    let style = resolved.root();
     div()
         .flex()
         .items_center()
-        .gap(px(style.gap))
+        .gap(px(style.number("gap")))
         .w_full()
-        .rounded(px(style.radius))
-        .p(px(style.padding))
-        .bg(style.background)
-        .child(div().flex_none().child(svg().path(path).size(px(style.icon_size)).text_color(style.foreground)))
-        .child(div().text_size(px(style.font_size)).text_color(style.foreground).child(text.into()))
+        .rounded(px(style.number("radius")))
+        .p(px(style.number("padding_x")))
+        .bg(style.color("background"))
+        .child(
+            div()
+                .flex_none()
+                .child(svg().path(path).size(px(style.number("icon_size"))).text_color(style.color("foreground"))),
+        )
+        .child(
+            div()
+                .text_size(px(style.typography(14.0, 20.0).size))
+                .text_color(style.color("foreground"))
+                .child(text.into()),
+        )
 }
 
-/// The callout from `.lss` (`style/callout.lss`).
-pub fn callout_look(look: &Look) -> xgpui_luma::controls::callout::CalloutLook {
+/// The callout's `.lss` (`style/callout.lss`) for `look` (#433).
+pub fn callout_style(look: &Look) -> xgpui_luma::controls::callout::StyledCallout {
     xgpui_luma::controls::callout::StyledCallout::new(xgpui_luma::style::StyleBinding::new(
         "callout",
         crate::textfield::live_source(look),
     ))
-    .look()
 }

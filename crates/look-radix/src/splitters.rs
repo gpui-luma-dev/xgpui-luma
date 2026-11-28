@@ -56,6 +56,7 @@ pub fn split_view_builder(look: &Look, id: impl Into<SharedString>) -> SplitView
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
@@ -115,6 +116,7 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod lss_tests {
     use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
     use xgpui_luma::theme::{InteractionState, ThemeMode};

@@ -7,6 +7,7 @@ use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
 
 /// A badge's colors, frame and text.
+#[deprecated(note = "the badge draws from `StyledBadge::resolve` (#433)")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BadgeLook {
     pub background: Hsla,
@@ -40,9 +41,16 @@ impl StyledBadge {
         Self::new(StyleBinding::sdk("badge"))
     }
 
+    /// The badge's style for the binding's attributes and states (#433): the badge draws from its root.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
     /// The badge for the binding's attributes and states.
+    #[deprecated(note = "the badge draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> BadgeLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
         let border = root.color("border");
         BadgeLook {
@@ -86,29 +94,33 @@ impl IntoElement for Badge {
     type Element = Div;
 
     fn into_element(self) -> Div {
-        let look = self.styled.look();
+        let resolved = self.styled.resolve();
+        let root = resolved.root();
+        let (typography, font_family, border) =
+            (root.typography(12.0, 16.0), root.font_family_name(), root.painted("border"));
         div()
             .flex()
             .flex_none()
             .items_center()
             .justify_center()
-            .gap(px(look.gap))
-            .min_h(px(look.min_height))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .when(!look.font_family.is_empty(), |badge| badge.font_family(look.font_family.clone()))
-            .font_weight(look.typography.weight)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .when_some(look.border, |badge, border| badge.border(px(look.border_width)).border_color(border))
+            .gap(px(root.number("gap")))
+            .min_h(px(root.number("min_height")))
+            .px(px(root.number("padding_x")))
+            .py(px(root.number("padding_y")))
+            .rounded(px(root.number("radius")))
+            .bg(root.color("background"))
+            .text_color(root.color("foreground"))
+            .when(!font_family.is_empty(), |badge| badge.font_family(font_family))
+            .font_weight(typography.weight)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .when_some(border, |badge, border| badge.border(px(root.number("border_width"))).border_color(border))
             .child(self.label)
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

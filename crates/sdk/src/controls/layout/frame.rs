@@ -24,9 +24,11 @@ use gpui::{
     AnyElement, App, AppContext, Context, Div, Edges, Entity, Hsla, IntoElement, Pixels, Refineable, Render,
     SharedString, Stateful, StyleRefinement, Styled, Subscription, Window, div, prelude::*, px,
 };
+use crate::style::{PartRead, StyleBinding};
 use crate::theme::observe_theme_revision;
 
 /// Decoration defaults supplied by a look. SDK frames are unpainted by default.
+#[deprecated(note = "frames draw from a `frame` style (`frame.lss`); see `FrameBuilder::style_source` (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FrameLook {
     pub background: Hsla,
@@ -35,6 +37,7 @@ pub struct FrameLook {
     pub radius: Pixels,
     pub padding: Edges<Pixels>,
 }
+#[allow(deprecated)]
 impl Default for FrameLook {
     fn default() -> Self {
         Self {
@@ -47,8 +50,9 @@ impl Default for FrameLook {
     }
 }
 
-/// Called every render so look adapters can resolve current theme values.
-pub type FrameLookProvider = Arc<dyn Fn(&App) -> FrameLook + Send + Sync>;
+/// Called every render so look adapters can resolve current theme values: the frame's style, a `frame` control
+/// (#433).
+pub type FrameStyleSource = Arc<dyn Fn(&App) -> StyleBinding + Send + Sync>;
 
 /// Content and explicit style overrides shared by inline and spawned frames.
 #[derive(Clone)]
@@ -62,13 +66,13 @@ pub struct FrameModel {
 #[derive(Clone)]
 pub struct FrameBuilder {
     model: FrameModel,
-    look_provider: FrameLookProvider,
+    style_source: FrameStyleSource,
 }
 impl FrameBuilder {
     pub fn new(id: impl Into<SharedString>) -> Self {
         Self {
             model: FrameModel { id: id.into(), style: StyleRefinement::default(), children: Vec::new() },
-            look_provider: Arc::new(|_| FrameLook::default()),
+            style_source: Arc::new(|_| StyleBinding::sdk("frame")),
         }
     }
     /// Inspect the reusable model for custom control templates.
@@ -76,8 +80,9 @@ impl FrameBuilder {
         &self.model
     }
 
-    pub fn look_provider(mut self, provider: impl Fn(&App) -> FrameLook + Send + Sync + 'static) -> Self {
-        self.look_provider = Arc::new(provider);
+    /// The frame's style, resolved every render (#433): a `frame` control, the SDK's (unpainted) by default.
+    pub fn style_source(mut self, source: impl Fn(&App) -> StyleBinding + Send + Sync + 'static) -> Self {
+        self.style_source = Arc::new(source);
         self
     }
     /// Append a retained entity or other cloneable element.
@@ -91,7 +96,7 @@ impl FrameBuilder {
         self
     }
     pub fn render(&self, cx: &App) -> Stateful<Div> {
-        render_frame(&self.model, (self.look_provider)(cx))
+        render_frame(&self.model, &(self.style_source)(cx).resolve(&[], 1.0))
     }
     pub fn spawn(self, cx: &mut impl AppContext) -> Entity<FrameControl> {
         cx.new(|cx| FrameControl { builder: self, _theme: observe_theme_revision(cx, |_, cx| cx.notify()) })
@@ -103,24 +108,23 @@ impl Styled for FrameBuilder {
     }
 }
 
-/// Render the same frame model inside a larger control template.
-pub fn render_frame(model: &FrameModel, look: FrameLook) -> Stateful<Div> {
+/// Render the same frame model inside a larger control template, drawn from `style`: a `frame` control's
+/// resolved style (#433).
+pub fn render_frame(model: &FrameModel, style: &xgpui_luma_style::Resolved) -> Stateful<Div> {
+    let look = style.root();
+    let (border_width, padding_x, padding_y) =
+        (px(look.number("border_width")), px(look.number("padding_x")), px(look.number("padding_y")));
     let mut root = div()
         .id(model.id.clone())
         .size_full()
         .min_w_0()
         .min_h_0()
-        .bg(look.background)
-        .border_color(look.border_color)
-        .rounded(look.radius)
-        .pt(look.padding.top)
-        .pr(look.padding.right)
-        .pb(look.padding.bottom)
-        .pl(look.padding.left)
-        .border_t(look.border_widths.top)
-        .border_r(look.border_widths.right)
-        .border_b(look.border_widths.bottom)
-        .border_l(look.border_widths.left);
+        .bg(look.color("background"))
+        .border_color(look.color("border"))
+        .rounded(px(look.number("radius")))
+        .px(padding_x)
+        .py(padding_y)
+        .border(border_width);
     root.style().refine(&model.style);
     root.children(model.children.iter().map(|render| render()))
 }
@@ -154,10 +158,15 @@ mod tests {
             let mut app = TestAppContext::single();
             let (_, cx) = app.add_window_view(|_, _| Host {
                 frame: FrameBuilder::new("frame")
-                    .look_provider(|_| FrameLook {
-                        padding: Edges::all(px(30.0)),
-                        border_widths: Edges::all(px(8.0)),
-                        ..FrameLook::default()
+                    .style_source(|_| {
+                        use xgpui_luma_style::{Overrides, PartId, Prop};
+                        let root = PartId::ROOT;
+                        StyleBinding::sdk("frame").overrides(
+                            Overrides::new()
+                                .set(root, Prop::<f32>::new("padding_x"), 30.0)
+                                .set(root, Prop::<f32>::new("padding_y"), 30.0)
+                                .set(root, Prop::<f32>::new("border_width"), 8.0),
+                        )
                     })
                     .w(px(requested))
                     .min_w(px(120.0))
@@ -194,13 +203,17 @@ mod tests {
     #[test]
     fn explicit_paint_overrides_look_without_removing_other_defaults() {
         let frame = FrameBuilder::new("frame").bg(gpui::black()).border_color(gpui::white()).rounded_tl(px(0.0));
-        let look = FrameLook {
-            background: gpui::white(),
-            border_color: gpui::black(),
-            radius: px(12.0),
-            ..FrameLook::default()
-        };
-        let mut root = render_frame(frame.model(), look);
+        use xgpui_luma_style::{Overrides, PartId, Prop};
+        let root = PartId::ROOT;
+        let style = StyleBinding::sdk("frame")
+            .overrides(
+                Overrides::new()
+                    .set(root, Prop::new("background"), crate::style::lss_color(gpui::white()))
+                    .set(root, Prop::new("border"), crate::style::lss_color(gpui::black()))
+                    .set(root, Prop::<f32>::new("radius"), 12.0),
+            )
+            .resolve(&[], 1.0);
+        let mut root = render_frame(frame.model(), &style);
         assert_eq!(root.style().background, Some(gpui::black().into()));
         assert_eq!(root.style().border_color, Some(gpui::white()));
         assert_eq!(root.style().corner_radii.top_left, Some(px(0.0).into()));

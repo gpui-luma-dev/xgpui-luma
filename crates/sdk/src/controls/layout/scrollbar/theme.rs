@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -6,6 +8,9 @@ use crate::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 
 use crate::theme::{InteractionState, MetricTokens};
 
+#[deprecated(
+    note = "scrollbar templates draw from `ScrollbarTheme::style()`; resolve it with `resolve_scrollbar` (#433)"
+)]
 #[derive(Clone, Copy, Debug)]
 pub struct ScrollbarLook {
     /// Whole-scrollbar fade in this state: the root's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
@@ -24,12 +29,28 @@ pub struct ScrollbarLook {
 }
 
 pub trait ScrollbarTheme: Send + Sync {
+    /// The scrollbar's style (#433): the binding templates resolve (see
+    /// [`resolve_scrollbar`](super::resolve_scrollbar)) and draw from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("scrollbar")
+    }
+
+    /// The scrollbar's style in `state`: [`Self::style`] unless a theme sets values per state (with
+    /// [`StyleBinding::with_overrides`](crate::style::StyleBinding::with_overrides)).
+    fn state_style(&self, _state: InteractionState) -> crate::style::StyleBinding {
+        self.style()
+    }
+
+    /// The scrollbar's look, built from [`Self::style`] for code that still reads a [`ScrollbarLook`].
+    #[deprecated(note = "templates draw from `style()`; resolve it with `resolve_scrollbar` (#433)")]
     fn resolve(
         &self,
         state: InteractionState,
         orientation: ScrollbarOrientation,
         style: ScrollbarStyle,
-    ) -> ScrollbarLook;
+    ) -> ScrollbarLook {
+        ScrollbarLook::from_resolved(&super::resolve_scrollbar(&self.state_style(state), state, style), orientation)
+    }
 
     fn metrics(&self) -> MetricTokens {
         MetricTokens::default()

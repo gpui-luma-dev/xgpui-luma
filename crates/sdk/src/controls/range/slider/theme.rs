@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::theme::stylesheet::{CommonStylesheet, PaletteRole, SliderMotionStylesheet, TransitionSpec};
 use std::collections::HashMap;
 
@@ -7,6 +9,7 @@ use gpui::{BoxShadow, Hsla};
 
 use crate::theme::InteractionState;
 
+#[deprecated(note = "slider templates draw from `SliderTheme::style()`; resolve it with `resolve_slider` (#433)")]
 #[derive(Clone, Debug)]
 pub struct SliderLook {
     pub thumb_border_width: f32,
@@ -32,7 +35,17 @@ pub struct SliderLook {
 }
 
 pub trait SliderTheme: Send + Sync {
-    fn resolve(&self, state: InteractionState) -> SliderLook;
+    /// The slider's style (#433): the binding templates resolve (see [`resolve_slider`](super::resolve_slider)) and
+    /// draw from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("slider")
+    }
+
+    /// The slider's look, built from [`Self::style`] for code that still reads a [`SliderLook`].
+    #[deprecated(note = "templates draw from `style()`; resolve it with `resolve_slider` (#433)")]
+    fn resolve(&self, state: InteractionState) -> SliderLook {
+        SliderLook::from_resolved(&super::styled::resolve_slider(&self.style(), state))
+    }
 }
 
 pub fn default_slider_theme() -> Arc<dyn SliderTheme> {

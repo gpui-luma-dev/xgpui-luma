@@ -96,8 +96,20 @@ impl Badge {
         self
     }
 
+    /// The badge's style (`style/badge.lss`) for this variant, tone, contrast and size (#433): the badge draws
+    /// from its root.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+        xgpui_luma::controls::badge::StyledBadge::new(self.binding()).resolve()
+    }
+
     /// The badge from `.lss` (`style/badge.lss`) for this variant, tone, contrast and size.
+    #[deprecated(note = "the badge draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> xgpui_luma::controls::badge::BadgeLook {
+        xgpui_luma::controls::badge::StyledBadge::new(self.binding()).look()
+    }
+
+    fn binding(&self) -> xgpui_luma::style::StyleBinding {
         let binding = xgpui_luma::style::StyleBinding::new("badge", crate::textfield::live_source(&self.look));
         let binding = match self.variant {
             BadgeVariant::Soft => binding,
@@ -115,38 +127,42 @@ impl Badge {
         } else {
             binding
         };
-        let binding = binding.state("high_contrast", self.high_contrast);
-        xgpui_luma::controls::badge::StyledBadge::new(binding).look()
+        binding.state("high_contrast", self.high_contrast)
     }
 
     #[cfg(test)]
     fn colors(&self) -> (Hsla, Hsla, Option<Hsla>) {
-        let look = self.look();
-        (look.background, look.foreground, look.border)
+        use xgpui_luma::style::PartRead;
+        let resolved = self.resolve();
+        let root = resolved.root();
+        (root.color("background"), root.color("foreground"), root.painted("border"))
     }
 }
 
 impl IntoElement for Badge {
     type Element = Div;
     fn into_element(self) -> Div {
-        let look = self.look();
-        let radius = if self.pill { 999.0 } else { look.radius };
+        use xgpui_luma::style::PartRead;
+        let resolved = self.resolve();
+        let root = resolved.root();
+        let typography = root.typography(12.0, 16.0);
+        let radius = if self.pill { 999.0 } else { root.number("radius") };
         // An inset outline preserves identical dimensions across variants.
         div()
             .relative()
             .flex()
             .flex_none()
             .items_center()
-            .font_family(look.font_family)
-            .font_weight(look.typography.weight)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
+            .font_family(root.font_family_name())
+            .font_weight(typography.weight)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .px(px(root.number("padding_x")))
+            .py(px(root.number("padding_y")))
             .rounded(px(radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .when_some(look.border, |badge, border| {
+            .bg(root.color("background"))
+            .text_color(root.color("foreground"))
+            .when_some(root.painted("border"), |badge, border| {
                 badge.child(div().absolute().inset_0().rounded(px(radius)).border_1().border_color(border))
             })
             .child(self.label)
@@ -154,6 +170,7 @@ impl IntoElement for Badge {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;

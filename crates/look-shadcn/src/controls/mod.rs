@@ -88,7 +88,7 @@ pub use toggle_builder::Toggle;
 pub use toolbar_builder::Toolbar;
 pub use tree_view_builder::TreeView;
 pub use card::{Card, ShadcnCard};
-pub use slide_panel::{slide_panel_background, slide_panel_panels_look};
+pub use slide_panel::{slide_panel_background, slide_panel_panels_style};
 pub use textfield::ShadcnTextFieldStyle;
 pub use toolbar_item::{ShadcnToolbarItemExt, ToolbarTextFieldItemBuilder};
 

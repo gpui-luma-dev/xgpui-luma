@@ -6,6 +6,7 @@ use gpui::{Hsla, SharedString};
 use crate::style::StyleBinding;
 
 /// An avatar's colors, size and fallback text.
+#[deprecated(note = "the avatar draws from `StyledAvatar::resolve` (#433)")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct AvatarLook {
     pub background: Hsla,
@@ -36,6 +37,13 @@ impl StyledAvatar {
         Self::new(StyleBinding::sdk("avatar"))
     }
 
+    /// The avatar's style for the binding's attributes and states (#433): the avatar draws from its root.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
+    #[deprecated(note = "the avatar draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> AvatarLook {
         let resolved = self.binding.resolve(&[], 1.0);
         let root = resolved.root();
@@ -105,25 +113,25 @@ impl Avatar {
     }
 
     /// The fallback's font size: the two-letter size for two letters.
-    fn font_size(&self, look: &AvatarLook) -> f32 {
+    fn font_size(&self, look: &xgpui_luma_style::Resolved) -> f32 {
         match &self.fallback {
-            AvatarFallback::Text(text) if text.chars().count() > 1 => look.two_letter_font_size,
-            _ => look.font_size,
+            AvatarFallback::Text(text) if text.chars().count() > 1 => look.root().number("two_letter_font_size"),
+            _ => look.root().typography(16.0, 16.0).size,
         }
     }
 
     /// The initials or icon on the avatar's fill.
-    fn fallback_element(&self, look: &AvatarLook) -> gpui::AnyElement {
+    fn fallback_element(&self, look: &xgpui_luma_style::Resolved) -> gpui::AnyElement {
         use gpui::{div, prelude::*, px};
         let content = match &self.fallback {
             AvatarFallback::Text(text) => div().child(text.clone()).into_any_element(),
             AvatarFallback::Icon(crate::controls::button::ControlIcon::Lucide(icon)) => {
-                crate::infra::icon::lucide_icon(*icon, look.foreground, look.icon_size)
+                crate::infra::icon::lucide_icon(*icon, look.root().color("foreground"), look.root().number("icon_size"))
             }
             AvatarFallback::Icon(crate::controls::button::ControlIcon::SvgPath(path)) => gpui::svg()
                 .path(path.clone())
-                .size(px(look.icon_size))
-                .text_color(look.foreground)
+                .size(px(look.root().number("icon_size")))
+                .text_color(look.root().color("foreground"))
                 .into_any_element(),
         };
         let font_size = self.font_size(look);
@@ -133,11 +141,13 @@ impl Avatar {
             .items_center()
             .justify_center()
             // Rounded here, not only on the outer box: GPUI clips to a rectangle, so the fill must be round itself.
-            .rounded(px(look.radius.min(look.diameter / 2.)))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .when(!look.font_family.is_empty(), |avatar| avatar.font_family(look.font_family.clone()))
-            .font_weight(look.font_weight)
+            .rounded(px(look.root().number("radius").min(look.root().number("height") / 2.)))
+            .bg(look.root().color("background"))
+            .text_color(look.root().color("foreground"))
+            .when(!look.root().font_family_name().is_empty(), |avatar| {
+                avatar.font_family(look.root().font_family_name())
+            })
+            .font_weight(look.root().font_weight())
             .text_size(px(font_size))
             .line_height(px(font_size))
             .child(content)
@@ -150,14 +160,14 @@ impl gpui::IntoElement for Avatar {
 
     fn into_element(mut self) -> gpui::Div {
         use gpui::{div, prelude::*, px};
-        let look = self.styled.look();
+        let look = self.styled.resolve();
         let content = match self.image.take() {
             Some(source) => {
                 let (loading, failure) = (self.clone(), self.clone());
                 let (loading_look, failure_look) = (look.clone(), look.clone());
                 gpui::img(source)
                     .size_full()
-                    .rounded(px(look.radius.min(look.diameter / 2.)))
+                    .rounded(px(look.root().number("radius").min(look.root().number("height") / 2.)))
                     .object_fit(gpui::ObjectFit::Cover)
                     .with_loading(move || loading.fallback_element(&loading_look))
                     .with_fallback(move || failure.fallback_element(&failure_look))
@@ -166,9 +176,9 @@ impl gpui::IntoElement for Avatar {
             None => self.fallback_element(&look),
         };
         div()
-            .size(px(look.diameter))
+            .size(px(look.root().number("height")))
             .flex_none()
-            .rounded(px(look.radius.min(look.diameter / 2.)))
+            .rounded(px(look.root().number("radius").min(look.root().number("height") / 2.)))
             .overflow_hidden()
             .child(content)
     }
@@ -180,11 +190,17 @@ mod tests {
 
     #[test]
     fn sdk_avatar_is_a_filled_circle() {
-        let look = StyledAvatar::sdk().look();
-        assert!(look.diameter > 0.0 && look.radius >= look.diameter / 2.0);
-        assert!(look.background.a > 0.0 && look.font_size > 0.0);
+        let look = StyledAvatar::sdk().resolve();
+        assert!(
+            look.root().number("height") > 0.0 && look.root().number("radius") >= look.root().number("height") / 2.0
+        );
+        assert!(look.root().color("background").a > 0.0 && look.root().typography(16.0, 16.0).size > 0.0);
         // An icon fallback reads as the same size as the letters, not larger (#397).
-        assert!(look.icon_size > look.font_size && look.icon_size <= look.font_size * 1.5, "{look:?}");
+        assert!(
+            look.root().number("icon_size") > look.root().typography(16.0, 16.0).size
+                && look.root().number("icon_size") <= look.root().typography(16.0, 16.0).size * 1.5,
+            "{look:?}"
+        );
     }
 }
 
@@ -211,25 +227,28 @@ mod element_tests {
         assert_eq!(avatar_initials("  jg  "), "JG");
         assert_eq!(avatar_initials("quinn"), "QU");
         assert_eq!(avatar_initials("q"), "Q");
-        let look = StyledAvatar::sdk().look();
-        assert_eq!(Avatar::new("q").font_size(&look), look.font_size);
-        assert_eq!(Avatar::new("jg").font_size(&look), look.two_letter_font_size);
+        let look = StyledAvatar::sdk().resolve();
+        assert_eq!(Avatar::new("q").font_size(&look), look.root().typography(16.0, 16.0).size);
+        assert_eq!(Avatar::new("jg").font_size(&look), look.root().number("two_letter_font_size"));
     }
 
     /// The SDK avatar draws a circle the `.lss` diameter wide, filled with its background (#397).
     #[test]
     fn draws_a_filled_circle_of_its_diameter() {
-        let look = StyledAvatar::sdk().look();
+        let look = StyledAvatar::sdk().resolve();
         let mut app = TestAppContext::single();
         let (_, cx) = app.add_window_view(|_, _| Harness(Avatar::new("JG")));
         cx.run_until_parked();
         let bounds = cx.debug_bounds("avatar").expect("the avatar is drawn");
-        assert_eq!((bounds.size.width, bounds.size.height), (gpui::px(look.diameter), gpui::px(look.diameter)));
-        let radius = look.radius.min(look.diameter / 2.);
+        assert_eq!(
+            (bounds.size.width, bounds.size.height),
+            (gpui::px(look.root().number("height")), gpui::px(look.root().number("height")))
+        );
+        let radius = look.root().number("radius").min(look.root().number("height") / 2.);
         let round_fill = cx.update(|window, _| {
             let scale = window.scale_factor();
             window.painted_quads().iter().any(|quad| {
-                quad.background == gpui::Background::from(look.background)
+                quad.background == gpui::Background::from(look.root().color("background"))
                     && (quad.corner_radii.top_left.0 - radius * scale).abs() < 0.5
                     && (quad.corner_radii.bottom_right.0 - radius * scale).abs() < 0.5
             })

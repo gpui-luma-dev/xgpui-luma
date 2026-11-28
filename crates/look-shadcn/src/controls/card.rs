@@ -55,23 +55,25 @@ pub fn card_look(theme: &ShadcnLook, size: ShadcnSize) -> CardLook {
     } else {
         binding
     };
-    let card = xgpui_luma::controls::card::StyledCard::new(binding).look();
+    use xgpui_luma::style::PartRead;
+    let resolved = xgpui_luma::controls::card::StyledCard::new(binding).resolve();
+    let card = resolved.root();
     CardLook {
-        background: card.background.unwrap_or_else(gpui::transparent_black),
-        border: card.border.unwrap_or_else(gpui::transparent_black),
-        title_color: card.title_color,
-        description_color: card.description_color,
-        body_color: card.body_color,
-        shadow: card.shadow,
-        radius: card.radius,
-        padding: card.padding,
-        section_gap: card.section_gap,
-        header_gap: card.header_gap,
-        body_gap: card.body_gap,
-        title: card.title,
-        description: card.description,
-        body: card.body,
-        font_family: card.font_family,
+        background: card.color("background"),
+        border: card.color("border"),
+        title_color: resolved.part(xgpui_luma::style::lss::PartId::new("title")).color("foreground"),
+        description_color: resolved.part(xgpui_luma::style::lss::PartId::new("description")).color("foreground"),
+        body_color: card.color("foreground"),
+        shadow: card.box_shadow(),
+        radius: card.number("radius"),
+        padding: card.number("padding_x"),
+        section_gap: card.number("section_gap"),
+        header_gap: card.number("header_gap"),
+        body_gap: card.number("body_gap"),
+        title: resolved.part(xgpui_luma::style::lss::PartId::new("title")).typography(14.0, 20.0),
+        description: resolved.part(xgpui_luma::style::lss::PartId::new("description")).typography(14.0, 20.0),
+        body: card.typography(14.0, 20.0),
+        font_family: card.font_family_name(),
     }
 }
 

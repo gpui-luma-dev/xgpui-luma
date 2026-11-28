@@ -416,7 +416,11 @@ fn splitter_sample(
                 radix::dock_splitter_template(true)
                     .render(
                         &model,
-                        &radix::dock_splitter_theme(&fork).resolve(!cell.state.disabled),
+                        xgpui_luma::controls::dock_splitter::resolve_dock_splitter(
+                            &radix::dock_splitter_theme(&fork).style(),
+                            !cell.state.disabled,
+                        )
+                        .root(),
                         preview_handlers::dock_splitter_handlers(),
                         window,
                         cx,

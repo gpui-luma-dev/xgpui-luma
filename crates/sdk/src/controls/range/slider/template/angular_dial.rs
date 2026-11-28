@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, Stateful, Window, canvas, div, px, prelude::*};
@@ -29,8 +30,8 @@ pub fn default_angular_dial_template() -> Arc<dyn SliderTemplate> {
 }
 
 impl SliderTemplate for ThemedAngularDialTemplate {
-    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::super::SliderLook {
-        self.theme.resolve(state)
+    fn resolve_style(&self, state: crate::theme::InteractionState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        super::super::resolve_slider(&self.theme.style(), state)
     }
 
     fn render(
@@ -41,7 +42,7 @@ impl SliderTemplate for ThemedAngularDialTemplate {
         window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.state);
+        let look = super::super::resolve_slider(&self.theme.style(), model.state);
         let SliderInputStrategy::Angular { min_angle, max_angle } = model.strategy else {
             return div().id(model.id.clone());
         };
@@ -51,16 +52,19 @@ impl SliderTemplate for ThemedAngularDialTemplate {
         let thumb_position = primary_thumb.map(|thumb| thumb.position).unwrap_or(0.0);
         let display_percentage = display_position(thumb_position, model.reversed);
         let angle = angle_for_percentage(min_angle, max_angle, display_percentage);
-        let dial_size = look.decoration.dial_size;
-        let track_radius = look.decoration.track_radius;
+        let dial_size = look.root().number("dial_size");
+        let track_radius = look.root().number("dial_track_radius");
         let center = dial_size * 0.5;
         let thumb_x = center + track_radius * angle.cos();
         let thumb_y = center + track_radius * angle.sin();
-        let arc_thickness = look.track_height;
+        let arc_thickness = look.root().number("track_height");
         let presentation = model.presentation;
-        let track_background = look.track_background;
-        let fill_background = look.fill_background;
-        let (track_border, track_border_width) = (look.track_border, look.track_border_width);
+        let track_background = look.part(xgpui_luma_style::PartId::new("track")).color("background");
+        let fill_background = look.part(xgpui_luma_style::PartId::new("fill")).color("background");
+        let (track_border, track_border_width) = (
+            look.part(xgpui_luma_style::PartId::new("track")).color("border"),
+            look.part(xgpui_luma_style::PartId::new("track")).number("border_width"),
+        );
         let thumb_radius = effective_thumb_radius(model, &look, window.rem_size());
 
         let (track_bounds, interaction) = handlers.into();

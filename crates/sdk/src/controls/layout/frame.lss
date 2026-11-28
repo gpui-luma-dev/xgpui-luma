@@ -1,0 +1,14 @@
+// SDK frame. Layer: sdk. Read by `render_frame` (frame.rs): a container's fill, edge, corners and inset. The SDK
+// frame is unpainted; looks and apps set these (#433).
+
+/// A decorated container.
+frame {
+  part root {
+    background   = transparent
+    border       = transparent
+    border_width = exact(0)
+    radius       = exact(0)
+    padding_x    = exact(0)
+    padding_y    = exact(0)
+  }
+}

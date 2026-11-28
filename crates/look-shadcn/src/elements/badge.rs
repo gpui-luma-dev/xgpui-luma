@@ -47,6 +47,7 @@ pub struct Badge {
     icon_placement: BadgeIconPlacement,
 }
 
+#[allow(deprecated)]
 pub use xgpui_luma::controls::badge::BadgeLook;
 
 impl Badge {
@@ -91,8 +92,12 @@ impl Badge {
     }
 }
 
-/// The badge from `.lss` (`style/badge.lss`) for `variant` at `size`.
-pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
+/// The badge's `.lss` (`style/badge.lss`) for `variant` at `size` (#433): the badge draws from its resolved root.
+pub fn badge_style(
+    theme: &ShadcnLook,
+    variant: BadgeVariant,
+    size: ShadcnSize,
+) -> xgpui_luma::controls::badge::StyledBadge {
     let look = theme.clone();
     let binding = xgpui_luma::style::StyleBinding::new(
         "badge",
@@ -108,33 +113,43 @@ pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -
     } else {
         binding
     };
-    xgpui_luma::controls::badge::StyledBadge::new(binding).look()
+    xgpui_luma::controls::badge::StyledBadge::new(binding)
+}
+
+/// The badge from `.lss` (`style/badge.lss`) for `variant` at `size`.
+#[deprecated(note = "the badge draws from `badge_style` (#433)")]
+#[allow(deprecated)]
+pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
+    badge_style(theme, variant, size).look()
 }
 
 impl IntoElement for Badge {
     type Element = Div;
 
     fn into_element(self) -> Self::Element {
-        let look = badge_look(&self.look, self.variant, self.size);
+        use xgpui_luma::style::PartRead;
+        let resolved = badge_style(&self.look, self.variant, self.size).resolve();
+        let look = resolved.root();
+        let typography = look.typography(12.0, 16.0);
         let mut root = div()
             .flex()
             .items_center()
             .justify_center()
-            .gap(px(look.gap))
-            .min_h(px(look.min_height))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .font_family(look.font_family)
-            .font_weight(look.typography.weight)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .when_some(look.border, |root, border| root.border_1().border_color(border));
+            .gap(px(look.number("gap")))
+            .min_h(px(look.number("min_height")))
+            .px(px(look.number("padding_x")))
+            .py(px(look.number("padding_y")))
+            .rounded(px(look.number("radius")))
+            .bg(look.color("background"))
+            .text_color(look.color("foreground"))
+            .font_family(look.font_family_name())
+            .font_weight(typography.weight)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .when_some(look.painted("border"), |root, border| root.border_1().border_color(border));
 
         if let Some(icon) = self.icon.as_ref() {
-            let rendered = render_badge_icon(icon, look.foreground, look.icon_size);
+            let rendered = render_badge_icon(icon, look.color("foreground"), look.number("icon_size"));
             if self.icon_placement == BadgeIconPlacement::Start {
                 root = root.child(rendered).child(self.label);
             } else {
@@ -167,6 +182,7 @@ impl ShadcnLook {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::tokens::ShadcnToken;

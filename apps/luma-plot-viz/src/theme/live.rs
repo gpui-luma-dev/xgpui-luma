@@ -11,7 +11,7 @@ use gpui::SharedString;
 use xgpui_luma::controls::{
     button::StyledButtonTemplate,
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
-    scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
+    scrollbar::{ScrollbarTheme, StyledScrollbarTheme},
     selector::{SelectorTheme, StyledSelectorTheme},
     tabs::{StyledTabsTheme, TabsTheme},
     tooltip::TooltipTheme,
@@ -138,13 +138,8 @@ impl SelectorTheme for AppTheme {
 }
 
 impl ScrollbarTheme for AppTheme {
-    fn resolve(
-        &self,
-        state: InteractionState,
-        orientation: ScrollbarOrientation,
-        style: ScrollbarStyle,
-    ) -> ScrollbarLook {
-        self.current().scrollbar.resolve(state, orientation, style)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().scrollbar.style()
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
@@ -223,13 +218,13 @@ mod tests {
             let expected = tokens.palette.surface.subtle.background.to_rgb();
             let got = selector_background.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
-            let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
-            assert_eq!(
-                scrollbar.thumb_background,
-                StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics)
-                    .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
-                    .thumb_background
-            );
+            let thumb = |binding: &xgpui_luma::style::StyleBinding| {
+                use xgpui_luma::controls::scrollbar::{ScrollbarStyle, resolve_scrollbar};
+                use xgpui_luma::style::PartRead;
+                resolve_scrollbar(binding, state, ScrollbarStyle::Soft).root().color("thumb")
+            };
+            let scrollbar_thumb = thumb(&scrollbars.style());
+            assert_eq!(scrollbar_thumb, thumb(&StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics).style()));
             let tip = {
                 use xgpui_luma::style::PartRead;
                 xgpui_luma::controls::tooltip::resolve_tooltip(&tooltip.style()).root().color("background")
@@ -243,7 +238,7 @@ mod tests {
                 radio_label,
                 label(&tabs.style()),
                 selector_background,
-                scrollbar.thumb_background,
+                scrollbar_thumb,
                 tip,
             ]);
         }
