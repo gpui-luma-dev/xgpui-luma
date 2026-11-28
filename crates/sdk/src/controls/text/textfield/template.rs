@@ -7,8 +7,6 @@ use gpui::{
     Window, canvas, div, fill, font, point, px, prelude::*, size, svg,
 };
 
-#[allow(deprecated)]
-use super::TextFieldLook;
 use super::{TextFieldDrag, TextFieldRenderModel, TextFieldState};
 use crate::controls::text::{input_metrics, input_typography, resolve_text_field};
 use crate::style::{PartRead, StyleBinding};
@@ -16,7 +14,6 @@ use crate::style::lss::Overrides;
 use xgpui_luma_style::Resolved;
 use crate::controls::button::ControlIcon;
 use crate::controls::textfield::{TextFieldTheme, default_textfield_theme};
-use crate::theme::StandardBoxScale;
 
 const CARET_EDGE_OFFSET: f32 = 0.0;
 
@@ -113,16 +110,6 @@ pub trait TextFieldTemplate: Send + Sync {
         resolve_text_field(&self.style().with_overrides(overrides), state, enabled)
     }
 
-    #[deprecated(note = "the field draws from the resolved style; use `resolve_style` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        default_textfield_theme().resolve_look(
-            state,
-            enabled,
-            &StandardBoxScale::compute(&default_textfield_theme().metrics(), 1.0),
-        )
-    }
-
     fn render(
         &self,
         model: &TextFieldRenderModel<'_>,
@@ -169,11 +156,6 @@ where
 }
 
 impl TextFieldTemplate for ModifiedTemplate<dyn TextFieldTemplate> {
-    #[allow(deprecated)]
-    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        self.base.resolve_look(state, enabled)
-    }
-
     fn style(&self) -> StyleBinding {
         self.base.style()
     }
@@ -195,12 +177,6 @@ impl TextFieldTemplate for ModifiedTemplate<dyn TextFieldTemplate> {
 }
 
 impl TextFieldTemplate for ThemedTextFieldTemplate {
-    #[allow(deprecated)]
-    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        self.theme
-            .resolve_look(state, enabled, &crate::theme::StandardBoxScale::compute(&self.theme.metrics(), 1.0))
-    }
-
     fn style(&self) -> StyleBinding {
         self.theme.style()
     }

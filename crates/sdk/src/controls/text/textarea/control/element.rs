@@ -47,7 +47,7 @@ impl gpui::Element for TextAreaElement {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
-        let (theme, state, enabled, rows, overrides, look_override) = {
+        let (theme, state, enabled, rows, overrides) = {
             let input = self.input.read(cx);
             (
                 input.model.theme.clone(),
@@ -55,10 +55,9 @@ impl gpui::Element for TextAreaElement {
                 input.model.enabled,
                 input.model.rows.max(1),
                 input.model.overrides.clone(),
-                input.model.look_override.clone(),
             )
         };
-        let look = AreaValues::read(&resolve_area(&theme, state, enabled, &overrides, look_override.as_ref()));
+        let look = AreaValues::read(&resolve_area(&theme, state, enabled, &overrides));
         let mut style = Style::default();
         style.size.width = relative(1.0).into();
         style.size.height = px(look.typography.line_height * rows as f32).into();
@@ -74,19 +73,13 @@ impl gpui::Element for TextAreaElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Self::PrepaintState {
-        let (theme, state, enabled, overrides, look_override) = {
+        let (theme, state, enabled, overrides) = {
             let input = self.input.read(cx);
-            (
-                input.model.theme.clone(),
-                input.state,
-                input.model.enabled,
-                input.model.overrides.clone(),
-                input.model.look_override.clone(),
-            )
+            (input.model.theme.clone(), input.state, input.model.enabled, input.model.overrides.clone())
         };
         let scale_factor = window.scale_factor();
         let input = self.input.read(cx);
-        let look = AreaValues::read(&resolve_area(&theme, state, enabled, &overrides, look_override.as_ref()));
+        let look = AreaValues::read(&resolve_area(&theme, state, enabled, &overrides));
         let line_height = px(look.typography.line_height);
         let font_size = px(look.typography.size);
         let mut selection_quads = Vec::new();

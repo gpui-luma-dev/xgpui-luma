@@ -32,32 +32,41 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             (RadixSize::Three, 16.0, 22.0, 8.0),
         ] {
             let scale = StandardBoxScale::compute(&look.metrics_for(sdk), 2.0);
+            use xgpui_luma::style::PartRead;
             for bits in 0..16 {
                 let hovered = bits & 1 != 0;
                 let focused = bits & 2 != 0;
                 let invalid = bits & 4 != 0;
                 let enabled = bits & 8 == 0;
                 for variant in TextFieldVariant::ALL {
-                    let field = textfield_theme_with(&look.with_size(sdk), variant).resolve_look(
-                        TextFieldState { hovered, focused, invalid, ..Default::default() },
-                        enabled,
-                        &scale,
-                    );
+                    let field_style = textfield_theme_with(&look.with_size(sdk), variant)
+                        .resolve_style(TextFieldState { hovered, focused, invalid, ..Default::default() }, enabled);
+                    let field = field_style.root();
                     assert_eq!(
-                        (field.min_height, field.padding_x, field.padding_y, field.radius),
+                        (
+                            field.height().unwrap_or(0.0),
+                            field.number("padding_x"),
+                            field.number("padding_y"),
+                            field.radius().unwrap_or(0.0)
+                        ),
                         (scale.height, scale.padding_x, scale.padding_y, scale.radius)
                     );
-                    assert_eq!((field.typography.size, field.typography.line_height), (font, line));
-                    let area = textarea_theme_with(&look.with_size(sdk), variant).resolve_look(
-                        TextAreaState { hovered, focused, invalid, ..Default::default() },
-                        enabled,
-                        &scale,
-                    );
+                    let text = field.typography(14.0, 20.0);
+                    assert_eq!((text.size, text.line_height), (font, line));
+                    let area_style = textarea_theme_with(&look.with_size(sdk), variant)
+                        .resolve_style(TextAreaState { hovered, focused, invalid, ..Default::default() }, enabled);
+                    let area = area_style.root();
                     assert_eq!(
-                        (area.min_height, area.padding_x, area.padding_y, area.radius),
+                        (
+                            area.height().unwrap_or(0.0),
+                            area.number("padding_x"),
+                            area.number("padding_y"),
+                            area.radius().unwrap_or(0.0)
+                        ),
                         (scale.height, scale.padding_x, scale.padding_y, scale.radius)
                     );
-                    assert_eq!((area.typography.size, area.typography.line_height), (14.0, 20.0));
+                    let text = area.typography(14.0, 20.0);
+                    assert_eq!((text.size, text.line_height), (14.0, 20.0));
                 }
             }
             for variant in ProgressVariant::ALL {

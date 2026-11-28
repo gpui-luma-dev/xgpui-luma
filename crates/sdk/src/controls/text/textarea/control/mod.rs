@@ -1,4 +1,3 @@
-#![allow(deprecated)] // These tests exercise the look-closure bridge (#433).
 mod chrome;
 mod element;
 mod input;
@@ -287,23 +286,12 @@ impl TextArea {
         cx.notify();
     }
 
-    pub fn set_look_override(
-        &mut self,
-        look_override: Option<super::model::TextAreaLookOverride>,
-        cx: &mut Context<Self>,
-    ) {
-        self.model.look_override = look_override;
-        self.layout_cache = None;
-        cx.notify();
-    }
-
     fn resolved_look(&self) -> super::values::AreaValues {
         super::values::AreaValues::read(&super::values::resolve_area(
             &self.model.theme,
             self.state,
             self.model.enabled,
             &self.model.overrides,
-            self.model.look_override.as_ref(),
         ))
     }
 
@@ -511,28 +499,40 @@ fn shaped_lines_reuse_and_invalidate_on_editing_and_style_changes() {
                 1 => view.marked_range = Some(0..3),
                 2 => view.state.selection_anchor = Some(0),
                 3..=9 => {
-                    view.model.look_override = Some(Arc::new(move |mut look| {
-                        look.typography.size += 2.0;
-                        if change >= 4 {
-                            look.typography.weight = gpui::FontWeight::BOLD;
-                        }
-                        if change >= 5 {
-                            look.foreground = gpui::red();
-                        }
-                        if change >= 6 {
-                            look.selection_foreground = gpui::blue();
-                        }
-                        if change >= 7 {
-                            look.padding_x += 20.0;
-                        }
-                        if change >= 8 {
-                            look.font_family = "monospace".to_owned();
-                        }
-                        if change >= 9 {
-                            look.typography.line_height += 5.0;
-                        }
-                        look
-                    }));
+                    use crate::style::PartRead;
+                    use crate::style::lss::{Color, Overrides, PartId, Prop};
+                    let base = view.model.theme.resolve_style(view.state, view.model.enabled);
+                    let (root, text) = (base.root(), base.root().typography(14.0, 20.0));
+                    let color = |name: &'static str, value| (Prop::<Color>::new(name), crate::style::lss_color(value));
+                    let mut overrides =
+                        Overrides::new().set(PartId::ROOT, Prop::<f32>::new("font_size"), text.size + 2.0);
+                    if change >= 4 {
+                        overrides = overrides.set(PartId::ROOT, Prop::<f32>::new("font_weight"), 700.0);
+                    }
+                    if change >= 5 {
+                        let (prop, value) = color("foreground", gpui::red());
+                        overrides = overrides.set(PartId::ROOT, prop, value);
+                    }
+                    if change >= 6 {
+                        let (prop, value) = color("selection_foreground", gpui::blue());
+                        overrides = overrides.set(PartId::ROOT, prop, value);
+                    }
+                    if change >= 7 {
+                        overrides =
+                            overrides.set(PartId::ROOT, Prop::<f32>::new("padding_x"), root.number("padding_x") + 20.0);
+                    }
+                    if change >= 8 {
+                        overrides = overrides.set(
+                            PartId::ROOT,
+                            Prop::<std::sync::Arc<str>>::new("font_family"),
+                            std::sync::Arc::<str>::from("monospace"),
+                        );
+                    }
+                    if change >= 9 {
+                        overrides =
+                            overrides.set(PartId::ROOT, Prop::<f32>::new("line_height"), text.line_height + 5.0);
+                    }
+                    view.model.overrides = overrides;
                 }
                 _ => unreachable!(),
             }
@@ -566,11 +566,19 @@ fn wrapping_shapes_logical_lines_once_and_selection_decorates_only_visible_lines
                 .value(value.clone())
                 .rows(3)
                 .with_template_modifier(|control, _| control.w(px(180.0)))
-                .look_override(|mut look| {
-                    look.foreground = gpui::red();
-                    look.selection_foreground = gpui::blue();
-                    look
-                }),
+                .overrides(
+                    crate::style::lss::Overrides::new()
+                        .set(
+                            crate::style::lss::PartId::ROOT,
+                            crate::style::lss::Prop::<crate::style::lss::Color>::new("foreground"),
+                            crate::style::lss_color(gpui::red()),
+                        )
+                        .set(
+                            crate::style::lss::PartId::ROOT,
+                            crate::style::lss::Prop::<crate::style::lss::Color>::new("selection_foreground"),
+                            crate::style::lss_color(gpui::blue()),
+                        ),
+                ),
             cx,
         )
     });
@@ -633,11 +641,17 @@ fn wrapping_shapes_logical_lines_once_and_selection_decorates_only_visible_lines
         assert_eq!(element::SHAPING_COUNTS.with(|counts| counts.get()), after, "unchanged decoration must reuse");
     }
     editor.update(cx, |view, cx| {
-        view.model.look_override = Some(Arc::new(|mut look| {
-            look.foreground = gpui::red();
-            look.selection_foreground = gpui::green();
-            look
-        }));
+        view.model.overrides = crate::style::lss::Overrides::new()
+            .set(
+                crate::style::lss::PartId::ROOT,
+                crate::style::lss::Prop::<crate::style::lss::Color>::new("foreground"),
+                crate::style::lss_color(gpui::red()),
+            )
+            .set(
+                crate::style::lss::PartId::ROOT,
+                crate::style::lss::Prop::<crate::style::lss::Color>::new("selection_foreground"),
+                crate::style::lss_color(gpui::green()),
+            );
         cx.notify();
     });
     cx.run_until_parked();

@@ -514,20 +514,21 @@ fn look_resolves_explicit_then_ambient_then_built_in() {
 }
 
 #[test]
-fn look_override_adjusts_the_resolved_look() {
+fn overrides_adjust_the_resolved_look() {
     let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
     let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
     cx.update(|cx| xgpui_luma::init(cx).unwrap());
     let red = gpui::red();
     let window = cx.open_window(size(px(WIDTH), px(80.0)), move |_, cx| {
-        let builder = ParleyTextField::new("override").look_override(move |mut look| {
-            look.background = red;
-            look
-        });
+        let builder = ParleyTextField::new("override").overrides(xgpui_luma::style::lss::Overrides::new().set(
+            xgpui_luma::style::lss::PartId::ROOT,
+            xgpui_luma::style::lss::Prop::<xgpui_luma::style::lss::Color>::new("background"),
+            xgpui_luma::style::lss_color(red),
+        ));
         ParleyTextField::from_builder(builder, cx)
     });
     let background = window.update(&mut cx, |field, window, _| field.look(window).background).unwrap();
-    assert_eq!(background, red);
+    assert_eq!(background, gpui::Hsla::from(xgpui_luma::style::lss_color(red)));
 }
 
 #[test]
