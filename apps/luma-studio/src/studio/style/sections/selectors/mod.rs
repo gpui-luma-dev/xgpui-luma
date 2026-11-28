@@ -542,7 +542,8 @@ fn render_selector_search_selector_trigger(
         disabled: !state.textfield_enabled,
         ..InteractionState::default()
     };
-    let trigger_look = selector_theme.resolve_visual_look(
+    let trigger_look = xgpui_luma::controls::selector::selector_look(
+        &*selector_theme,
         Default::default(),
         SelectorVisualState {
             interaction,
@@ -550,7 +551,6 @@ fn render_selector_search_selector_trigger(
             selected: state.selector_selected,
             invalid: state.selector_state.invalid,
         },
-        &StandardBoxScale::compute(&selector_theme.metrics(), window.scale_factor()),
         false,
     );
     let model = SearchSelectorRenderModel {

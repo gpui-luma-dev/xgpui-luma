@@ -180,16 +180,15 @@ mod lss_tests {
     use super::*;
     use crate::SemanticRole;
     use crate::control_group::assert_close;
-    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState, selector_look};
+    use xgpui_luma::theme::InteractionState;
 
     #[test]
     fn trigger_matches_the_popup_menu_trigger() {
         let look = Look::built_in();
         let theme = selector_theme(&look);
-        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let at = |style, interaction| {
-            theme.resolve_visual_look(style, SelectorVisualState { interaction, ..Default::default() }, &scale, false)
+            selector_look(&*theme, style, SelectorVisualState { interaction, ..Default::default() }, false)
         };
         let rest = at(SelectorTriggerStyle::Outline, InteractionState::default());
         assert_close(rest.trigger_background, look.resolve_role(SemanticRole::Background).hsla());
@@ -216,7 +215,7 @@ mod lss_tests {
         assert_close(disabled.trigger_icon, disabled.trigger_foreground);
         assert_eq!(disabled.trigger_opacity, 1.0, "Radix draws disabled colors and does not fade");
         let small = selector_theme(&look.with_size(crate::RadixSize::One));
-        let small = small.resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false);
+        let small = selector_look(&*small, SelectorTriggerStyle::Outline, Default::default(), false);
         assert_eq!((small.trigger_height, small.trigger_typography.size, small.menu_offset_y), (24.0, 14.0, 2.0));
     }
 }

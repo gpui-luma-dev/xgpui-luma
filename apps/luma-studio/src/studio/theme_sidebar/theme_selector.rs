@@ -12,7 +12,7 @@ use xgpui_luma::controls::search_selector::{
     default_search_selector_panel_template,
 };
 use xgpui_luma::controls::selector::SelectorTheme;
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::ShadcnLook;
 use luma_app_common::{BuiltInTheme, built_in_look, fallback_look};
 use lucide_svg_static::Icon as LucideIcon;
@@ -108,7 +108,7 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
         &self,
         model: SearchSelectorRenderModel,
         handlers: SearchSelectorTemplateHandlers,
-        window: &mut Window,
+        _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let SearchSelectorTemplateHandlers {
@@ -123,10 +123,10 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
         } = handlers;
 
         let interaction = selector_interaction(&model);
-        let look = self.selector_theme.resolve_look(
+        let look = xgpui_luma::controls::selector::selector_look(
+            &*self.selector_theme,
             xgpui_luma::controls::selector::SelectorTriggerStyle::Outline,
-            interaction,
-            &StandardBoxScale::compute(&self.selector_theme.metrics(), window.scale_factor()),
+            xgpui_luma::controls::selector::SelectorVisualState { interaction, ..Default::default() },
             false,
         );
         let selected_id = self.selected_id.read().expect("theme selector selected id lock").clone();

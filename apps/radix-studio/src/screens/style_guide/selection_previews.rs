@@ -7,7 +7,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::TextFieldState;
 use xgpui_luma::infra::{icon::SelectionStatusIcons, state::ControlFocusState, value::ControlRange};
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, Tone};
 use super::{preview_handlers, states};
 use super::matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
@@ -322,7 +322,8 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             } else {
                 selector::SelectorTriggerStyle::Outline
             };
-            let trigger_look = theme.resolve_visual_look(
+            let trigger_look = selector::selector_look(
+                &*theme,
                 trigger_style,
                 selector::SelectorVisualState {
                     interaction: state,
@@ -330,7 +331,6 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                     selected: true,
                     invalid: state.invalid,
                 },
-                &StandardBoxScale::compute(&theme.metrics(), window.scale_factor()),
                 false,
             );
             search_selector::default_search_selector_template()

@@ -17,9 +17,11 @@ use crate::controls::selector_list::{
     SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
     default_selector_items_template,
 };
-use crate::theme::{StandardBoxScale, snap_to_pixel};
+use crate::controls::button::face::FaceLook;
+use crate::style::PartRead;
+use crate::theme::snap_to_pixel;
 
-use super::theme::{SelectorLook, SelectorTheme, default_selector_theme, selector_face_look};
+use super::theme::{SelectorTheme, default_selector_theme};
 
 pub type SelectorBoundsHandler = Box<dyn Fn(&Bounds<Pixels>, &mut Window, &mut App) + 'static>;
 pub type SelectorClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -78,8 +80,6 @@ pub trait SelectorTemplate<T = SelectorItem>: Send + Sync
 where
     T: SelectorItemLike + 'static,
 {
-    fn resolve_look(&self, model: &SelectorRenderModel<'_, T>, window: &Window, cx: &mut App) -> SelectorLook;
-
     fn render(
         &self,
         model: &SelectorRenderModel<'_, T>,
@@ -144,10 +144,6 @@ impl<T> SelectorTemplate<T> for ModifiedTemplate<dyn SelectorTemplate<T>>
 where
     T: SelectorItemLike + 'static,
 {
-    fn resolve_look(&self, model: &SelectorRenderModel<'_, T>, window: &Window, cx: &mut App) -> SelectorLook {
-        self.base.resolve_look(model, window, cx)
-    }
-
     fn render(
         &self,
         model: &SelectorRenderModel<'_, T>,
@@ -164,13 +160,6 @@ impl<T> SelectorTemplate<T> for ThemedSelectorTemplate<T>
 where
     T: SelectorItemLike + 'static,
 {
-    fn resolve_look(&self, model: &SelectorRenderModel<'_, T>, window: &Window, _cx: &mut App) -> SelectorLook {
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        self.theme
-            .resolve_visual_look(model.trigger_style, model.visual_state, &scale, model.without_elevation)
-    }
-
     fn render(
         &self,
         model: &SelectorRenderModel<'_, T>,
@@ -193,17 +182,25 @@ where
             on_item_click,
         } = handlers;
         let scale_factor = window.scale_factor();
-        let metrics = self.theme.metrics();
-        let scale = StandardBoxScale::compute(&metrics, scale_factor);
-        let look =
-            self.theme
-                .resolve_visual_look(model.trigger_style, model.visual_state, &scale, model.without_elevation);
-        let trigger_icon_size = snap_to_pixel(look.trigger_icon_size, scale_factor);
+        // Drawn straight from the resolved style (#433): the face through the shared face reader.
+        let resolved =
+            super::styled::resolve_trigger(&self.theme.style(), model.trigger_style, model.visual_state, 1.0);
+        let root = resolved.root();
+        let mut face_look = FaceLook::from_part(root);
+        if model.without_elevation {
+            face_look.shadow = None;
+        }
+        let trigger_icon_size = snap_to_pixel(root.number("icon_size"), scale_factor);
+        let anchor = SelectorAnchor {
+            trigger_height: face_look.height,
+            offset_y: root.number("menu_offset_y"),
+            panel: self.theme.items_panel(),
+        };
         // The trigger is a button face (#430): its fill, border, shadow, focus ring and fade come from one place.
         let face = Face {
             id: "trigger".into(),
             shape: FaceShape::Padded,
-            radius: look.trigger_radius,
+            radius: root.number("radius"),
             full_width: true,
             min_height: false,
             focused: model.visual_state.interaction.focused
@@ -213,10 +210,9 @@ where
             elevation: !model.without_elevation,
             compact: false,
         };
-        let face_look = selector_face_look(&look, &metrics);
-        let trigger_content = render_item_content(model, &look, cx);
+        let trigger_content = render_item_content(model, face_look.gap, cx);
         let chevron =
-            crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size);
+            crate::infra::icon::render_icon_source(&model.icons.trigger, root.color("icon"), trigger_icon_size);
         let trigger = face
             .control(&face_look, trigger_content, Some(chevron))
             .on_prepaint(move |bounds, window, cx| {
@@ -235,7 +231,7 @@ where
             let mut popup_metrics = resolve_selector_popup_metrics(
                 model.trigger_bounds,
                 model.placement,
-                &look,
+                &anchor,
                 model.items.len(),
                 PopupSpace::of(window, cx),
             );
@@ -245,15 +241,15 @@ where
                 if let Some(index) = index {
                     let geometry =
                         model.popup_geometry.unwrap_or(crate::controls::selector_list::SelectorPopupGeometry {
-                            row_center: px(look.items_panel.item_height) * (index as f32 + 0.5),
-                            content_height: px(look.items_panel.item_height) * model.items.len(),
-                            inset: px(look.items_panel.padding + look.items_panel.border_width),
+                            row_center: px(anchor.panel.item_height) * (index as f32 + 0.5),
+                            content_height: px(anchor.panel.item_height) * model.items.len(),
+                            inset: px(anchor.panel.padding + anchor.panel.border_width),
                         });
                     popup_metrics = resolve_centered_popup_metrics(
                         model.trigger_bounds,
                         geometry,
                         window.viewport_size(),
-                        look.items_panel.window_margin,
+                        anchor.panel.window_margin,
                     );
                     if model.initialize_popup_scroll
                         && let Some(scroll) = model.popup_scroll
@@ -298,7 +294,7 @@ where
                     enabled: model.enabled,
                     focus: model.focus,
                     item_template: model.item_template,
-                    look: look.items_panel.clone(),
+                    look: anchor.panel.clone(),
                     max_height: popup_metrics.max_height,
                     scrolling: popup_metrics.scrolling,
                     scroll_handle: model.popup_scroll,
@@ -316,7 +312,7 @@ where
             let menu = menu
                 .when(centered, |menu| menu.min_w(model.trigger_bounds.map_or(px(0.0), |bounds| bounds.size.width)));
             let overlay = anchored()
-                .snap_to_window_with_margin(px(look.items_panel.window_margin))
+                .snap_to_window_with_margin(px(anchor.panel.window_margin))
                 .anchor(popup_metrics.anchor)
                 .position(popup_metrics.position)
                 .offset(popup_metrics.offset)
@@ -327,6 +323,13 @@ where
 
         self.modifiers.apply(root, model)
     }
+}
+
+/// Where the popup opens from: the trigger's height, the gap to the popup and the popup panel.
+pub(crate) struct SelectorAnchor {
+    trigger_height: f32,
+    offset_y: f32,
+    panel: crate::controls::selector_list::SelectorItemsPanelLook,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -342,17 +345,17 @@ pub(crate) struct ResolvedSelectorPlacement {
 pub(crate) fn resolve_selector_popup_metrics(
     trigger_bounds: Option<Bounds<Pixels>>,
     placement: SelectorPlacement,
-    look: &SelectorLook,
+    anchor: &SelectorAnchor,
     item_count: usize,
     viewport_size: impl Into<PopupSpace>,
 ) -> ResolvedSelectorPlacement {
     let space: PopupSpace = viewport_size.into();
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
-        Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
+        Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(anchor.trigger_height) })
     });
-    let menu_size = estimated_menu_size(look, item_count, trigger_bounds.size.width);
-    let viewport_margin = px(look.items_panel.window_margin);
-    let minimum_height = px((look.items_panel.padding * 2.0) + look.items_panel.item_height);
+    let menu_size = estimated_menu_size(anchor, item_count, trigger_bounds.size.width);
+    let viewport_margin = px(anchor.panel.window_margin);
+    let minimum_height = px((anchor.panel.padding * 2.0) + anchor.panel.item_height);
 
     if placement == SelectorPlacement::OverlayOnTrigger {
         // Covers the trigger and runs down to the window margin.
@@ -375,7 +378,7 @@ pub(crate) fn resolve_selector_popup_metrics(
     };
     let request = PopupPlacementRequest::new(trigger_bounds, side, space)
         .flip(flip)
-        .gap(px(look.menu_offset_y))
+        .gap(px(anchor.offset_y))
         .content_size(Some(menu_size))
         .window_margin(viewport_margin)
         .min_main_size(minimum_height);
@@ -423,15 +426,15 @@ fn resolve_centered_popup_metrics(
     }
 }
 
-fn estimated_menu_size(look: &SelectorLook, item_count: usize, trigger_width: Pixels) -> Size<Pixels> {
-    let menu_min_width = px(look.items_panel.min_width);
+fn estimated_menu_size(anchor: &SelectorAnchor, item_count: usize, trigger_width: Pixels) -> Size<Pixels> {
+    let menu_min_width = px(anchor.panel.min_width);
     Size {
         width: if trigger_width > menu_min_width {
             trigger_width
         } else {
             menu_min_width
         },
-        height: px(look.items_panel.padding * 2.0) + px(look.items_panel.item_height) * item_count,
+        height: px(anchor.panel.padding * 2.0) + px(anchor.panel.item_height) * item_count,
     }
 }
 
@@ -441,16 +444,88 @@ mod tests {
 
     use super::*;
     use crate::controls::selector::SelectorTriggerStyle;
-    use crate::theme::{InteractionState, StandardBoxScale};
 
-    fn look() -> SelectorLook {
+    /// The SDK trigger's anchor at rest.
+    fn look() -> SelectorAnchor {
         let theme = default_selector_theme();
-        theme.resolve_look(
+        let resolved = super::super::styled::resolve_trigger(
+            &theme.style(),
             SelectorTriggerStyle::Outline,
-            InteractionState::default(),
-            &StandardBoxScale::compute(&theme.metrics(), 1.0),
-            false,
-        )
+            Default::default(),
+            1.0,
+        );
+        let root = resolved.root();
+        SelectorAnchor {
+            trigger_height: root.number("height"),
+            offset_y: root.number("menu_offset_y"),
+            panel: theme.items_panel(),
+        }
+    }
+
+    /// The template draws the trigger straight from the resolved style (#433), through the shared face reader,
+    /// with the values the `SelectorLook` compatibility type reads: at rest, hovered, pressed, disabled, focused,
+    /// open and invalid.
+    #[test]
+    fn the_trigger_face_matches_the_look() {
+        use crate::controls::button::face::FaceLook;
+        use crate::controls::selector::{SelectorLook, SelectorVisualState};
+        use crate::theme::InteractionState;
+        let theme = default_selector_theme();
+        let rest = InteractionState::default();
+        for visual in [
+            SelectorVisualState::default(),
+            SelectorVisualState { interaction: InteractionState { hovered: true, ..rest }, ..Default::default() },
+            SelectorVisualState { interaction: InteractionState { pressed: true, ..rest }, ..Default::default() },
+            SelectorVisualState { interaction: InteractionState { disabled: true, ..rest }, ..Default::default() },
+            SelectorVisualState { interaction: InteractionState { focused: true, ..rest }, ..Default::default() },
+            SelectorVisualState { open: true, ..Default::default() },
+            SelectorVisualState { invalid: true, ..Default::default() },
+        ] {
+            for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
+                let resolved = super::super::styled::resolve_trigger(&theme.style(), style, visual, 1.0);
+                let look = SelectorLook::from_resolved(&resolved, theme.items_panel(), false);
+                let root = resolved.root();
+                let face = FaceLook::from_part(root);
+                let case = format!("{style:?} {visual:?}");
+                assert_eq!(
+                    (face.background, face.foreground),
+                    (look.trigger_background, look.trigger_foreground),
+                    "{case}"
+                );
+                assert_eq!(
+                    (face.border, face.shadow.clone()),
+                    (look.trigger_border, look.trigger_shadow.clone()),
+                    "{case}"
+                );
+                assert_eq!(face.typography, look.trigger_typography, "{case}");
+                assert_eq!(
+                    (face.padding_x, face.padding_y, face.gap, face.height),
+                    (look.trigger_padding_x, look.trigger_padding_y, look.trigger_gap, look.trigger_height),
+                    "{case}"
+                );
+                assert_eq!(
+                    (face.focus_border, face.opacity),
+                    (look.trigger_focus_border, look.trigger_opacity),
+                    "{case}"
+                );
+                assert_eq!(root.color("icon"), look.trigger_icon, "{case}");
+                assert_eq!(
+                    (root.number("radius"), root.number("icon_size")),
+                    (look.trigger_radius, look.trigger_icon_size)
+                );
+            }
+        }
+        // Border width and focus geometry, read per state now, match the theme's metrics at rest.
+        let resolved = super::super::styled::resolve_trigger(
+            &theme.style(),
+            SelectorTriggerStyle::Outline,
+            Default::default(),
+            1.0,
+        );
+        let face = FaceLook::from_part(resolved.root());
+        let metrics = theme.metrics();
+        assert_eq!(face.border_width, metrics.border_width);
+        assert_eq!(face.focus.extent(), crate::infra::focus_adorner::FocusAdorner::new(metrics.focus).extent());
     }
 
     #[test]

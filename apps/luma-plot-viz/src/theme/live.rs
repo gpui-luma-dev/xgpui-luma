@@ -12,14 +12,12 @@ use xgpui_luma::controls::{
     button::StyledButtonTemplate,
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
     scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
-    selector::{
-        SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme,
-    },
+    selector::{SelectorTheme, StyledSelectorTheme},
     tabs::{StyledTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
 };
 use xgpui_luma::style::ThemeSource;
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
@@ -134,34 +132,14 @@ impl TabsTheme for AppTheme {
 }
 
 impl SelectorTheme for AppTheme {
-    fn resolve(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        without_elevation: bool,
-    ) -> SelectorPalette {
-        self.current().selector.resolve(style, state, without_elevation)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().selector.style()
+    }
+    fn items_panel(&self) -> xgpui_luma::controls::selector_list::SelectorItemsPanelLook {
+        self.current().selector.items_panel()
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
-    }
-    fn resolve_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.current().selector.resolve_look(style, state, scale, without_elevation)
-    }
-    fn resolve_visual_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: SelectorVisualState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.current().selector.resolve_visual_look(style, state, scale, without_elevation)
     }
 }
 
@@ -188,6 +166,7 @@ impl TooltipTheme for AppTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::controls::selector::SelectorTriggerStyle;
     use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
     #[test]
@@ -229,7 +208,12 @@ mod tests {
             assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
             let tab = tabs.resolve_item(true, state);
             assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
-            let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
+            let selector = xgpui_luma::controls::selector::selector_look(
+                &*selectors,
+                SelectorTriggerStyle::default(),
+                xgpui_luma::controls::selector::SelectorVisualState { interaction: state, ..Default::default() },
+                false,
+            );
             // The selector trigger is the SDK's base `.lss` trigger for the mode: the outline variant is a
             // look's, not the SDK's (#287).
             let expected = tokens.palette.surface.subtle.background.to_rgb();
