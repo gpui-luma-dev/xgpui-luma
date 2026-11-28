@@ -6,14 +6,13 @@
 //! The look resolves as Radix's does: an explicit [`look`](ParleyTextFieldBuilder::look),
 //! else the application's ambient `Look` global (as a shell installs it), else
 //! `Look::built_in()`.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Div, Entity, Font, SharedString, Stateful, TextDirection, Window};
 use xgpui_luma::{
     controls::textfield::{
-        TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
-        TextFieldTemplateHandlers, TextFieldTheme, ThemedTextFieldTemplate, Validator,
+        TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTemplateHandlers, TextFieldTheme,
+        ThemedTextFieldTemplate, Validator,
     },
     controls::button::ControlIcon,
     infra::callbacks::EventCallbacks,
@@ -40,7 +39,7 @@ pub struct ParleyTextFieldBuilder {
     pub(super) placeholder: SharedString,
     pub(super) size: TextFieldSize,
     pub(super) enabled: bool,
-    pub(super) look_override: Option<TextFieldLookOverride>,
+    pub(super) overrides: xgpui_luma::style::lss::Overrides,
     pub(super) options: Options,
     pub(super) validator: Option<Validator>,
     pub(super) aria_label: Option<SharedString>,
@@ -64,7 +63,7 @@ impl ParleyTextFieldBuilder {
             placeholder: SharedString::default(),
             size: TextFieldSize::default(),
             enabled: true,
-            look_override: None,
+            overrides: xgpui_luma::style::lss::Overrides::new(),
             options: Options::default(),
             validator: None,
             aria_label: None,
@@ -95,12 +94,9 @@ impl ParleyTextFieldBuilder {
         self.variant(TextFieldVariant::Soft)
     }
 
-    /// Adjust the resolved look on every frame, as `TextFieldBuilder::look_override`.
-    pub fn look_override<F>(mut self, look_override: F) -> Self
-    where
-        F: Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static,
-    {
-        self.look_override = Some(Arc::new(look_override));
+    /// Style overrides for this field, as `TextFieldBuilder::overrides`.
+    pub fn overrides(mut self, overrides: xgpui_luma::style::lss::Overrides) -> Self {
+        self.overrides = overrides;
         self
     }
 
@@ -172,6 +168,12 @@ impl ParleyTextFieldBuilder {
 
     pub fn tab_stop(mut self, tab_stop: bool) -> Self {
         self.options.tab_stop = tab_stop;
+        self
+    }
+
+    /// Testing aid: swap the text and background colors, for contrast.
+    pub fn invert_colors(mut self, invert: bool) -> Self {
+        self.options.invert_colors = invert;
         self
     }
 

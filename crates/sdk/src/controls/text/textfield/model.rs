@@ -1,16 +1,13 @@
-#![allow(deprecated)] // The look-closure bridge reads `TextFieldLook` until it is removed (#433).
 use std::sync::Arc;
 
 use gpui::{AppContext, Entity, SharedString};
 
 use super::template::template_with_modifier;
-use super::{TextFieldLook, TextFieldState, TextFieldTemplate, default_textfield_template};
+use super::{TextFieldState, TextFieldTemplate, default_textfield_template};
 use super::control::TextFieldControl;
 use crate::controls::button::ControlIcon;
 
 pub type Validator = Arc<dyn Fn(&str) -> bool + Send + Sync>;
-pub type TextFieldLookOverride = Arc<dyn Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static>;
-
 #[derive(Clone)]
 pub struct TextFieldModel {
     pub(crate) id: SharedString,
@@ -28,7 +25,6 @@ pub struct TextFieldModel {
     pub(crate) validator: Option<Validator>,
     /// Style overrides set on this field, over its template's style (#433).
     pub(crate) overrides: crate::style::lss::Overrides,
-    pub(crate) look_override: Option<TextFieldLookOverride>,
     pub(crate) template: Arc<dyn TextFieldTemplate>,
 }
 
@@ -137,7 +133,6 @@ impl TextFieldBuilder {
                 max_clipboard_paste_bytes: Some(crate::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
                 validator: None,
                 overrides: crate::style::lss::Overrides::new(),
-                look_override: None,
                 template: default_textfield_template(),
             },
         }
@@ -214,15 +209,6 @@ impl TextFieldBuilder {
         self
     }
 
-    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
-    pub fn look_override<F>(mut self, look_override: F) -> Self
-    where
-        F: Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static,
-    {
-        self.model.look_override = Some(Arc::new(look_override));
-        self
-    }
-
     pub fn template(mut self, template: Arc<dyn TextFieldTemplate>) -> Self {
         self.model.template = template;
         self
@@ -254,7 +240,7 @@ mod tests {
         TextFieldPalette, TextFieldState, TextFieldTheme, ThemedTextFieldTemplate, default_textfield_theme,
     };
     use crate::theme::{MetricTokens, ThemeTokens};
-    use gpui::hsla;
+    use gpui::{Hsla, hsla};
 
     #[test]
     fn with_template_modifier_wraps_template() {
@@ -267,10 +253,22 @@ mod tests {
     }
 
     #[test]
-    fn with_template_modifier_forwards_resolve_look() {
-        struct MarkerTheme;
+    fn with_template_modifier_forwards_resolve_style() {
+        use crate::style::PartRead;
+        use crate::style::lss::{Color, Overrides, PartId, Prop};
+        let marker = hsla(0.12, 1.0, 0.55, 1.0);
+
+        struct MarkerTheme(Hsla);
 
         impl TextFieldTheme for MarkerTheme {
+            fn style(&self) -> crate::style::StyleBinding {
+                crate::style::StyleBinding::sdk("textfield").with_overrides(&Overrides::new().set(
+                    PartId::ROOT,
+                    Prop::<Color>::new("background"),
+                    crate::style::lss_color(self.0),
+                ))
+            }
+
             fn resolve(&self, _state: TextFieldState, _enabled: bool) -> TextFieldPalette {
                 let mut palette = default_textfield_theme().resolve(TextFieldState::default(), true);
                 palette.background = hsla(0.12, 1.0, 0.55, 1.0);
@@ -282,16 +280,16 @@ mod tests {
             }
         }
 
-        let base = Arc::new(ThemedTextFieldTemplate::new(Arc::new(MarkerTheme)));
-        let expected = base.resolve_look(TextFieldState::default(), true);
+        let base = Arc::new(ThemedTextFieldTemplate::new(Arc::new(MarkerTheme(marker))));
+        let expected = base.resolve_style(TextFieldState::default(), true, &Overrides::new());
         let modified = TextFieldBuilder::new("textfield-test")
             .template(base)
             .with_template_modifier(|element, _| element)
             .model
             .template;
-        let look = modified.resolve_look(TextFieldState::default(), true);
+        let style = modified.resolve_style(TextFieldState::default(), true, &Overrides::new());
 
-        assert_eq!(look.background, expected.background);
-        assert_eq!(look.background, hsla(0.12, 1.0, 0.55, 1.0));
+        assert_eq!(style.root().color("background"), expected.root().color("background"));
+        assert_eq!(style.root().color("background"), Hsla::from(crate::style::lss_color(marker)));
     }
 }

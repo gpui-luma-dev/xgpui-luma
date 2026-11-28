@@ -1,12 +1,9 @@
 //! Look-owned text-area builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textarea::TextArea`].
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use xgpui_luma::controls::textarea::{
-    TextAreaBuilder, TextAreaLook, TextAreaRenderModel, ThemedTextAreaTemplate, Validator,
-};
+use xgpui_luma::controls::textarea::{TextAreaBuilder, TextAreaRenderModel, ThemedTextAreaTemplate, Validator};
 use xgpui_luma::infra::icon::IconSource;
 use super::textfield::ShadcnTextFieldStyle;
 use crate::look::{ShadcnLook, resolve_look_from};
@@ -35,7 +32,6 @@ pub struct TextArea {
     resize_handle_icon: Option<IconSource>,
     validator: Option<Validator>,
     overrides: xgpui_luma::style::lss::Overrides,
-    look_override: Option<Arc<dyn Fn(TextAreaLook) -> TextAreaLook + Send + Sync>>,
     modifiers: Vec<TextAreaModifier>,
 }
 
@@ -111,7 +107,6 @@ impl TextArea {
             resize_handle_icon: None,
             validator: None,
             overrides: xgpui_luma::style::lss::Overrides::new(),
-            look_override: None,
             modifiers: Vec::new(),
         }
     }
@@ -229,15 +224,6 @@ impl TextArea {
         self
     }
 
-    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
-    pub fn look_override<F>(mut self, look_override: F) -> Self
-    where
-        F: Fn(TextAreaLook) -> TextAreaLook + Send + Sync + 'static,
-    {
-        self.look_override = Some(Arc::new(look_override));
-        self
-    }
-
     pub fn with_template_modifier<F>(mut self, modifier: F) -> Self
     where
         F: Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
@@ -296,9 +282,6 @@ impl TextArea {
             builder = builder.validator(validator);
         }
         builder = builder.overrides(self.overrides);
-        if let Some(look_override) = self.look_override {
-            builder = builder.look_override(move |look| (look_override)(look));
-        }
         for modifier in self.modifiers {
             builder = builder.with_template_modifier(move |root, model| (modifier)(root, model));
         }

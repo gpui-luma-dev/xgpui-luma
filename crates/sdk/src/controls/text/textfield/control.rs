@@ -1,4 +1,3 @@
-#![allow(deprecated)] // The look-closure bridge reads `TextFieldLook` until it is removed (#433).
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use crate::theme::InteractionState;
 use std::sync::Arc;
@@ -10,10 +9,7 @@ use gpui::{
     Render, SharedString, ShapedLine, Task, TextRun, UTF16Selection, Window, canvas, div, font, point, px, prelude::*,
 };
 
-use super::{
-    TextFieldLook, TextFieldBuilder, TextFieldRenderModel, TextFieldState, TextFieldTemplateHandlers,
-    model::TextFieldModel,
-};
+use super::{TextFieldBuilder, TextFieldRenderModel, TextFieldState, TextFieldTemplateHandlers, model::TextFieldModel};
 use crate::controls::text::{
     EditableTextPolicy, FocusNavigation, cap_clipboard_paste, handle_key_down, select_all, word_cluster_range,
 };
@@ -313,17 +309,7 @@ impl TextFieldControl {
         cx.notify();
     }
 
-    pub fn set_look_override(
-        &mut self,
-        override_fn: Option<super::model::TextFieldLookOverride>,
-        cx: &mut Context<Self>,
-    ) {
-        self.model.look_override = override_fn;
-        self.layout_cache = None;
-        cx.notify();
-    }
-
-    /// The field's resolved style: the template's, with the compact size and any look closure applied as overrides.
+    /// The field's resolved style: the template's, with the compact size.
     fn resolved_style(&self) -> Arc<Resolved> {
         let template = &self.model.template;
         let mut overrides = Overrides::new();
@@ -334,12 +320,6 @@ impl TextFieldControl {
                 .set(PartId::ROOT, Prop::<f32>::new("height"), geometry.compact_textfield_height);
         }
         overrides = overrides.merge(&self.model.overrides);
-        if let Some(override_fn) = &self.model.look_override {
-            let before =
-                TextFieldLook::from_resolved(&template.resolve_style(self.state, self.model.enabled, &overrides));
-            let after = override_fn(before.clone());
-            overrides = overrides.merge(&TextFieldLook::overrides_between(&before, &after));
-        }
         template.resolve_style(self.state, self.model.enabled, &overrides)
     }
 

@@ -1,5 +1,4 @@
 //! Radix popup menus (Copy / Actions menus), drawn from `.lss`.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 

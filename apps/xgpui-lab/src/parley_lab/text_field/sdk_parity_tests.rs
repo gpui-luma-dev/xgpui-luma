@@ -201,10 +201,11 @@ fn measure_parley_text_area_hot_paths() {
                             }
                             "resize" => {
                                 let padding = if step % 2 == 0 { 5.0 } else { 25.0 };
-                                field.look_override = Some(Arc::new(move |mut look| {
-                                    look.padding_x = padding;
-                                    look
-                                }));
+                                field.overrides = xgpui_luma::style::lss::Overrides::new().set(
+                                    xgpui_luma::style::lss::PartId::ROOT,
+                                    xgpui_luma::style::lss::Prop::<f32>::new("padding_x"),
+                                    padding,
+                                );
                             }
                             "scroll" => field.scroll = px(if step % 2 == 0 { 0.0 } else { 200.0 }),
                             "selection" => {

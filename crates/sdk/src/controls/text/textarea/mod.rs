@@ -13,8 +13,6 @@ pub use template::{
     TextAreaMouseMoveHandler, TextAreaMouseUpHandler, TextAreaDragMoveHandler, TextAreaTemplate,
     TextAreaTemplateHandlers, ThemedTextAreaTemplate, default_textarea_template,
 };
-#[allow(deprecated)]
-pub use theme::{TextAreaLook, compose_textarea_look};
 pub use theme::{TextAreaPalette, TextAreaTheme, default_textarea_theme};
 
 mod callback;
