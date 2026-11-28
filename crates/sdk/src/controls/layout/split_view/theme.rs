@@ -2,28 +2,11 @@
 
 use std::sync::{Arc, OnceLock};
 
-use gpui::Hsla;
-
-#[deprecated(note = "the split view draws from `SplitViewTheme::style()`; resolve it with `resolve_split_view` (#433)")]
-#[derive(Clone, Debug)]
-pub struct SplitViewLook {
-    /// Resolved separator hit target and decoration in pixels.
-    pub geometry: crate::theme::stylesheet::SplitViewGeometry,
-    pub separator: Hsla,
-    pub separator_hover: Hsla,
-}
-
 pub trait SplitViewTheme: Send + Sync {
     /// The split view's style (#433): the binding the template resolves (see
     /// [`resolve_split_view`](super::resolve_split_view)) and draws from.
     fn style(&self) -> crate::style::StyleBinding {
         crate::style::StyleBinding::sdk("split_view")
-    }
-
-    /// The split view's look, built from [`Self::style`] for code that still reads a [`SplitViewLook`].
-    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_split_view` (#433)")]
-    fn resolve(&self, _hovered: bool, enabled: bool) -> SplitViewLook {
-        SplitViewLook::from_resolved(&super::resolve_split_view(&self.style(), enabled))
     }
 }
 

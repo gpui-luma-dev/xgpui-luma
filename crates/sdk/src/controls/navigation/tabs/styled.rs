@@ -8,7 +8,6 @@ use gpui::SharedString;
 use xgpui_luma_style::Resolved;
 
 #[allow(deprecated)]
-use super::theme::{TabsItemLook, TabsListLook};
 use super::theme::TabsTheme;
 use crate::style::StyleBinding;
 use crate::theme::InteractionState;
@@ -44,20 +43,6 @@ impl StyledTabs {
     /// The binding the tabs resolve.
     pub fn binding(&self) -> StyleBinding {
         self.binding.clone()
-    }
-
-    /// The tab list, enabled or not.
-    #[deprecated(note = "the template draws from the resolved style; use `resolve_tabs_list` (#433)")]
-    #[allow(deprecated)]
-    pub fn list(&self, enabled: bool) -> TabsListLook {
-        TabsListLook::from_resolved(&resolve_tabs_list(&self.binding, enabled))
-    }
-
-    /// A tab, active or not, in `state`.
-    #[deprecated(note = "the template draws from the resolved style; use `resolve_tab` (#433)")]
-    #[allow(deprecated)]
-    pub fn item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        TabsItemLook::from_resolved(&resolve_tab(&self.binding, active, state), active)
     }
 
     /// The tabs' font family.
