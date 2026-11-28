@@ -1,5 +1,4 @@
 //! Custom button exposition — gallery mod_button pane: templates, content, reactive state.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 
@@ -41,7 +40,7 @@ impl CustomButtonControlExposition {
                     .flex()
                     .items_center()
                     .gap(px(8.))
-                    .child(xgpui_luma::infra::icon::lucide_icon(LucideIcon::Check, model.look.foreground, 16.))
+                    .child(xgpui_luma::infra::icon::lucide_icon(LucideIcon::Check, model.foreground(), 16.))
                     .child("Custom Layout")
             })
             .spawn(cx);
@@ -68,7 +67,7 @@ impl CustomButtonControlExposition {
                     .items_center()
                     .gap_2()
                     .child("Label")
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.foreground()))
             })
             .spawn(cx);
         let standard_icon_text = Button::new("controls-doc-custom-std-icon-text")
@@ -77,7 +76,7 @@ impl CustomButtonControlExposition {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.foreground()))
                     .child("Label")
             })
             .spawn(cx);
@@ -142,7 +141,7 @@ impl CustomButtonControlExposition {
                                 .gap(px(8.0))
                                 .child(xgpui_luma::infra::icon::lucide_icon(
                                     LucideIcon::Check,
-                                    model.look.foreground,
+                                    model.foreground(),
                                     16.0,
                                 ))
                                 .child(format!("Customized {clicks}"))

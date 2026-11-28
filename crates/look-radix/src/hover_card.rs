@@ -1,5 +1,5 @@
 //! Interactive hover cards composed with the SDK anchored popover engine.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::{sync::Arc, time::Duration};
 use gpui::{
     AnyElement, App, Context, Entity, EventEmitter, IntoElement, Render, SharedString, Subscription, Task, Window, div,

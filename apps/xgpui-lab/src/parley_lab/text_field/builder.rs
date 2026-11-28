@@ -6,7 +6,7 @@
 //! The look resolves as Radix's does: an explicit [`look`](ParleyTextFieldBuilder::look),
 //! else the application's ambient `Look` global (as a shell installs it), else
 //! `Look::built_in()`.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Div, Entity, Font, SharedString, Stateful, TextDirection, Window};

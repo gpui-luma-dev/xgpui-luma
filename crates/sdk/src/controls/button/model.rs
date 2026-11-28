@@ -34,7 +34,51 @@ pub struct ButtonContentContext<D> {
     pub data: D,
     pub state: InteractionState,
     pub role: ButtonFamilyRole,
+    #[deprecated(note = "read the content context's accessors (`foreground()`, `icon_size()`, ...) instead (#433)")]
     pub look: ButtonFamilyLook,
+}
+
+#[allow(deprecated)]
+impl<D> ButtonContentContext<D> {
+    /// The face's label color.
+    pub fn foreground(&self) -> gpui::Hsla {
+        self.look.foreground
+    }
+
+    /// The face's dimmed label color.
+    pub fn muted_foreground(&self) -> gpui::Hsla {
+        self.look.muted_foreground
+    }
+
+    /// The face's fill.
+    pub fn background(&self) -> gpui::Hsla {
+        self.look.background
+    }
+
+    /// The face's label text style.
+    pub fn typography(&self) -> crate::theme::LumaTextStyle {
+        self.look.typography
+    }
+
+    /// The face's font family.
+    pub fn font_family(&self) -> SharedString {
+        self.look.font_family.clone()
+    }
+
+    /// The face's icon size.
+    pub fn icon_size(&self) -> f32 {
+        self.look.icon_size
+    }
+
+    /// The face's gap between icon and label.
+    pub fn gap(&self) -> f32 {
+        self.look.gap
+    }
+
+    /// The face's height.
+    pub fn height(&self) -> f32 {
+        self.look.height
+    }
 }
 
 pub fn button_content_context<D: Clone>(
@@ -42,6 +86,54 @@ pub fn button_content_context<D: Clone>(
     look: ButtonFamilyLook,
 ) -> ButtonContentContext<D> {
     ButtonContentContext { id: model.id.clone(), data: model.data.clone(), state: model.state, role: model.role, look }
+}
+
+/// The face a custom template painted itself, for the presenter's content context (#433): what a presenter may read
+/// about it through [`ButtonContentContext`].
+#[derive(Clone, Debug)]
+pub struct ButtonContentFace {
+    pub background: gpui::Hsla,
+    pub foreground: gpui::Hsla,
+    pub border: Option<gpui::Hsla>,
+    pub typography: crate::theme::LumaTextStyle,
+    pub font_family: SharedString,
+    pub radius: f32,
+    pub height: f32,
+    pub icon_size: f32,
+}
+
+/// The context a presenter draws a button's content in, for a face a custom template painted itself (#433).
+pub fn button_content_context_painted<D: Clone>(
+    model: &ButtonRenderModel<D>,
+    face: ButtonContentFace,
+) -> ButtonContentContext<D> {
+    button_content_context(
+        model,
+        ButtonFamilyLook {
+            focus_border: gpui::transparent_black(),
+            background: face.background,
+            foreground: face.foreground,
+            muted_foreground: face.foreground,
+            border: face.border,
+            typography: face.typography,
+            font_family: face.font_family,
+            radius: face.radius,
+            padding_x: 0.0,
+            padding_y: 0.0,
+            gap: 0.0,
+            height: face.height,
+            icon_size: face.icon_size,
+            shadow: None,
+        },
+    )
+}
+
+/// The context a presenter draws a button's content in, from the settled face `resolved` (#433).
+pub fn button_content_context_from<D: Clone>(
+    model: &ButtonRenderModel<D>,
+    resolved: &xgpui_luma_style::Resolved,
+) -> ButtonContentContext<D> {
+    button_content_context(model, ButtonFamilyLook::from_resolved(resolved, model.role))
 }
 
 #[derive(Clone)]

@@ -1,9 +1,7 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, FontWeight, Stateful, Window, div, hsla, point, prelude::*, px};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
-use xgpui_luma::controls::button_family::ButtonFamilyLook;
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, ButtonContentFace, button_content_context_painted};
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::controls::toggle::ToggleData;
 
@@ -81,23 +79,17 @@ impl ButtonTemplate<ToggleData> for NeumorphicPowerToggleTemplate {
             hsla(0.0, 0.0, 1.0, 0.18)
         };
 
-        let content_model = button_content_context(
+        let content_model = button_content_context_painted(
             model,
-            ButtonFamilyLook {
-                focus_border: gpui::transparent_black(),
+            ButtonContentFace {
                 background,
                 foreground: icon_color,
-                muted_foreground: icon_color,
                 border: Some(border),
                 typography: LumaTextStyle { size: 14.0, line_height: 16.0, weight: FontWeight::NORMAL },
                 font_family: "System UI".into(),
                 radius: 14.0,
-                padding_x: 3.0,
-                padding_y: 3.0,
-                gap: 0.0,
                 height: 42.0,
                 icon_size: 18.0,
-                shadow: None,
             },
         );
 

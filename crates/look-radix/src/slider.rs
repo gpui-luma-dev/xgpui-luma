@@ -4,7 +4,7 @@
 //! - **Surface** — gray track with an inset rim; accent fill; flat thumb ring
 //! - **Classic** — same gray track, raised thumb (shadow-1 style)
 //! - **Soft** — gray tint track; accent-6 fill; softer thumb elevation
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 pub(crate) mod accordion;
 pub(crate) mod accordion_builder;
 pub(crate) mod autocomplete;

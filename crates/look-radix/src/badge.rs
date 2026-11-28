@@ -1,5 +1,5 @@
 //! Non-interactive Radix badge element. Applications supply labels and placement.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 #[cfg(test)]
 use gpui::Hsla;

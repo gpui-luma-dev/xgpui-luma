@@ -1,5 +1,4 @@
 //! Icons screen with SDK buttons and popup icon details.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 use gpui::{
@@ -36,7 +35,7 @@ impl State {
                         let button = radix::Button::new(format!("inspect-icon-{name}"))
                             .look(look)
                             .ghost_quiet()
-                            .content(move |model, _| react_icon(icon, model.look.foreground, 15.0))
+                            .content(move |model, _| react_icon(icon, model.foreground(), 15.0))
                             .with_template_modifier({
                                 let name = *name;
                                 move |root, _| root.debug_selector(move || format!("inspect-icon-{name}"))

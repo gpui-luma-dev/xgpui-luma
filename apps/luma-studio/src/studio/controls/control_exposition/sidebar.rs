@@ -1,5 +1,4 @@
 //! Navigation sidebar control exposition — `SidebarControl` preview and event log.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use xgpui_luma::controls::sidebar::SidebarEventExt;
 use xgpui_luma::controls::popup_menu::PopupMenuEventExt;
@@ -427,7 +426,7 @@ fn preview_shell(
 
 fn sidebar_toggle_presenter(icon: ControlIcon) -> ControlPresenter<ButtonContentContext<()>> {
     Arc::new(move |model, _| {
-        let color = model.look.foreground;
+        let color = model.foreground();
         match &icon {
             ControlIcon::Lucide(lucide) => div()
                 .text_size(px(16.0))

@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+use xgpui_luma::style::PartRead;
 use gpui::Subscription;
 use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
 use xgpui_luma::controls::switch::SwitchEventExt;
@@ -612,12 +612,15 @@ fn titlebar_icon_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPrese
 }
 
 fn app_bar_icon_color(look: &ShadcnLook) -> gpui::Hsla {
-    look.resolve_content_only_button(
+    look.button_face_style(
+        xgpui_luma_look_shadcn::ShadcnButtonStyle::ContentOnly,
         ButtonFamilyRole::Icon,
         xgpui_luma_look_shadcn::ShadcnSize::Sm,
+        None,
         InteractionState::default(),
     )
-    .foreground
+    .root()
+    .color("foreground")
 }
 
 use super::export::token_css_name;

@@ -1,7 +1,7 @@
 //! Lab page: Parley text fields and text areas, on five screens. In the
 //! standalone Parley window each screen is one of the window's own tabs; in
 //! XGPUI Lab's "Text Field" tab a tab bar on the page chooses them.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Font, FontFallbacks, Render, Window, div, prelude::*, px};

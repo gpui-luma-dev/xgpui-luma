@@ -1,7 +1,6 @@
 //! Selectable card: a Luma button drawn as a card. It keeps the button's input,
 //! keyboard focus and accessibility. Selected, hover, press and focus fills come
 //! from the look's interaction colors.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, InteractiveElement, IntoElement, Pixels, SharedString, Styled, prelude::FluentBuilder};
@@ -33,38 +32,34 @@ pub(crate) fn card_button<M: 'static, E: IntoElement + 'static>(
     on_click: impl Fn(&mut M, &mut Context<M>) + 'static,
 ) -> Entity<Button> {
     let id: SharedString = id.into();
-    let geometry = radix::button_look_for::<()>(
+    let button = Button::new(id.clone()).content(move |_, cx| content(cx)).on_click(cx, on_click).spawn(cx);
+    let paint_look = look.clone();
+    let selector = id.to_string();
+    // Selection and keyboard focus use the card fill, without an outer ring.
+    let template = radix::button_cell_template::<()>(
         look,
         radix::ButtonVariant::Ghost,
         radix::Paint::gray(),
         radix::ButtonSize::One,
         Default::default(),
-    );
-    let button = Button::new(id.clone())
-        .with_look(move |model| {
-            let mut resolved = geometry(model);
-            // Selection and keyboard focus use the card fill, without an outer ring.
-            resolved.border = None;
-            resolved
-        })
-        .content(move |_, cx| content(cx))
-        .on_click(cx, on_click)
-        .spawn(cx);
-    let paint_look = look.clone();
-    let selector = id.to_string();
-    let template = radix::button_template_for::<()>(look, radix::ButtonVariant::Ghost, radix::Paint::gray())
-        .with_modifier(move |row, model| {
-            let colors = paint_look.interaction_colors();
-            let selector = selector.clone();
-            let row = card_surface(row, &paint_look);
-            let row = match width {
-                CardWidth::Fixed(width) => row.w(width).max_w_full().min_w_0(),
-                CardWidth::Flexible => row.w_full().justify_start(),
-            };
-            row.debug_selector(move || selector)
-                .h_auto()
-                .when_some(colors.background(selected(), model.state), |row, color| row.bg(color))
-        });
+    )
+    .with_overrides(&xgpui_luma::style::lss::Overrides::new().set(
+        xgpui_luma::style::lss::PartId::ROOT,
+        xgpui_luma::style::lss::Prop::<xgpui_luma::style::lss::Color>::new("border"),
+        xgpui_luma::style::lss_color(gpui::transparent_black()),
+    ))
+    .with_modifier(move |row, model| {
+        let colors = paint_look.interaction_colors();
+        let selector = selector.clone();
+        let row = card_surface(row, &paint_look);
+        let row = match width {
+            CardWidth::Fixed(width) => row.w(width).max_w_full().min_w_0(),
+            CardWidth::Flexible => row.w_full().justify_start(),
+        };
+        row.debug_selector(move || selector)
+            .h_auto()
+            .when_some(colors.background(selected(), model.state), |row, color| row.bg(color))
+    });
     button.update(cx, |button, cx| button.set_template(Arc::new(template), cx));
     button
 }

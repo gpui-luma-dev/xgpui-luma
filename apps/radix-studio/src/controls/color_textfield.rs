@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
@@ -181,7 +180,7 @@ impl ColorTextField {
         let button = super::icon_button::ghost_no_hover(format!("{}-link", self.id), &self.look, true)
             .content(|model, _| {
                 crate::assets::icon_named(if model.data { "link-2" } else { "link-break-2" })
-                    .map(|icon| crate::assets::react_icon(icon, model.look.foreground, 15.0))
+                    .map(|icon| crate::assets::react_icon(icon, model.foreground(), 15.0))
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)

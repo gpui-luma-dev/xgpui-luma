@@ -1,5 +1,4 @@
 //! Home-screen control construction. Bind every example explicitly to the draft look.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use gpui::{Context, Entity, div, prelude::*, px};
 use xgpui_luma::controls::{
     button::Button,
@@ -73,12 +72,12 @@ impl PreviewControls {
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(model.look.gap))
+                    .gap(px(model.gap()))
                     .child(
                         gpui::svg()
                             .path("assets/react-icons/github-logo.svg")
-                            .size(px(model.look.icon_size))
-                            .text_color(model.look.foreground),
+                            .size(px(model.icon_size()))
+                            .text_color(model.foreground()),
                     )
                     .child("Continue with GitHub")
             })

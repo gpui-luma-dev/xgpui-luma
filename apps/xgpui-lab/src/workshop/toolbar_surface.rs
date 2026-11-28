@@ -3,7 +3,6 @@
 //! selectors inside it keep their own `.lss` and stay live, but aren't picked or inspected here (states
 //! that belong to items are #302's to design). The page has no options: the toolbar's focus strategy
 //! is keyboard behavior, not part of its look.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 
@@ -253,9 +252,7 @@ fn toolbar_selector<T: 'static>(
 
 fn toolbar_toggle<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
     let toggle = xgpui_luma::controls::toggle::new(id)
-        .content(move |model, _| {
-            xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
-        })
+        .content(move |model, _| xgpui_luma::infra::icon::lucide_icon(icon, model.foreground(), model.icon_size()))
         .spawn(cx);
     ToolbarItem::toggle_button(id, toggle, cx).label(id)
 }
