@@ -1,4 +1,5 @@
 //! Look-owned text-field builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textfield::TextField`].
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use std::sync::Arc;

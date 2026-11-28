@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states (incl. invalid)
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;

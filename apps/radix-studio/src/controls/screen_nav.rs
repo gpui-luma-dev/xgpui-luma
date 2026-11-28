@@ -1,4 +1,5 @@
 //! Toggle-style page navigation backed by the SDK screen content slots.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;

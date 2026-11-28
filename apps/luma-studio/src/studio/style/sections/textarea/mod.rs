@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px};

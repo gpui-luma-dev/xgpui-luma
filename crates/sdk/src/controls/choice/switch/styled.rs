@@ -2,6 +2,7 @@
 //!
 //! Values come from `.lss` (`switch.lss`); an instance's model can still override the track and thumb
 //! size, the extra track length, the orientation and the radius.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use crate::style::PartRead;
 use gpui::{App, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, px};

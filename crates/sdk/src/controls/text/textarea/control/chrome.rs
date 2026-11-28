@@ -6,7 +6,6 @@ use gpui::{
 
 use super::element::TextAreaElement;
 use super::{TextArea, TextAreaDrag, TextAreaResizeDrag};
-use crate::theme::StandardBoxScale;
 
 impl TextArea {
     pub(super) fn resize_drag_id(&self) -> SharedString {
@@ -118,9 +117,7 @@ impl Render for TextArea {
         }
 
         self.sync_focus(window, cx);
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.model.theme.metrics(), scale_factor);
-        let mut look = self.resolved_look(&scale);
+        let mut look = self.resolved_look();
         let focused = self.state.focused && self.state.focus_visible && self.model.enabled;
         let focus = crate::infra::focus_adorner::FocusAdorner::new(self.model.theme.metrics().focus);
         let focus_extent = focus.extent();

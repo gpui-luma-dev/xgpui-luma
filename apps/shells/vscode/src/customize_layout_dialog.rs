@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::overlay_window::OverlayWindowEventExt;
 use std::sync::Arc;

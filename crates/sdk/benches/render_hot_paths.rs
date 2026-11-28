@@ -1,5 +1,6 @@
 //! Isolated headless costs, not application frame times. Run with:
 //! `cargo bench -p xgpui-luma --bench render_hot_paths -- --measure`
+#![allow(deprecated)] // The bench measures the compatibility `ButtonFamilyLook` path (#433).
 use std::{collections::HashMap, hint::black_box, rc::Rc, sync::Arc};
 
 #[path = "../src/perf_measure.rs"]

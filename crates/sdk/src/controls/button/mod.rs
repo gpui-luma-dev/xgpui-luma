@@ -4,6 +4,7 @@
 //! - [`family`] — shared look/metrics recipe (`button_family` re-export)
 //! - [`split_button`] — single-focus retained action/menu specialization
 //! - [`CommandCore`] — presentation-agnostic activation/interaction core used by `Button`
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 mod callback;
 mod control;

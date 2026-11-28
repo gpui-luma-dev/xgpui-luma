@@ -1,4 +1,5 @@
 //! Tooltip options exercised against one retained preview.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
 use xgpui_luma::controls::switch::SwitchEventExt;

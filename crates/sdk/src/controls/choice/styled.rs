@@ -5,6 +5,7 @@
 //! hook. A control supplies its data type through [`ChoiceData`] and draws itself in
 //! [`ChoiceData::render`]. Controls drawn as an indicator box with a mark inside (checkbox, radio)
 //! implement [`IndicatorChoice`] and render with [`render_indicator`]; the switch draws a track and thumb.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use crate::style::PartRead;
 use std::sync::Arc;

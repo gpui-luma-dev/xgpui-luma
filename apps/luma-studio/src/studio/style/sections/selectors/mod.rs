@@ -1,3 +1,4 @@
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{
@@ -29,7 +30,7 @@ use xgpui_luma::controls::selector_list::{
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -683,7 +684,7 @@ fn render_selector_preview_textfield(
         caret_visible: false,
         horizontal_scroll: 0.0,
         character_offsets,
-        look,
+        style: look,
     };
 
     template.render(&text_model, input_textfield_handlers(), window, cx).into_any_element()
@@ -791,7 +792,7 @@ fn render_selector_popup_preview(
                 caret_visible: false,
                 horizontal_scroll: 0.0,
                 character_offsets: search_offsets,
-                look: search_look,
+                style: search_look,
             };
 
             let search_content = look
@@ -968,21 +969,23 @@ fn selector_textfield_character_offsets(
     enabled: bool,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = selector_preview_textfield_look(&theme, state, enabled, window);
+    let style = selector_preview_textfield_look(&theme, state, enabled, window);
+    let root = style.root();
+    let typography = root.typography(14.0, 20.0);
     let value_shared = SharedString::from(value.to_string());
     let run = TextRun {
         len: value_shared.len(),
         font: {
             let mut font = font(".SystemUIFont");
-            font.weight = look.typography.weight;
+            font.weight = typography.weight;
             font
         },
-        color: look.foreground,
+        color: root.color("foreground"),
         background_color: None,
         underline: None,
         strikethrough: None,
     };
-    let line = window.text_system().shape_line(value_shared, px(look.typography.size), &[run], None);
+    let line = window.text_system().shape_line(value_shared, px(typography.size), &[run], None);
     let chars = value.chars().count();
 
     let mut offsets = Vec::with_capacity(chars + 1);
@@ -1007,9 +1010,9 @@ fn selector_preview_textfield_look(
     state: TextFieldState,
     enabled: bool,
     window: &Window,
-) -> xgpui_luma::controls::textfield::TextFieldLook {
-    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, &scale)
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    let _ = window;
+    theme.resolve_style(state, enabled)
 }
 
 fn render_selector_combobox_popup_preview_from_templates(

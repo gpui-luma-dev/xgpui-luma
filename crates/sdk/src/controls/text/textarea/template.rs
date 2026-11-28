@@ -9,7 +9,7 @@ use gpui::{
 
 use super::{TextAreaDrag, TextAreaRenderModel};
 use crate::controls::textarea::{TextAreaTheme, default_textarea_theme};
-use crate::theme::StandardBoxScale;
+use super::values::AreaValues;
 
 const TEXTAREA_TRAILING_HITBOX_WIDTH: f32 = 4.0;
 const TEXTAREA_CARET_EDGE_OFFSET: f32 = 0.0;
@@ -110,12 +110,10 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         &self,
         model: &TextAreaRenderModel<'_>,
         handlers: TextAreaTemplateHandlers,
-        window: &mut Window,
+        _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        let mut look = self.theme.resolve_look(model.state, model.enabled, &scale);
+        let mut look = AreaValues::read(&self.theme.resolve_style(model.state, model.enabled));
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let selection = model.state.selection_range();
         let cursor = model.state.cursor.min(model.value.chars().count());

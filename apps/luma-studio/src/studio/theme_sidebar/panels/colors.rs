@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use crate::studio::color_format::{format_color_readout, parse_color_input};
 use std::collections::HashMap;

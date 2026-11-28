@@ -6,6 +6,7 @@
 //! The look resolves as Radix's does: an explicit [`look`](ParleyTextFieldBuilder::look),
 //! else the application's ambient `Look` global (as a shell installs it), else
 //! `Look::built_in()`.
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Div, Entity, Font, SharedString, Stateful, TextDirection, Window};
@@ -331,18 +332,17 @@ struct ModifiedTemplate {
 }
 
 impl TextFieldTemplate for ModifiedTemplate {
-    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        self.base.resolve_look(state, enabled)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.base.style()
     }
 
-    fn resolve_look_with_scale(
+    fn resolve_style(
         &self,
         state: TextFieldState,
         enabled: bool,
-        scale_factor: f32,
-        cx: &mut App,
-    ) -> TextFieldLook {
-        self.base.resolve_look_with_scale(state, enabled, scale_factor, cx)
+        overrides: &xgpui_luma::style::lss::Overrides,
+    ) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+        self.base.resolve_style(state, enabled, overrides)
     }
 
     fn render(

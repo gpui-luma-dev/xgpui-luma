@@ -1,6 +1,9 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
+use xgpui_luma_style::Resolved;
+
+use crate::style::StyleBinding;
 
 use crate::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
 use crate::controls::textarea::TextAreaState;
@@ -21,6 +24,7 @@ pub struct TextAreaPalette {
     pub font_family: String,
 }
 
+#[deprecated(note = "templates draw from the resolved style; use `TextAreaTheme::resolve_style` (#433)")]
 #[derive(Clone, Debug)]
 pub struct TextAreaLook {
     /// Helper chrome resolved through the selected common stylesheet.
@@ -50,10 +54,22 @@ pub struct TextAreaLook {
 }
 
 pub trait TextAreaTheme: Send + Sync {
+    /// The `textarea` binding the area is read from.
+    fn style(&self) -> StyleBinding {
+        StyleBinding::sdk("textarea")
+    }
+
+    /// The area's resolved style in `state` (#433): templates draw from its root.
+    fn resolve_style(&self, state: TextAreaState, enabled: bool) -> Arc<Resolved> {
+        crate::controls::text::resolve_text_area(&self.style(), state, enabled)
+    }
+
     fn resolve(&self, state: TextAreaState, enabled: bool) -> TextAreaPalette;
 
     fn metrics(&self) -> MetricTokens;
 
+    #[deprecated(note = "templates draw from the resolved style; use `resolve_style` (#433)")]
+    #[allow(deprecated)]
     fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
         compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width)
     }
@@ -66,6 +82,8 @@ pub fn default_textarea_theme() -> Arc<dyn TextAreaTheme> {
     THEME.get_or_init(|| Arc::new(crate::controls::text::StyledTextAreaTheme::sdk())).clone()
 }
 
+#[deprecated(note = "templates draw from the resolved style (#433)")]
+#[allow(deprecated)]
 pub fn compose_textarea_look(palette: &TextAreaPalette, scale: &StandardBoxScale, border_width: f32) -> TextAreaLook {
     TextAreaLook {
         helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),

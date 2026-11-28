@@ -1,4 +1,5 @@
 //! Shadow projection code copied from Studio; button styling resolves from SDK defaults.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{App, BoxShadow, Div, Hsla, SharedString, Stateful, Window, div, point, prelude::*, px};

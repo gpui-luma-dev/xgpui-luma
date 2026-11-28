@@ -15,6 +15,7 @@
 //! Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::Result;
@@ -1471,6 +1472,13 @@ impl ParleyTextField {
             invalid: self.invalid,
             ..TextFieldState::default()
         };
+        // The look (the field's own overrides included) as style overrides over the template's style.
+        let base = TextFieldLook::from_resolved(&self.template.resolve_style(
+            state,
+            self.enabled,
+            &xgpui_luma::style::lss::Overrides::new(),
+        ));
+        let style = self.template.resolve_style(state, self.enabled, &TextFieldLook::overrides_between(&base, &look));
         let model = TextFieldRenderModel {
             id: &self.id,
             placeholder: &placeholder,
@@ -1483,7 +1491,7 @@ impl ParleyTextField {
             caret_visible: false,
             horizontal_scroll: 0.0,
             character_offsets: vec![0.0],
-            look: look.clone(),
+            style,
         };
         // Pointer input is handled on the wrapper below: in headless tests the
         // template root's mouse-down listener never fired under the text overlay,
