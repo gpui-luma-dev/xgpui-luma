@@ -31,9 +31,9 @@ impl SidebarTheme for SidebarThemeAdapter {
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
     }
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
         let size = self.look.size();
-        crate::navigation::drag_look(&self.look, size)
+        crate::navigation::drag_style(&self.look, size)
     }
 }
 struct RailMenuTheme {

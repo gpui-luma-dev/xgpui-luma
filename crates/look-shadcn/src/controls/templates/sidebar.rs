@@ -40,8 +40,8 @@ impl SidebarTheme for ShadcnSidebarTheme {
     fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
         xgpui_luma::theme::stylesheet::SidebarGeometry::from_binding(&self.theme.style_binding("sidebar"))
     }
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        super::drag::drag_look(&self.theme)
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        super::drag::drag_style(&self.theme)
     }
 
     fn style(&self) -> xgpui_luma::style::StyleBinding {

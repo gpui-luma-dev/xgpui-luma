@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Window, div, prelude::*, px};
@@ -65,7 +66,10 @@ where
             .child(row_content);
 
         if item.state.disabled {
-            row = crate::style::fade(row, theme.resolve_list(true).item_disabled_opacity);
+            row = crate::style::fade(
+                row,
+                theme.resolve_list_style(false).part(xgpui_luma_style::PartId::new("item")).opacity(),
+            );
         } else {
             row = row.cursor_pointer();
         }

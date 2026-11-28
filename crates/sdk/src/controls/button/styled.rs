@@ -119,12 +119,17 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         self
     }
 
-    /// The settled face for `role` in `state`, as a button-family look: for chrome a look draws itself
-    /// (control-group rows) from the same `.lss` values.
-    pub fn look(&self, role: ButtonFamilyRole, state: InteractionState, scale_factor: f32) -> ButtonFamilyLook {
+    /// The settled face for `role` in `state` (#433): for chrome a look draws itself (control-group rows) from the
+    /// same `.lss` values.
+    pub fn resolve_face(&self, role: ButtonFamilyRole, state: InteractionState, scale_factor: f32) -> Arc<Resolved> {
         let theme = self.theme();
         let selected = matches!(role, ButtonFamilyRole::Toggle { selected: true });
-        let resolved = theme.resolve_with(&self.key(&theme, role, state, selected, scale_factor), &self.overrides);
+        theme.resolve_with(&self.key(&theme, role, state, selected, scale_factor), &self.overrides)
+    }
+
+    /// The settled face for `role` in `state`, as a button-family look.
+    pub fn look(&self, role: ButtonFamilyRole, state: InteractionState, scale_factor: f32) -> ButtonFamilyLook {
+        let resolved = self.resolve_face(role, state, scale_factor);
         look_from(resolved.root(), resolved.root(), role)
     }
 

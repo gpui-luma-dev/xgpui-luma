@@ -143,7 +143,7 @@ impl Tabs {
         mut surface: Stateful<Div>,
         id: &SharedString,
         label: SharedString,
-        look: crate::infra::drag_drop::DragDropLook,
+        style: std::sync::Arc<xgpui_luma_style::Resolved>,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         if !self.reordering || !self.enabled {
@@ -164,7 +164,7 @@ impl Tabs {
             && !item.is_dropdown_trigger()
             && let Some(drag) = TabDrag::new(scope, scope, vec![id.clone()])
         {
-            let preview_look = look.clone();
+            let preview_style = style.clone();
             let owner = cx.weak_entity();
             surface = bind_drag_source(
                 surface.cursor_grab(),
@@ -177,7 +177,7 @@ impl Tabs {
                     cx.new(|_| crate::infra::drag_drop::DragPreview {
                         label: label.clone(),
                         offset,
-                        look: preview_look.clone(),
+                        style: preview_style.clone(),
                         selector: "tabs-drag-preview",
                     })
                 },
@@ -195,7 +195,7 @@ impl Tabs {
         mut strip: Stateful<Div>,
         gap: f32,
         inset: f32,
-        look: crate::infra::drag_drop::DragDropLook,
+        style: std::sync::Arc<xgpui_luma_style::Resolved>,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let scope = cx.entity_id();
@@ -242,14 +242,14 @@ impl Tabs {
             let valid = drag.propose(scope, scope, before.clone()).is_some_and(|proposal| {
                 self.drop_order(&proposal, scope).is_ok_and(|order| order.iter().enumerate().any(|(i, j)| i != *j))
             });
-            let color = if valid { look.valid_marker } else { look.invalid_marker };
+            let color = crate::infra::drag_drop::drag_marker_color(&style, valid);
             let marker = div()
                 .id("marker")
                 .absolute()
                 .top_0()
                 .bottom_0()
-                .left(px(marker - start - look.geometry.drag_marker_width / 2.0))
-                .w(px(look.geometry.drag_marker_width))
+                .left(px(marker - start - crate::theme::stylesheet::SharedGeometry::sdk().drag_marker_width / 2.0))
+                .w(px(crate::theme::stylesheet::SharedGeometry::sdk().drag_marker_width))
                 .bg(color)
                 .opacity(0.)
                 // GPUI only resolves group drag styles for elements with a hitbox.
@@ -278,7 +278,7 @@ impl Tabs {
             let owner = cx.weak_entity();
             let anchor = before.clone();
             let target =
-                crate::infra::drag_drop::bind_feedback(target, look.clone(), scope, move |drag: &TabDrag, app| {
+                crate::infra::drag_drop::bind_feedback(target, style.clone(), scope, move |drag: &TabDrag, app| {
                     owner.upgrade().is_some_and(|owner| {
                         drag.propose(scope, scope, anchor.clone()).is_some_and(|p| {
                             owner

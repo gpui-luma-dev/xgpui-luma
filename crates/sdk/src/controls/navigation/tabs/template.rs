@@ -353,7 +353,7 @@ impl TabsTemplate for ThemedTabsTemplate {
 
             if let Some(owner) = &model.drag_drop {
                 if let Ok(bound) = owner.update(cx, |tabs, cx| {
-                    let bound = tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.resolve_drag(), cx);
+                    let bound = tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.drag_style(), cx);
                     tabs.drop_layout.item(item.id.clone(), bound)
                 }) {
                     root = root.child(bound);
@@ -369,7 +369,7 @@ impl TabsTemplate for ThemedTabsTemplate {
                     root,
                     list_gap,
                     list_padding + if list_border.is_some() { 1.0 } else { 0.0 },
-                    self.theme.resolve_drag(),
+                    self.theme.drag_style(),
                     cx,
                 )
             }) {

@@ -9,7 +9,7 @@ fn table_drag_preview_geometry_comes_from_the_table_lss() {
     let theme = look.style_theme();
     let resolved = theme.resolve(&theme.key_named("table", &[], &[]).expect("key"));
     let number = |name| resolved.root().value(name).and_then(Value::as_number).expect(name);
-    let drag = look.table_theme().resolve_drag().geometry;
+    let drag = look.table_theme().drag_geometry();
     assert_eq!(
         (drag.drag_offset, drag.drag_width, drag.drag_padding_x, drag.drag_padding_y),
         (number("drag_offset"), number("drag_width"), number("drag_padding_x"), number("drag_padding_y"))

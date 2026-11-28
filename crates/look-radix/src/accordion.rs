@@ -29,9 +29,9 @@ impl AccordionTheme for AccordionThemeAdapter {
     fn drag_tooltip_theme(&self) -> Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme> {
         crate::tooltip_theme(&self.look)
     }
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
         let size = self.look.size();
-        crate::navigation::drag_look(&self.look, size)
+        crate::navigation::drag_style(&self.look, size)
     }
 }
 /// Retains the supplied Look and resolves palette, geometry, and drag chrome on render.

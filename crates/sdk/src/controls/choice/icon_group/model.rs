@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{SharedString, Styled, px};
@@ -69,11 +70,12 @@ where
 {
     let base = control_group_template_with_theme(theme.clone());
     Arc::new(move |model, handlers, window, cx| {
-        let look = theme.resolve_list(model.enabled);
+        let style = theme.resolve_list_style(model.enabled);
+        let look = style.root();
         base(model, handlers, window, cx)
             .rounded(px(crate::theme::FULL_RADIUS_PX))
-            .gap(px(look.gap))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
+            .gap(px(look.number("gap")))
+            .px(px(look.number("padding_x")))
+            .py(px(look.number("padding_y")))
     })
 }

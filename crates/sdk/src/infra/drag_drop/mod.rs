@@ -2,8 +2,10 @@
 //! hit testing, and previews; hosts own acceptance policy and collection mutation.
 
 mod appearance;
+#[allow(deprecated)]
 pub use appearance::{DragDropLook, styled_drag_drop_look};
-pub(crate) use appearance::{DragPreview, bind_feedback};
+pub use appearance::{drag_preview_over, resolve_drag_preview, sdk_drag_preview};
+pub(crate) use appearance::{DragPreview, bind_feedback, drag_marker_color};
 mod binding;
 pub(crate) use binding::bind_edge_scroll;
 mod reorder;

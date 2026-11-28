@@ -7,7 +7,7 @@ use xgpui_luma_style::PartId;
 
 use super::styled::{resolve_tab, resolve_tabs_list};
 use crate::style::{PartRead, StyleBinding};
-use crate::theme::{InteractionState, LumaTextStyle, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle};
 
 #[deprecated(note = "the tabs template draws from `TabsTheme::style()`; resolve it with `resolve_tabs_list` (#433)")]
 #[derive(Clone, Copy, Debug)]
@@ -97,9 +97,11 @@ pub trait TabsTheme: Send + Sync {
         self.style()
     }
 
-    /// Appearance of native drag previews and insertion feedback.
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default());
+    /// Appearance of native drag previews and insertion feedback (#433): the SDK's `drag_preview` with the tabs'
+    /// colors, corner and text set over it.
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        let base = crate::infra::drag_drop::resolve_drag_preview(&crate::infra::drag_drop::sdk_drag_preview());
+        let base = base.root();
         let list_style = resolve_tabs_list(&self.style(), true);
         let list = list_style.part(PartId::new("list"));
         let state = InteractionState::default();
@@ -107,16 +109,24 @@ pub trait TabsTheme: Send + Sync {
         let item = active.part(PartId::new("item"));
         let invalid = InteractionState { invalid: true, ..Default::default() };
         let label = item.color("foreground");
-        drag.background = list.painted("background").or(item.painted("background")).unwrap_or(drag.background);
-        drag.foreground = label;
-        drag.valid_marker = active.root().painted("indicator").unwrap_or(label);
-        drag.invalid_marker = resolve_tab(&self.item_style(false, invalid), false, invalid)
-            .part(PartId::new("item"))
-            .color("foreground");
-        drag.radius = list.number("radius");
-        drag.typography = item.typography(14.0, 20.0);
-        drag.font_family = self.font_family();
-        drag
+        crate::infra::drag_drop::drag_preview_over(
+            list.painted("background").or(item.painted("background")).unwrap_or(base.color("background")),
+            label,
+            active.root().painted("indicator").unwrap_or(label),
+            resolve_tab(&self.item_style(false, invalid), false, invalid)
+                .part(PartId::new("item"))
+                .color("foreground"),
+            list.number("radius"),
+            item.typography(14.0, 20.0),
+            Some(self.font_family()),
+        )
+    }
+
+    /// Appearance of native drag previews and insertion feedback.
+    #[deprecated(note = "templates draw from the resolved style; use `drag_style` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
     }
 
     /// The tab list, built from [`Self::style`] for code that still reads a [`TabsListLook`].

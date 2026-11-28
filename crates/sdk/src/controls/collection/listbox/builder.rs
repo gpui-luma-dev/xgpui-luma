@@ -1,6 +1,4 @@
 //! Shared borrowed listbox builder over persistent SDK state and bindings.
-// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
-#![allow(deprecated)]
 
 use std::hash::Hash;
 
@@ -17,12 +15,13 @@ use crate::infra::drag_drop::{
 };
 use super::{ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxRenderParts};
 
-use crate::controls::tooltip::TooltipLook;
+use std::sync::Arc;
+use xgpui_luma_style::Resolved;
 
 type Surface = Stateful<Div>;
 type InputHandler<M, K> = fn(&mut M, ListBoxInput<K>, &mut Window, &mut Context<M>);
 type ItemRenderer<'a, T, K> = Box<dyn Fn(Surface, ListBoxVisibleItem<'_, T, K>, &mut App) -> AnyElement + 'a>;
-type DragRow<'a, M, T, K> = Box<dyn Fn(Surface, &T, &K, &TooltipLook, &mut Context<M>) -> Surface + 'a>;
+type DragRow<'a, M, T, K> = Box<dyn Fn(Surface, &T, &K, &Arc<Resolved>, &mut Context<M>) -> Surface + 'a>;
 type DropTarget<'a, M, K> = Box<dyn Fn(Surface, Option<K>, &mut Context<M>) -> Surface + 'a>;
 
 struct DragDropBindings<'a, M: 'static, T, K> {

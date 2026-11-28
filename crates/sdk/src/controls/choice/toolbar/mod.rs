@@ -1,5 +1,7 @@
 mod styled;
-pub use styled::{StyledToolbarTheme, styled_toolbar_look};
+#[allow(deprecated)]
+pub use styled::styled_toolbar_look;
+pub use styled::{StyledToolbarTheme, resolve_toolbar};
 mod control;
 mod model;
 mod template;
@@ -14,7 +16,9 @@ pub use template::{
     ThemedToolbarTemplate, ToolbarRenderedItem, ToolbarTemplate, ToolbarTemplateModifier, default_toolbar_template,
     toolbar_template_with_theme,
 };
-pub use theme::{ToolbarLook, ToolbarTheme, ToolbarVariant, default_toolbar_theme};
+#[allow(deprecated)]
+pub use theme::ToolbarLook;
+pub use theme::{ToolbarTheme, ToolbarVariant, default_toolbar_theme};
 
 use gpui::{Entity, SharedString};
 

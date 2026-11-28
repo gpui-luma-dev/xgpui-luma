@@ -99,6 +99,7 @@ pub struct TableGeometry {
     pub drag_marker_width: f32,
 }
 
+#[deprecated(note = "templates draw from the resolved style; use `TableTheme::drag_style` and `drag_geometry` (#433)")]
 #[derive(Clone, Debug)]
 pub struct TableDragLook {
     /// Preview and insertion feedback geometry, from `table.lss`.
@@ -127,8 +128,9 @@ pub trait TableTheme: Send + Sync {
         MetricTokens::default()
     }
 
-    /// Defaults to existing theme surfaces; themes can supply semantic accents.
-    fn resolve_drag(&self) -> TableDragLook {
+    /// The drag preview and insertion markers (#433): the SDK's `drag_preview` with the table's header colors, edge
+    /// and corner set over it; themes can supply semantic accents.
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
         use crate::style::PartRead;
         use xgpui_luma_style::PartId;
         let styled = super::styled::StyledTable::new(self.style());
@@ -136,14 +138,30 @@ pub trait TableTheme: Send + Sync {
         let invalid = super::styled::StyledTable::new(self.row_style())
             .resolve_row(false, InteractionState { invalid: true, ..Default::default() });
         let (root, header) = (frame.root(), frame.part(PartId::new("header")));
-        TableDragLook {
-            geometry: super::styled::StyledTable::sdk().drag_geometry(),
-            background: header.color("background"),
-            foreground: header.color("foreground"),
-            valid_marker: root.color("border"),
-            invalid_marker: invalid.part(PartId::new("row")).color("foreground"),
-            radius: root.number("radius"),
-        }
+        crate::infra::drag_drop::drag_preview_over(
+            header.color("background"),
+            header.color("foreground"),
+            root.color("border"),
+            invalid.part(PartId::new("row")).color("foreground"),
+            root.number("radius"),
+            header.typography(12.5, 18.0),
+            None,
+        )
+    }
+
+    /// The preview and insertion feedback geometry: offset, width, padding and strokes.
+    fn drag_geometry(&self) -> TableGeometry {
+        super::styled::StyledTable::sdk().drag_geometry()
+    }
+
+    /// The preview and markers, for code that still reads a [`TableDragLook`].
+    #[deprecated(note = "use `drag_style` and `drag_geometry` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_drag(&self) -> TableDragLook {
+        super::styled::table_drag_look(
+            crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style()),
+            self.drag_geometry(),
+        )
     }
 
     /// The frame and header built from [`Self::style`], for code that still reads a [`TableLook`].

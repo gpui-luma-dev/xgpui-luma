@@ -17,7 +17,7 @@ use xgpui_luma::controls::{
     tooltip::TooltipTheme,
 };
 use xgpui_luma::style::ThemeSource;
-use xgpui_luma::theme::{InteractionState, MetricTokens, ThemeMode, ThemeTokens};
+use xgpui_luma::theme::{MetricTokens, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
@@ -113,8 +113,8 @@ impl AppTheme {
 }
 
 impl TabsTheme for AppTheme {
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        self.current().tabs.resolve_drag()
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+        self.current().tabs.drag_style()
     }
 
     fn style(&self) -> xgpui_luma::style::StyleBinding {
@@ -156,6 +156,7 @@ impl TooltipTheme for AppTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::theme::InteractionState;
     use xgpui_luma::controls::selector::SelectorTriggerStyle;
     use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
