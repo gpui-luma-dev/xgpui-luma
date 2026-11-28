@@ -274,15 +274,11 @@ pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::
         assert_stable_layout_with_content(
             move |state, selected, window, cx| {
                 let _ = window;
-                let trigger_look = crate::controls::selector::SelectorLook::from_resolved(
-                    &crate::controls::selector::resolve_selector_trigger(
-                        &theme.style(),
-                        style,
-                        SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
-                        1.0,
-                    ),
-                    theme.items_panel(),
-                    true,
+                let trigger = crate::controls::selector::resolve_selector_trigger(
+                    &theme.style(),
+                    style,
+                    SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
+                    1.0,
                 );
                 let model = SearchSelectorRenderModel {
                     icons: Default::default(),
@@ -297,7 +293,8 @@ pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::
                         invalid: state.invalid,
                         ..Default::default()
                     },
-                    trigger_look,
+                    trigger,
+                    without_elevation: true,
                     trigger_typography_override: None,
                     enabled: !state.disabled,
                     full_width: true,

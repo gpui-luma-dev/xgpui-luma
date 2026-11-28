@@ -9,9 +9,8 @@ use gpui::{
     SharedString, Stateful, Window, div, prelude::*, px,
 };
 
-use crate::controls::button::face::{Face, FaceShape};
-use crate::controls::selector::SelectorLook;
-use crate::controls::selector::theme::selector_face_look;
+use crate::controls::button::face::{Face, FaceLook, FaceShape};
+use crate::style::PartRead;
 use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 
@@ -73,7 +72,10 @@ pub struct SearchSelectorRenderModel {
     pub trigger_label: SharedString,
     pub trigger_label_is_placeholder: bool,
     pub trigger_state: TextFieldState,
-    pub trigger_look: SelectorLook,
+    /// The trigger's resolved selector style (see `resolve_selector_trigger`), read through the shared face reader.
+    pub trigger: Arc<xgpui_luma_style::Resolved>,
+    /// Drop the trigger's shadow.
+    pub without_elevation: bool,
     pub trigger_typography_override: Option<LumaTextStyle>,
     pub enabled: bool,
     pub full_width: bool,
@@ -123,15 +125,18 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             trigger_bounds,
         } = handlers;
 
-        let mut trigger_look = model.trigger_look;
-        if let Some(typography) = model.trigger_typography_override {
-            trigger_look.trigger_typography = typography;
-            trigger_look.trigger_icon_size = typography.size;
-        }
+        let root = model.trigger.root();
+        let face_look = trigger_face_look(
+            &model.trigger,
+            &model.geometry,
+            model.without_elevation,
+            model.trigger_typography_override,
+        );
+        let icon_color = root.color("icon");
         let label_color = if model.trigger_label_is_placeholder {
-            trigger_look.trigger_icon
+            icon_color
         } else {
-            trigger_look.trigger_foreground
+            face_look.foreground
         };
 
         // The trigger is a button face (#430), dense: its focus ring paints inside the edge so focusing never
@@ -139,7 +144,7 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
         let face = Face {
             id: "trigger".into(),
             shape: FaceShape::Padded,
-            radius: trigger_look.trigger_radius,
+            radius: root.number("radius"),
             full_width: true,
             min_height: false,
             focused: model.trigger_state.focus_visible && model.enabled && !model.trigger_state.invalid,
@@ -147,12 +152,6 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             elevation: true,
             compact: true,
         };
-        // Border visibility changes paint only; invalid/disabled ghost triggers keep the same label and icon geometry.
-        let metrics = crate::theme::MetricTokens {
-            border_width: model.geometry.border_width,
-            ..crate::theme::MetricTokens::default()
-        };
-        let face_look = selector_face_look(&trigger_look, &metrics);
         let label = div()
             .debug_selector(|| "search-selector-label".into())
             .min_w(px(0.0))
@@ -167,10 +166,10 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             .flex()
             .items_center()
             .justify_center()
-            .text_color(trigger_look.trigger_icon)
+            .text_color(icon_color)
             .child(crate::infra::icon::render_icon_source(
                 &model.icons.resolve(crate::theme::stylesheet::IconRole::Search),
-                trigger_look.trigger_icon,
+                icon_color,
                 model.geometry.search_icon_size,
             ))
             .into_any_element();
@@ -206,6 +205,25 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
                 root.child(div().opacity(model.presence.opacity()).child(popup_content))
             })
     }
+}
+
+/// The trigger's face (#433): the shared face reader over the resolved selector style, with the search selector's
+/// own border width so border visibility changes paint only and never move the label or icon.
+fn trigger_face_look(
+    trigger: &xgpui_luma_style::Resolved,
+    geometry: &crate::theme::stylesheet::SearchSelectorGeometry,
+    without_elevation: bool,
+    typography_override: Option<LumaTextStyle>,
+) -> FaceLook {
+    let mut face_look = FaceLook::from_part(trigger.root());
+    face_look.border_width = geometry.border_width;
+    if without_elevation {
+        face_look.shadow = None;
+    }
+    if let Some(typography) = typography_override {
+        face_look.typography = typography;
+    }
+    face_look
 }
 
 impl SearchSelectorTemplate for ModifiedElementTemplate<dyn SearchSelectorTemplate, Stateful<gpui::Div>> {
@@ -421,6 +439,80 @@ mod tests {
         crate::infra::focus_adorner::testing::assert_search_selector_layout(
             crate::controls::selector::default_selector_theme(),
         );
+    }
+
+    /// The face matches the selector's compatibility look in every state, except the border width, which is the
+    /// search selector's own.
+    #[test]
+    fn the_trigger_face_matches_the_selector_look() {
+        use crate::controls::selector::{
+            SelectorLook, SelectorTriggerStyle, SelectorVisualState, default_selector_theme, resolve_selector_trigger,
+        };
+        use crate::theme::InteractionState;
+        use crate::theme::stylesheet::SearchSelectorGeometry;
+
+        let theme = default_selector_theme();
+        let geometry = SearchSelectorGeometry::sdk();
+        let states = [
+            SelectorVisualState::default(),
+            SelectorVisualState {
+                interaction: InteractionState { hovered: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { pressed: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { disabled: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { focused: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState { open: true, ..Default::default() },
+            SelectorVisualState { invalid: true, ..Default::default() },
+        ];
+        for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
+            for visual in states {
+                for without_elevation in [false, true] {
+                    let resolved = resolve_selector_trigger(&theme.style(), style, visual, 1.0);
+                    let look = SelectorLook::from_resolved(&resolved, theme.items_panel(), without_elevation);
+                    let face = trigger_face_look(&resolved, &geometry, without_elevation, None);
+                    let case = format!("{style:?} {visual:?} without_elevation={without_elevation}");
+                    assert_eq!(face.background, look.trigger_background, "{case}");
+                    assert_eq!(face.foreground, look.trigger_foreground, "{case}");
+                    assert_eq!(face.border, look.trigger_border, "{case}");
+                    assert_eq!(face.border_width, geometry.border_width, "{case}");
+                    assert_eq!(face.shadow, look.trigger_shadow, "{case}");
+                    assert_eq!(face.typography, look.trigger_typography, "{case}");
+                    assert_eq!(face.padding_x, look.trigger_padding_x, "{case}");
+                    assert_eq!(face.padding_y, look.trigger_padding_y, "{case}");
+                    assert_eq!(face.gap, look.trigger_gap, "{case}");
+                    assert_eq!(face.height, look.trigger_height, "{case}");
+                    assert_eq!(face.focus_border, look.trigger_focus_border, "{case}");
+                    assert_eq!(face.opacity, look.trigger_opacity, "{case}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_typography_override_replaces_the_styled_typography() {
+        use crate::controls::selector::{default_selector_theme, resolve_selector_trigger};
+
+        let theme = default_selector_theme();
+        let resolved = resolve_selector_trigger(&theme.style(), Default::default(), Default::default(), 1.0);
+        let mut typography = FaceLook::from_part(resolved.root()).typography;
+        typography.size += 3.0;
+        let face = trigger_face_look(
+            &resolved,
+            &crate::theme::stylesheet::SearchSelectorGeometry::sdk(),
+            false,
+            Some(typography),
+        );
+        assert_eq!(face.typography, typography);
     }
 
     #[test]
