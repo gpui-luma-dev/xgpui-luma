@@ -1,6 +1,6 @@
 //! Radix ownership, state precedence, and shared geometry contracts.
 // These contracts read the compatibility Looks, which build from the resolved styles (#433).
-#![allow(deprecated)]
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use super::*;
 use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};

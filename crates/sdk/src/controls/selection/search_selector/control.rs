@@ -1,4 +1,3 @@
-#![allow(deprecated)] // The popup search field is styled through the look-closure bridge (#433).
 use crate::infra::trigger::{TriggerOpenOn, TriggerToggle, toggle_on_click};
 use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
@@ -99,13 +98,7 @@ impl SearchSelectorControl {
             .full_width(true)
             .clean_on_escape(model.clean_on_escape)
             .propagate_home_end_to_parent(true)
-            .look_override(move |mut look| {
-                look.padding_y = (look.padding_y - padding_reduction).max(0.0);
-                look.background = gpui::hsla(0.0, 0.0, 0.0, 0.0);
-                look.typography.line_height = look.typography.size;
-                look.min_height = (look.typography.line_height + (look.padding_y * 2.0)).max(height_floor);
-                look
-            })
+            .overrides(search_field_overrides(&model, padding_reduction, height_floor))
             .template(model.textfield_template.clone())
             .spawn(cx);
 
@@ -1028,4 +1021,28 @@ impl crate::infra::focus_report::ReportsFocus for SearchSelectorControl {
     fn focus_enabled(&self) -> bool {
         self.model.enabled
     }
+}
+
+/// The popup search field's style over its template's: tighter padding, no fill, and a box sized to its line (#433).
+fn search_field_overrides(
+    model: &super::SearchSelectorModel,
+    padding_reduction: f32,
+    height_floor: f32,
+) -> crate::style::lss::Overrides {
+    use crate::style::PartRead;
+    use crate::style::lss::{Color, Overrides, PartId, Prop};
+    let base = model.textfield_template.resolve_style(TextFieldState::default(), model.enabled, &Overrides::new());
+    let root = base.root();
+    let size = root.typography(14.0, 20.0).size;
+    let padding_y = (root.number("padding_y") - padding_reduction).max(0.0);
+    let height = (size + padding_y * 2.0).max(height_floor);
+    Overrides::new()
+        .set(PartId::ROOT, Prop::<f32>::new("padding_y"), padding_y)
+        .set(
+            PartId::ROOT,
+            Prop::<Color>::new("background"),
+            crate::style::lss_color(gpui::hsla(0.0, 0.0, 0.0, 0.0)),
+        )
+        .set(PartId::ROOT, Prop::<f32>::new("line_height"), size)
+        .set(PartId::ROOT, Prop::<f32>::new("height"), height)
 }

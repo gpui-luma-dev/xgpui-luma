@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use crate::screen::{
     Hero, LabCard, LabMetrics, LabScreen, Param, ParametersPanel, PreviewPanel, TextRole, labeled_control, text,
-    value_field_look,
+    value_field_overrides,
 };
 use super::source_field::{self, Coordinates, FieldSettings, NAMES, rgba, hex};
 use super::hv_field_shader::{NativeColors, Parameters};
@@ -97,7 +97,7 @@ impl RgbChannelControls {
             .look(look)
             .surface()
             .size(radix::TextFieldSize::Two)
-            .look_override(value_field_look(look))
+            .overrides(value_field_overrides(look))
             .placeholder(format!("{} 0–1", CHANNELS[index]))
             .value(format!("{:.3}", INITIAL[index]))
             .full_width(true)

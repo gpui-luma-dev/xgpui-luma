@@ -26,6 +26,8 @@ pub struct TextFieldModel {
     pub(crate) propagate_home_end_to_parent: bool,
     pub(crate) max_clipboard_paste_bytes: Option<usize>,
     pub(crate) validator: Option<Validator>,
+    /// Style overrides set on this field, over its template's style (#433).
+    pub(crate) overrides: crate::style::lss::Overrides,
     pub(crate) look_override: Option<TextFieldLookOverride>,
     pub(crate) template: Arc<dyn TextFieldTemplate>,
 }
@@ -134,6 +136,7 @@ impl TextFieldBuilder {
                 propagate_home_end_to_parent: false,
                 max_clipboard_paste_bytes: Some(crate::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
                 validator: None,
+                overrides: crate::style::lss::Overrides::new(),
                 look_override: None,
                 template: default_textfield_template(),
             },
@@ -202,6 +205,12 @@ impl TextFieldBuilder {
 
     pub fn validator(mut self, validator: Validator) -> Self {
         self.model.validator = Some(validator);
+        self
+    }
+
+    /// Style overrides for this field (#433): values set over its style, such as `padding_x` or `font_size`.
+    pub fn overrides(mut self, overrides: crate::style::lss::Overrides) -> Self {
+        self.model.overrides = overrides;
         self
     }
 

@@ -1,4 +1,5 @@
 //! Shadcn text fields, drawn from `.lss` (`style/textfield.lss`) following the look's mode and catalog.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 
@@ -62,7 +63,6 @@ pub fn primary_textfield_template(theme: ShadcnLook) -> Arc<dyn TextFieldTemplat
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use gpui::Hsla;
     use xgpui_luma::controls::textarea::TextAreaState;

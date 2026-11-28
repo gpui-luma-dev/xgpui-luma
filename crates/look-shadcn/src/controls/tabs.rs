@@ -7,9 +7,9 @@
 //! | Active indicator  | `primary` / `ring` on focus   |
 //! | Disabled label    | `muted-foreground`            |
 //! | Disabled list bg  | `muted`                       |
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
 
     use xgpui_luma::theme::{InteractionState, ThemeMode};

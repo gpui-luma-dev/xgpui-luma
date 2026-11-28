@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use gpui::Div;
 use gpui::IntoElement;
 use gpui::SharedString;
@@ -47,7 +48,6 @@ pub struct Badge {
     icon_placement: BadgeIconPlacement,
 }
 
-#[allow(deprecated)]
 pub use xgpui_luma::controls::badge::BadgeLook;
 
 impl Badge {
@@ -118,7 +118,6 @@ pub fn badge_style(
 
 /// The badge from `.lss` (`style/badge.lss`) for `variant` at `size`.
 #[deprecated(note = "the badge draws from `badge_style` (#433)")]
-#[allow(deprecated)]
 pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
     badge_style(theme, variant, size).look()
 }
@@ -182,7 +181,6 @@ impl ShadcnLook {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::tokens::ShadcnToken;

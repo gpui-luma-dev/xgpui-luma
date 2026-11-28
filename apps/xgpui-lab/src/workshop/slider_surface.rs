@@ -311,7 +311,6 @@ impl SurfaceControl for SliderSurface {
 }
 
 #[cfg(all(test, feature = "test-support"))]
-#[allow(deprecated)]
 mod tests {
     use gpui::{Focusable, TestAppContext};
 

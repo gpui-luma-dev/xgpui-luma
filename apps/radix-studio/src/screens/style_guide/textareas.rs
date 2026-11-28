@@ -4,7 +4,6 @@
 //! - **Template Preview** — variants × interaction states (incl. invalid)
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;
@@ -14,9 +13,8 @@ use gpui::{
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textarea::{
-    TextAreaLineMetric, TextAreaLook, TextAreaRenderModel, TextAreaState, TextAreaTemplate, TextAreaTheme,
+    TextAreaLineMetric, TextAreaRenderModel, TextAreaState, TextAreaTemplate, TextAreaTheme,
 };
-use xgpui_luma::theme::StandardBoxScale;
 use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textarea_theme_with};
 
 use super::matrix_grid::{
@@ -332,25 +330,27 @@ fn shape_metric(
     end: usize,
     text: String,
     line_ix: usize,
-    look: &TextAreaLook,
+    look: &xgpui_luma::style::lss::Resolved,
     window: &mut Window,
 ) -> TextAreaLineMetric {
+    use xgpui_luma::style::PartRead;
+    let root = look.root();
+    let typography = root.typography(14.0, 20.0);
     let run = TextRun {
         len: text.len(),
         font: {
             let mut font = font(".SystemUIFont");
-            font.weight = look.typography.weight;
+            font.weight = typography.weight;
             font
         },
-        color: look.foreground,
+        color: root.color("foreground"),
         background_color: None,
         underline: None,
         strikethrough: None,
     };
-    let line =
-        window
-            .text_system()
-            .shape_line(SharedString::from(text.to_owned()), px(look.typography.size), &[run], None);
+    let line = window
+        .text_system()
+        .shape_line(SharedString::from(text.to_owned()), px(typography.size), &[run], None);
     let chars = text.chars().count();
     let mut character_offsets = Vec::with_capacity(chars + 1);
     for char_offset in 0..=chars {
@@ -362,15 +362,20 @@ fn shape_metric(
         start,
         end,
         text,
-        y: line_ix as f32 * look.typography.line_height,
-        height: look.typography.line_height,
+        y: line_ix as f32 * typography.line_height,
+        height: typography.line_height,
         character_offsets,
     }
 }
 
-fn area_look(theme: &Arc<dyn TextAreaTheme>, state: TextAreaState, enabled: bool, window: &Window) -> TextAreaLook {
-    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, &scale)
+fn area_look(
+    theme: &Arc<dyn TextAreaTheme>,
+    state: TextAreaState,
+    enabled: bool,
+    window: &Window,
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    let _ = window;
+    theme.resolve_style(state, enabled)
 }
 
 fn size_id(size: RadixSize) -> &'static str {

@@ -10,7 +10,7 @@ use std::{
 use gpui::{App, Context};
 use xgpui_luma::controls::{slider::Slider, textfield::TextField};
 use xgpui_luma_look_radix::{self as radix, Look};
-use crate::screen::{Param, value_field_look};
+use crate::screen::{Param, value_field_overrides};
 
 pub(crate) struct Number {
     pub field: TextField,
@@ -46,7 +46,7 @@ impl Number {
         let field = radix::TextField::new(format!("{id}-field"))
             .look(look)
             .surface()
-            .look_override(value_field_look(look))
+            .overrides(value_field_overrides(look))
             .full_width(true)
             .value(format_value(value, decimals, min, max))
             .select_all_on_tab_focus(true)

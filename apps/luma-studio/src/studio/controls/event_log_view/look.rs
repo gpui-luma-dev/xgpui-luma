@@ -1,7 +1,7 @@
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::SharedString;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::textarea::TextAreaState;
 use xgpui_luma::theme::{StandardBoxScale};
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
@@ -19,23 +19,23 @@ impl EventLogTheme for ShadcnEventLogTheme {
     }
 
     fn resolve_look(&self, rows: usize, scale: &StandardBoxScale, focused: bool) -> super::theme::EventLogLook {
-        let textarea = self.look.textarea_theme().resolve_look(
-            TextAreaState { focused, focus_visible: focused, ..Default::default() },
-            true,
-            scale,
-        );
+        let textarea_style = self
+            .look
+            .textarea_theme()
+            .resolve_style(TextAreaState { focused, focus_visible: focused, ..Default::default() }, true);
+        let textarea = textarea_style.root();
         let typography = self.look.typography_scale(ShadcnTextSize::Xs);
 
         compose_event_log_look(
-            textarea.background,
-            textarea.foreground,
-            textarea.border,
-            textarea.placeholder,
+            textarea.color("background"),
+            textarea.color("foreground"),
+            textarea.color("border"),
+            textarea.color("placeholder"),
             typography,
-            textarea.font_family,
+            textarea.font_family_name().to_string(),
             rows,
             scale,
-            textarea.border_width,
+            textarea.number("border_width"),
         )
     }
 }

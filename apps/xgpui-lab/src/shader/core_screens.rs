@@ -6,7 +6,7 @@ use xgpui_luma_look_radix as radix;
 use crate::theme::ColorVizLookExt;
 use crate::screen::{
     Hero, LabCard, LabScreen, PanelShell, Param, ParametersPanel, TextRole, labeled_control, properties, text,
-    value_field_look,
+    value_field_overrides,
 };
 
 const GRADIENT_PARAMETERS: [Parameter; 10] = [
@@ -55,7 +55,7 @@ impl ShaderPage {
                 let field = radix::TextField::new(format!("shader-field-{parameter:?}"))
                     .look(&look)
                     .surface()
-                    .look_override(value_field_look(&look))
+                    .overrides(value_field_overrides(&look))
                     .full_width(true)
                     .value(parameter.format(self.value(parameter)))
                     .select_all_on_tab_focus(true)

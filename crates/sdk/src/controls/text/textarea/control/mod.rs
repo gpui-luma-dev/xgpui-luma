@@ -280,6 +280,13 @@ impl TextArea {
         cx.notify();
     }
 
+    /// Replace this area's style overrides (#433).
+    pub fn set_overrides(&mut self, overrides: crate::style::lss::Overrides, cx: &mut Context<Self>) {
+        self.model.overrides = overrides;
+        self.layout_cache = None;
+        cx.notify();
+    }
+
     pub fn set_look_override(
         &mut self,
         look_override: Option<super::model::TextAreaLookOverride>,
@@ -295,6 +302,7 @@ impl TextArea {
             &self.model.theme,
             self.state,
             self.model.enabled,
+            &self.model.overrides,
             self.model.look_override.as_ref(),
         ))
     }

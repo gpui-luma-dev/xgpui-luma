@@ -149,3 +149,51 @@ mod tests {
         assert_eq!(look.icon_size, tokens.metrics.control.icon_size);
     }
 }
+
+#[cfg(test)]
+mod override_tests {
+    use super::*;
+    use crate::style::PartRead;
+    use crate::style::lss::{Overrides, PartId, Prop};
+
+    /// Style overrides set over a field's style reach the resolved root.
+    #[test]
+    fn overrides_set_values_over_the_resolved_style() {
+        let theme = default_textfield_theme();
+        let overrides = Overrides::new().set(PartId::ROOT, Prop::<f32>::new("font_size"), 21.0).set(
+            PartId::ROOT,
+            Prop::<f32>::new("padding_x"),
+            5.0,
+        );
+        let style = crate::controls::text::resolve_text_field(
+            &theme.style().with_overrides(&overrides),
+            TextFieldState::default(),
+            true,
+        );
+        assert_eq!(style.root().typography(14.0, 20.0).size, 21.0);
+        assert_eq!(style.root().number("padding_x"), 5.0);
+    }
+
+    /// A look closure's changes round-trip as overrides: re-resolving them gives the closure's values.
+    #[test]
+    #[allow(deprecated)]
+    fn a_look_closure_is_bridged_to_overrides() {
+        let theme = default_textfield_theme();
+        let base = theme.resolve_style(TextFieldState::default(), true);
+        let before = TextFieldLook::from_resolved(&base);
+        let mut after = before.clone();
+        after.padding_y = before.padding_y + 3.0;
+        after.typography.size = before.typography.size + 2.0;
+        after.shadow = None;
+        let overrides = TextFieldLook::overrides_between(&before, &after);
+        let style = crate::controls::text::resolve_text_field(
+            &theme.style().with_overrides(&overrides),
+            TextFieldState::default(),
+            true,
+        );
+        let look = TextFieldLook::from_resolved(&style);
+        assert_eq!((look.padding_y, look.typography.size), (after.padding_y, after.typography.size));
+        assert!(look.shadow.is_none());
+        assert_eq!(look.background, before.background);
+    }
+}

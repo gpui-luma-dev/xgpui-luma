@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
@@ -305,21 +305,29 @@ fn embedded_textfield(
     radix::TextField::new(id)
         .look(look)
         .value(value.into())
-        .look_override(|mut field| {
-            field.background = gpui::transparent_black();
-            field.border = gpui::transparent_black();
-            field.focus_border = gpui::transparent_black();
-            field.shadow = None;
-            field.padding_x = 0.0;
-            field.padding_y = 0.0;
-            // The enclosing color field supplies the chrome and vertical spacing.
-            // Center the text line itself alongside the 16px swatch.
-            field.min_height = field.typography.line_height;
-            field.radius = 0.0;
-            field.border_width = 0.0;
-            field
-        })
+        .overrides(embedded_overrides(look))
         .spawn(cx)
+}
+
+/// The enclosing color field supplies the chrome and vertical spacing, so the field draws bare: no fill, edge,
+/// focus ring, shadow, padding or corner, and its box is the text line, centered alongside the 16px swatch.
+fn embedded_overrides(look: &Look) -> xgpui_luma::style::lss::Overrides {
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::{Color, Overrides, PartId, Prop, ShadowLayer};
+    let theme = radix::textfield_theme(look);
+    let line_height = theme.resolve_style(Default::default(), true).root().typography(14.0, 20.0).line_height;
+    let (root, clear) = (PartId::ROOT, xgpui_luma::style::lss_color(gpui::transparent_black()));
+    let no_shadow: Arc<[ShadowLayer]> = Arc::from(Vec::new());
+    Overrides::new()
+        .set(root, Prop::<Color>::new("background"), clear)
+        .set(root, Prop::<Color>::new("border"), clear)
+        .set(root, Prop::<Color>::new("focus_border"), clear)
+        .set(root, Prop::<Arc<[ShadowLayer]>>::new("shadow"), no_shadow)
+        .set(root, Prop::<f32>::new("padding_x"), 0.0)
+        .set(root, Prop::<f32>::new("padding_y"), 0.0)
+        .set(root, Prop::<f32>::new("height"), line_height)
+        .set(root, Prop::<f32>::new("radius"), 0.0)
+        .set(root, Prop::<f32>::new("border_width"), 0.0)
 }
 
 impl AttachmentTarget for ColorTextField {

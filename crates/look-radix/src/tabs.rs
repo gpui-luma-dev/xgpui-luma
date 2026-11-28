@@ -1,4 +1,5 @@
 //! Radix tabs, drawn from `.lss` (`style/tabs.lss`) with the look-wide `TabsStyle` tuning over them.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 
@@ -288,7 +289,6 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::scale::ScaleFamily;

@@ -1,5 +1,5 @@
 //! Home-screen control construction. Bind every example explicitly to the draft look.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use gpui::{Context, Entity, div, prelude::*, px};
 use xgpui_luma::controls::{
     button::Button,

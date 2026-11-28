@@ -1,5 +1,5 @@
 //! Navigation sidebar control exposition — `SidebarControl` preview and event log.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use xgpui_luma::controls::sidebar::SidebarEventExt;
 use xgpui_luma::controls::popup_menu::PopupMenuEventExt;

@@ -1,5 +1,5 @@
 //! Lab shell composition: window setup, toolbar layout, controls and callbacks.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 #[cfg(target_os = "macos")]
 mod native_appearance;
 use std::collections::HashMap;

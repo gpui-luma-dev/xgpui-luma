@@ -22,7 +22,6 @@ impl Engine {
             return Ok(pipeline.clone());
         }
         let options = MTLCompileOptions::new();
-        #[allow(deprecated)]
         options.setFastMathEnabled(false);
         let library = context
             .objc2_device()

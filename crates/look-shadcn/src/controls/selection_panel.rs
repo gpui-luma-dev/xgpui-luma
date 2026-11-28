@@ -1,6 +1,5 @@
 //! Selection panel — same popover list surface as selector items panel.
-
-#![allow(deprecated)] // `selection_panel_look` is a compatibility path.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use xgpui_luma::controls::selection_panel::SelectionPanelLook;
 use xgpui_luma::theme::{ThemeMode};

@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use gpui::{AnyElement, FontWeight, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::grid_layout;
