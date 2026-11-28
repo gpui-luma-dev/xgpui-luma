@@ -15,6 +15,7 @@
 //!
 //! Custom look overrides supply `focus_border` explicitly; no template probes a
 //! hypothetical focused appearance or derives focus paint from a face border.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use gpui::{Div, Hsla, div, prelude::*, px, transparent_black};
 

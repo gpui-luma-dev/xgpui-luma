@@ -1,3 +1,4 @@
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px};
@@ -6,7 +7,6 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{
     TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
 };
-use xgpui_luma::theme::{StandardBoxScale};
 use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -247,7 +247,7 @@ fn render_textfield_cell(
         caret_visible: sample.state.focused && sample.enabled,
         horizontal_scroll: 0.0,
         character_offsets,
-        look,
+        style: look,
     };
 
     div()
@@ -307,9 +307,9 @@ fn input_textfield_look(
     state: TextFieldState,
     enabled: bool,
     window: &Window,
-) -> xgpui_luma::controls::textfield::TextFieldLook {
-    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, &scale)
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    let _ = window;
+    theme.resolve_style(state, enabled)
 }
 
 fn input_textfield_character_offsets(
@@ -319,23 +319,24 @@ fn input_textfield_character_offsets(
     enabled: bool,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = input_textfield_look(&theme, state, enabled, window);
+    let style = input_textfield_look(&theme, state, enabled, window);
+    let root = style.root();
+    let typography = root.typography(14.0, 20.0);
     let run = TextRun {
         len: value.len(),
         font: {
             let mut font = font(".SystemUIFont");
-            font.weight = look.typography.weight;
+            font.weight = typography.weight;
             font
         },
-        color: look.foreground,
+        color: root.color("foreground"),
         background_color: None,
         underline: None,
         strikethrough: None,
     };
-    let line =
-        window
-            .text_system()
-            .shape_line(SharedString::from(value.to_owned()), px(look.typography.size), &[run], None);
+    let line = window
+        .text_system()
+        .shape_line(SharedString::from(value.to_owned()), px(typography.size), &[run], None);
     let chars = value.chars().count();
     let mut character_offsets = Vec::with_capacity(chars + 1);
     for char_offset in 0..=chars {

@@ -1,6 +1,9 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla, SharedString};
+use xgpui_luma_style::Resolved;
+
+use crate::style::StyleBinding;
 
 use crate::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
 use crate::controls::textfield::TextFieldState;
@@ -22,6 +25,7 @@ pub struct TextFieldPalette {
     pub font_family: SharedString,
 }
 
+#[deprecated(note = "templates draw from the resolved style; use `TextFieldTheme::resolve_style` (#433)")]
 #[derive(Clone, Debug)]
 pub struct TextFieldLook {
     /// Helper chrome resolved through the selected common stylesheet.
@@ -54,10 +58,22 @@ pub struct TextFieldLook {
 }
 
 pub trait TextFieldTheme: Send + Sync {
+    /// The `textfield` binding the field is read from.
+    fn style(&self) -> StyleBinding {
+        StyleBinding::sdk("textfield")
+    }
+
+    /// The field's resolved style in `state` (#433): templates draw from its root.
+    fn resolve_style(&self, state: TextFieldState, enabled: bool) -> Arc<Resolved> {
+        crate::controls::text::resolve_text_field(&self.style(), state, enabled)
+    }
+
     fn resolve(&self, state: TextFieldState, enabled: bool) -> TextFieldPalette;
 
     fn metrics(&self) -> MetricTokens;
 
+    #[deprecated(note = "templates draw from the resolved style; use `resolve_style` (#433)")]
+    #[allow(deprecated)]
     fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
         compose_textfield_look(&self.resolve(state, enabled), scale, self.metrics().border_width)
     }
@@ -80,6 +96,8 @@ pub fn apply_control_typography(typography: &mut LumaTextStyle, tokens: &crate::
     }
 }
 
+#[deprecated(note = "templates draw from the resolved style (#433)")]
+#[allow(deprecated)]
 pub fn compose_textfield_look(
     palette: &TextFieldPalette,
     scale: &StandardBoxScale,
@@ -118,6 +136,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn default_theme_uses_body_typography_and_control_icon_size() {
         let tokens = crate::theme::ThemeTokens::default();
         let look = default_textfield_theme().resolve_look(

@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states (incl. invalid)
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
+use xgpui_luma::style::PartRead;
 use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;
@@ -12,10 +13,7 @@ use gpui::{
     AnyElement, App, Entity, FontWeight, Hsla, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px,
 };
 use xgpui_luma::controls::tabs::Tabs;
-use xgpui_luma::controls::textfield::{
-    TextFieldLook, TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme,
-};
-use xgpui_luma::theme::StandardBoxScale;
+use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
 use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textfield_theme_with};
 
 use super::matrix_grid::{
@@ -290,7 +288,7 @@ fn render_field(
     let id = SharedString::from(format!("style-guide-textfield-{variant_id}-{}-{}", sample.id, size_id(size)));
     let placeholder = SharedString::from("Placeholder");
     let value = SharedString::from(SAMPLE_TEXT);
-    let look = field_look(&theme, sample.state, sample.enabled, window);
+    let style = field_style(&theme, sample.state, sample.enabled, window);
     let character_offsets = character_offsets(value.as_ref(), theme, sample.state, sample.enabled, window);
     let model = TextFieldRenderModel {
         id: &id,
@@ -304,7 +302,7 @@ fn render_field(
         caret_visible: sample.state.focused && sample.enabled,
         horizontal_scroll: 0.0,
         character_offsets,
-        look,
+        style,
     };
 
     div()
@@ -316,9 +314,13 @@ fn render_field(
         .into_any_element()
 }
 
-fn field_look(theme: &Arc<dyn TextFieldTheme>, state: TextFieldState, enabled: bool, window: &Window) -> TextFieldLook {
-    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, &scale)
+fn field_style(
+    theme: &Arc<dyn TextFieldTheme>,
+    state: TextFieldState,
+    enabled: bool,
+    _window: &Window,
+) -> Arc<xgpui_luma::style::lss::Resolved> {
+    theme.resolve_style(state, enabled)
 }
 
 fn character_offsets(
@@ -328,23 +330,24 @@ fn character_offsets(
     enabled: bool,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = field_look(&theme, state, enabled, window);
+    let style = field_style(&theme, state, enabled, window);
+    let root = style.root();
+    let typography = root.typography(14.0, 20.0);
     let run = TextRun {
         len: value.len(),
         font: {
             let mut font = font(".SystemUIFont");
-            font.weight = look.typography.weight;
+            font.weight = typography.weight;
             font
         },
-        color: look.foreground,
+        color: root.color("foreground"),
         background_color: None,
         underline: None,
         strikethrough: None,
     };
-    let line =
-        window
-            .text_system()
-            .shape_line(SharedString::from(value.to_owned()), px(look.typography.size), &[run], None);
+    let line = window
+        .text_system()
+        .shape_line(SharedString::from(value.to_owned()), px(typography.size), &[run], None);
     let chars = value.chars().count();
     let mut offsets = Vec::with_capacity(chars + 1);
     for char_offset in 0..=chars {
@@ -389,7 +392,7 @@ pub(super) fn selection_field(
         caret_visible: state.focused && enabled,
         horizontal_scroll: 0.0,
         character_offsets: character_offsets(&value, theme.clone(), state, enabled, window),
-        look: field_look(&theme, state, enabled, window),
+        style: field_style(&theme, state, enabled, window),
     };
     look.textfield_template(TextFieldVariant::Surface)
         .render(&model, preview_handlers::textfield_handlers(), window, cx)

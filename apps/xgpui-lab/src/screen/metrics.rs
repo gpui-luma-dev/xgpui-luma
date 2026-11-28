@@ -1,4 +1,5 @@
 //! Every size, gap and type role a lab screen uses. Defaults are Color Spaces' values.
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use gpui::{Div, ParentElement, Pixels, Rems, SharedString, Styled, div, px, rems};
 use xgpui_luma::{
     controls::textfield::TextFieldLook,

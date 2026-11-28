@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states (`table` + `states`)
 //! - **Colors** — accents × variants (default + high-contrast pair per cell)
 //! - **All Sizes** — per-variant size × radius grids
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use std::sync::Arc;
 

@@ -1,3 +1,4 @@
+#![allow(deprecated)] // The popup search field is styled through the look-closure bridge (#433).
 use crate::infra::trigger::{TriggerOpenOn, TriggerToggle, toggle_on_click};
 use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
@@ -733,9 +734,15 @@ impl Render for SearchSelectorControl {
             .map(|item| item.label.to_string());
 
         let minimum_trigger_width = {
-            let textfield_look = self.model.textfield_template.resolve_look(TextFieldState::default(), true);
+            let textfield_style = self.model.textfield_template.resolve_style(
+                TextFieldState::default(),
+                true,
+                &crate::style::lss::Overrides::new(),
+            );
+            let textfield_look = textfield_style.root();
+            let textfield_typography = textfield_look.typography(14.0, 20.0);
             let mut text_font = font(".SystemUIFont");
-            text_font.weight = textfield_look.typography.weight;
+            text_font.weight = textfield_typography.weight;
             let placeholder_run = TextRun {
                 len: self.model.placeholder.len(),
                 font: text_font,
@@ -746,13 +753,14 @@ impl Render for SearchSelectorControl {
             };
             let placeholder_line = window.text_system().shape_line(
                 self.model.placeholder.clone(),
-                px(textfield_look.typography.size),
+                px(textfield_typography.size),
                 &[placeholder_run],
                 None,
             );
             let placeholder_width = placeholder_line.width().as_f32();
 
-            let textfield_side_padding = (textfield_look.padding_x * 2.0) + textfield_look.border_width;
+            let textfield_side_padding =
+                (textfield_look.number("padding_x") * 2.0) + textfield_look.number("border_width");
             let search_icon_width = geometry.search_icon_width + geometry.trigger_icon_extra_width;
             let spacing = geometry.trigger_extra_gap;
 

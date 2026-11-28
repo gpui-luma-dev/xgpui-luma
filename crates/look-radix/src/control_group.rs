@@ -1,4 +1,5 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};

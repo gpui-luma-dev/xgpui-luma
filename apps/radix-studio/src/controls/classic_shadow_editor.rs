@@ -3,6 +3,7 @@
 //! Every slider writes straight into [`Look::set_classic_params`], so the
 //! whole app retunes as you drag. The readout under the preview is the literal to paste
 //! back into `ClassicButtonParams::default` once the numbers look right.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;

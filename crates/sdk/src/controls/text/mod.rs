@@ -4,7 +4,10 @@ mod editing;
 mod runs;
 mod state;
 mod styled;
-pub use styled::{StyledTextAreaTheme, StyledTextFieldTheme};
+pub use styled::{
+    StyledTextAreaTheme, StyledTextFieldTheme, input_metrics, input_typography, resolve_text_area, resolve_text_field,
+    resolve_text_input,
+};
 
 pub mod textarea;
 pub mod textfield;

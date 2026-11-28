@@ -7,12 +7,77 @@ use gpui::{
     Window, canvas, div, fill, font, point, px, prelude::*, size, svg,
 };
 
-use super::{TextFieldDrag, TextFieldLook, TextFieldRenderModel, TextFieldState};
+#[allow(deprecated)]
+use super::TextFieldLook;
+use super::{TextFieldDrag, TextFieldRenderModel, TextFieldState};
+use crate::controls::text::{input_metrics, input_typography, resolve_text_field};
+use crate::style::{PartRead, StyleBinding};
+use crate::style::lss::Overrides;
+use xgpui_luma_style::Resolved;
 use crate::controls::button::ControlIcon;
 use crate::controls::textfield::{TextFieldTheme, default_textfield_theme};
 use crate::theme::StandardBoxScale;
 
 const CARET_EDGE_OFFSET: f32 = 0.0;
+
+/// The values a text field draws, read from its resolved style (#433).
+#[derive(Clone)]
+pub(super) struct FieldValues {
+    pub helper_geometry: crate::theme::stylesheet::SharedGeometry,
+    pub caret_width: f32,
+    pub opacity: f32,
+    pub background: gpui::Hsla,
+    pub foreground: gpui::Hsla,
+    pub border: gpui::Hsla,
+    pub focus_border: gpui::Hsla,
+    pub placeholder: gpui::Hsla,
+    pub icon: gpui::Hsla,
+    pub selection_background: gpui::Hsla,
+    pub selection_foreground: gpui::Hsla,
+    pub caret: gpui::Hsla,
+    pub shadow: Option<Vec<gpui::BoxShadow>>,
+    pub typography: crate::theme::LumaTextStyle,
+    pub font_family: gpui::SharedString,
+    pub min_height: f32,
+    pub padding_x: f32,
+    pub padding_y: f32,
+    pub gap: f32,
+    pub radius: f32,
+    pub border_width: f32,
+    pub icon_size: f32,
+    pub focus: crate::theme::FocusMetricTokens,
+}
+
+impl FieldValues {
+    pub(super) fn read(resolved: &Resolved) -> Self {
+        let root = resolved.root();
+        Self {
+            helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
+            caret_width: root.number("caret_width"),
+            opacity: root.opacity(),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            focus_border: root.color("focus_border"),
+            placeholder: root.color("placeholder"),
+            icon: root.color("icon"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
+            shadow: root.box_shadow_opt(),
+            typography: input_typography(root),
+            font_family: root.font_family_name(),
+            min_height: root.height().unwrap_or(0.0),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.gap().unwrap_or(0.0),
+            radius: root.radius().unwrap_or(0.0),
+            border_width: root.number("border_width"),
+            icon_size: root.number("icon_size"),
+            focus: input_metrics(root).focus,
+        }
+    }
+}
 
 fn char_to_byte_offset(text: &str, char_offset: usize) -> usize {
     text.chars().take(char_offset).map(char::len_utf8).sum()
@@ -38,22 +103,24 @@ pub struct TextFieldTemplateHandlers {
 }
 
 pub trait TextFieldTemplate: Send + Sync {
+    /// The `textfield` binding the field draws from (#433).
+    fn style(&self) -> StyleBinding {
+        default_textfield_theme().style()
+    }
+
+    /// The field's resolved style in `state`, with `overrides` set over it (#433): the field draws from its root.
+    fn resolve_style(&self, state: TextFieldState, enabled: bool, overrides: &Overrides) -> Arc<Resolved> {
+        resolve_text_field(&self.style().with_overrides(overrides), state, enabled)
+    }
+
+    #[deprecated(note = "the field draws from the resolved style; use `resolve_style` (#433)")]
+    #[allow(deprecated)]
     fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
         default_textfield_theme().resolve_look(
             state,
             enabled,
             &StandardBoxScale::compute(&default_textfield_theme().metrics(), 1.0),
         )
-    }
-
-    fn resolve_look_with_scale(
-        &self,
-        state: TextFieldState,
-        enabled: bool,
-        _scale_factor: f32,
-        _cx: &mut App,
-    ) -> TextFieldLook {
-        self.resolve_look(state, enabled)
     }
 
     fn render(
@@ -102,18 +169,17 @@ where
 }
 
 impl TextFieldTemplate for ModifiedTemplate<dyn TextFieldTemplate> {
+    #[allow(deprecated)]
     fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
         self.base.resolve_look(state, enabled)
     }
 
-    fn resolve_look_with_scale(
-        &self,
-        state: TextFieldState,
-        enabled: bool,
-        scale_factor: f32,
-        cx: &mut App,
-    ) -> TextFieldLook {
-        self.base.resolve_look_with_scale(state, enabled, scale_factor, cx)
+    fn style(&self) -> StyleBinding {
+        self.base.style()
+    }
+
+    fn resolve_style(&self, state: TextFieldState, enabled: bool, overrides: &Overrides) -> Arc<Resolved> {
+        self.base.resolve_style(state, enabled, overrides)
     }
 
     fn render(
@@ -129,19 +195,14 @@ impl TextFieldTemplate for ModifiedTemplate<dyn TextFieldTemplate> {
 }
 
 impl TextFieldTemplate for ThemedTextFieldTemplate {
+    #[allow(deprecated)]
     fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        self.theme.resolve_look(state, enabled, &StandardBoxScale::compute(&self.theme.metrics(), 1.0))
+        self.theme
+            .resolve_look(state, enabled, &crate::theme::StandardBoxScale::compute(&self.theme.metrics(), 1.0))
     }
 
-    fn resolve_look_with_scale(
-        &self,
-        state: TextFieldState,
-        enabled: bool,
-        scale_factor: f32,
-        _cx: &mut App,
-    ) -> TextFieldLook {
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        self.theme.resolve_look(state, enabled, &scale)
+    fn style(&self) -> StyleBinding {
+        self.theme.style()
     }
 
     fn render(
@@ -151,7 +212,7 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let mut look = model.look.clone();
+        let mut look = FieldValues::read(&model.style);
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let chars = model.value.chars().collect::<Vec<_>>();
         let cursor = model.state.cursor.min(chars.len());
@@ -265,7 +326,7 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         // Always fill the focus-ring root so a stretched ring cannot leave a content-sized
         // entry box centered inside it (e.g. fixed-width hosts without full_width).
         let focused = model.state.focused && model.state.focus_visible && model.enabled;
-        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(look.focus);
         let focus_extent = focus.extent();
 
         let mut control = div()

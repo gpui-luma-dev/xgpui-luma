@@ -77,7 +77,6 @@ where
 
 pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfield::TextFieldTheme>) {
     use crate::controls::textfield::*;
-    use crate::theme::StandardBoxScale;
     for placeholder in ["", "A nonempty placeholder"] {
         for full_width in [false, true] {
             let template = ThemedTextFieldTemplate::new(theme.clone());
@@ -93,7 +92,6 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     invalid: state.invalid,
                     ..Default::default()
                 };
-                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
                 let model = TextFieldRenderModel {
                     id: &id,
                     placeholder: &placeholder.into(),
@@ -106,7 +104,7 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     caret_visible: false,
                     horizontal_scroll: 0.,
                     character_offsets: vec![0.],
-                    look: theme.resolve_look(state, enabled, &scale),
+                    style: theme.resolve_style(state, enabled),
                 };
                 let handlers = TextFieldTemplateHandlers {
                     hover: Box::new(|_, _, _| {}),

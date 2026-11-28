@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::cell::Cell;
 use std::sync::Arc;
 
@@ -23,6 +25,7 @@ impl From<LucideIcon> for ControlIcon {
     }
 }
 
+#[deprecated(note = "set style overrides on the template instead (#433)")]
 pub type ButtonLookSource<D> = Arc<dyn Fn(&ButtonRenderModel<D>) -> ButtonFamilyLook + Send + Sync>;
 
 #[derive(Clone)]
@@ -293,6 +296,7 @@ impl<D: Clone + 'static> ButtonBuilder<D> {
         self
     }
 
+    #[deprecated(note = "set style overrides on the template instead; the closure is bridged to them (#433)")]
     pub fn with_look<F>(mut self, resolve: F) -> Self
     where
         F: Fn(&ButtonRenderModel<D>) -> ButtonFamilyLook + Send + Sync + 'static,

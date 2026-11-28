@@ -5,17 +5,18 @@ mod template;
 pub(crate) mod theme;
 
 pub use control::{TextFieldDrag, TextFieldEvent};
-pub use model::{TextFieldLookOverride, TextFieldBuilder, TextFieldModel, TextFieldRenderModel, Validator};
+#[allow(deprecated)]
+pub use model::TextFieldLookOverride;
+pub use model::{TextFieldBuilder, TextFieldModel, TextFieldRenderModel, Validator};
 pub use state::TextFieldState;
 pub use template::{
     TextFieldClickHandler, TextFieldHoverHandler, TextFieldKeyDownHandler, TextFieldMouseDownHandler,
     TextFieldMouseMoveHandler, TextFieldMouseUpHandler, TextFieldTemplate, TextFieldTemplateHandlers,
     TextFieldDragMoveHandler, ThemedTextFieldTemplate, default_textfield_template,
 };
-pub use theme::{
-    TextFieldLook, TextFieldPalette, TextFieldTheme, apply_control_typography, compose_textfield_look,
-    default_textfield_theme,
-};
+#[allow(deprecated)]
+pub use theme::{TextFieldLook, compose_textfield_look};
+pub use theme::{TextFieldPalette, TextFieldTheme, apply_control_typography, default_textfield_theme};
 
 use gpui::{Entity, SharedString};
 

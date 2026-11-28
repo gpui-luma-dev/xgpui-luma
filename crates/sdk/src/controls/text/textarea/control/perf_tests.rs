@@ -1,3 +1,4 @@
+#![allow(deprecated)] // These tests exercise the look-closure bridge (#433).
 use super::*;
 use crate::perf_measure::measure;
 use gpui::prelude::*;

@@ -62,6 +62,7 @@ pub fn primary_textfield_template(theme: ShadcnLook) -> Arc<dyn TextFieldTemplat
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use gpui::Hsla;
     use xgpui_luma::controls::textarea::TextAreaState;

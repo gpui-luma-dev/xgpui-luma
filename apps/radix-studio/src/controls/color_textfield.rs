@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;

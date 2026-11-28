@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use gpui::{BoxShadow, Hsla, SharedString};
 
 use crate::theme::{LumaTextStyle, StandardBoxScale};
@@ -25,6 +27,7 @@ pub struct ButtonFamilyPalette {
     pub font_family: SharedString,
 }
 
+#[deprecated(note = "button faces draw from the resolved style; use `StyledButtonTemplate::resolve_face` (#433)")]
 #[derive(Clone, Debug)]
 pub struct ButtonFamilyLook {
     /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
@@ -52,6 +55,8 @@ pub fn button_family_effective_border(border: Option<Hsla>) -> Hsla {
     border.unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.0, 0.0))
 }
 
+#[deprecated(note = "button faces draw from the resolved style (#433)")]
+#[allow(deprecated)]
 pub fn compose_button_family_look(
     palette: &ButtonFamilyPalette,
     role: ButtonFamilyRole,

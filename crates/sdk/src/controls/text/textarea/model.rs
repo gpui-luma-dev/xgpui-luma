@@ -1,3 +1,4 @@
+#![allow(deprecated)] // The look-closure bridge reads `TextAreaLook` until it is removed (#433).
 use crate::interaction::{ScrollInteraction, WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
 use std::sync::Arc;
 

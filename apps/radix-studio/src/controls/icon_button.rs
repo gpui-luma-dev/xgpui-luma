@@ -1,4 +1,5 @@
 //! Bare icon chrome: no face, border or shadow in any interaction state.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use gpui::SharedString;
 use xgpui_luma::controls::button::{Button, ButtonBuilder};
