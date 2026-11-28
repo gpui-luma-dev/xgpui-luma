@@ -1,6 +1,7 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 // Some baselines read the compatibility Looks, which build from the resolved styles (#433).
 #![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
+use xgpui_luma::style::PartRead;
 use super::*;
 use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
 use xgpui_luma::controls::{textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant};
@@ -70,9 +71,21 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
                 }
             }
         }
-        let menu = crate::popup_menu::floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
+        let menu =
+            xgpui_luma::controls::floating_menu::MenuStyle::resolve(&crate::popup_menu::floating_menu_binding_for(
+                &look,
+                PopupMenuVariant::Solid,
+                Tone::Accent,
+                crate::RadixSize::Two,
+            ));
+        let (panel, item) = (menu.panel(), menu.item());
         assert_eq!(
-            (menu.min_width, menu.item_height, menu.item_padding_x, menu.item_typography.size),
+            (
+                panel.number("min_width"),
+                item.number("height"),
+                item.number("padding_x"),
+                item.typography(14.0, 20.0).size
+            ),
             (180.0, 32.0 * 0.9, 9.0, 14.0)
         );
         let tooltip = tooltip_theme(&look).resolve();

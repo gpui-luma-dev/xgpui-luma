@@ -1,8 +1,4 @@
 //! Selector / combobox dropdown panel — same surface as floating menu (`popover` + accent item hover).
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
-
-use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
-use xgpui_luma::theme::{ThemeMode};
 
 use crate::mode::ShadcnModeTokens;
 
@@ -27,16 +23,6 @@ pub fn selector_items_panel_style(mode: &ShadcnModeTokens, size: crate::ShadcnSi
     mode_binding(mode, "floating_menu", size)
 }
 
-/// The selector and combobox dropdown panel, built from [`selector_items_panel_style`].
-#[deprecated(note = "use `selector_items_panel_style`; the SDK's panel templates draw from the style (#433)")]
-pub fn selector_items_panel_look(
-    mode: &ShadcnModeTokens,
-    _theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-) -> SelectorItemsPanelLook {
-    SelectorItemsPanelLook::from_style(&selector_items_panel_style(mode, size))
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -47,7 +33,8 @@ mod tests {
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use super::selector_items_panel_look;
+    use super::selector_items_panel_style;
+    use xgpui_luma::controls::floating_menu::MenuStyle;
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -74,11 +61,15 @@ mod tests {
     fn selector_items_panel_uses_popover_surface_and_accent_item_hover() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
+        let look = MenuStyle::resolve(&selector_items_panel_style(&mode, ShadcnSize::Md));
+        use xgpui_luma::style::PartRead;
 
-        crate::assert_close(look.background, catalog.color("popover").expect("popover"));
-        crate::assert_close(look.item_hover_background, catalog.color("accent").expect("accent"));
-        crate::assert_close(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
+        crate::assert_close(look.panel().color("background"), catalog.color("popover").expect("popover"));
+        crate::assert_close(look.row_colors().hover_background, catalog.color("accent").expect("accent"));
+        crate::assert_close(
+            look.row_colors().hover_foreground,
+            catalog.color("accent-foreground").expect("accent-foreground"),
+        );
     }
 }
 

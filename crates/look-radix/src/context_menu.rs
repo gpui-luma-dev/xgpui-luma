@@ -1,5 +1,4 @@
 //! Radix context menus use the same panel and item treatments as popup menus.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use xgpui_luma::controls::context_menu::{
     ContextMenuTemplate, ContextMenuTheme, StyledContextMenuTheme, ThemedContextMenuTemplate,
@@ -46,14 +45,19 @@ mod tests {
             look.set_mode(mode);
             for variant in [ContextMenuVariant::Solid, ContextMenuVariant::Soft] {
                 for tone in [Tone::Accent, Tone::Gray] {
-                    let actual = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
-                        &context_menu_theme(&look, variant, tone).menu(),
-                    );
-                    let expected = crate::popup_menu::floating_menu_look(&look, variant, tone);
-                    assert_eq!(actual.background, expected.background);
-                    assert_eq!(actual.border, expected.border);
-                    assert_eq!(actual.item_hover_background, expected.item_hover_background);
-                    assert_eq!(actual.item_hover_foreground, expected.item_hover_foreground);
+                    use xgpui_luma::controls::floating_menu::MenuStyle;
+                    use xgpui_luma::style::PartRead;
+                    let actual = MenuStyle::resolve(&context_menu_theme(&look, variant, tone).menu());
+                    let expected = MenuStyle::resolve(&crate::popup_menu::floating_menu_binding_for(
+                        &look,
+                        variant,
+                        tone,
+                        crate::RadixSize::Two,
+                    ));
+                    assert_eq!(actual.panel().color("background"), expected.panel().color("background"));
+                    assert_eq!(actual.panel().color("border"), expected.panel().color("border"));
+                    assert_eq!(actual.row_colors().hover_background, expected.row_colors().hover_background);
+                    assert_eq!(actual.row_colors().hover_foreground, expected.row_colors().hover_foreground);
                 }
             }
         }
