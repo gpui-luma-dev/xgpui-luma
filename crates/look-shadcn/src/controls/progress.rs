@@ -1,5 +1,4 @@
 //! Progress — accent track + accent-foreground fill.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use crate::size::ShadcnSize;
 
@@ -27,16 +26,24 @@ mod tests {
     use crate::mode::ShadcnModeTokens;
     use super::progress_style;
 
-    /// The compatibility look, built from the style (#433).
-    fn progress_look(
-        mode: &crate::mode::ShadcnModeTokens,
-        enabled: bool,
-        size: crate::ShadcnSize,
-    ) -> xgpui_luma::controls::progress::ProgressLook {
-        xgpui_luma::controls::progress::ProgressLook::from_resolved(&xgpui_luma::controls::progress::resolve_progress(
-            &progress_style(mode, size),
-            enabled,
-        ))
+    /// What a test reads of the progress style (#433).
+    struct Probe {
+        track_color: gpui::Hsla,
+        progress_color: gpui::Hsla,
+        size: f32,
+        stroke_width: f32,
+    }
+
+    fn progress_look(mode: &crate::mode::ShadcnModeTokens, enabled: bool, size: crate::ShadcnSize) -> Probe {
+        use xgpui_luma::style::PartRead;
+        use xgpui_luma::style::lss::PartId;
+        let resolved = xgpui_luma::controls::progress::resolve_progress(&progress_style(mode, size), enabled);
+        Probe {
+            track_color: resolved.part(PartId::new("track")).color("background"),
+            progress_color: resolved.part(PartId::new("fill")).color("background"),
+            size: resolved.root().number("ring_size"),
+            stroke_width: resolved.root().number("stroke_width"),
+        }
     }
 
     fn sample_catalog() -> CssTokenMap {

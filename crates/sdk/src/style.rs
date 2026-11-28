@@ -179,17 +179,6 @@ pub(crate) fn sdk_number(control: &str, property: &str) -> f32 {
         .unwrap_or(0.0)
 }
 
-/// A menu's offset from its trigger as a share of the control gap, from the SDK's `.lss`
-/// (`menu_offset_y` over `gap`).
-pub(crate) fn sdk_menu_offset_share(control: &str) -> f32 {
-    let gap = sdk_number(control, "gap");
-    if gap > 0.0 {
-        sdk_number(control, "menu_offset_y") / gap
-    } else {
-        0.0
-    }
-}
-
 /// The SDK alone in dark mode.
 pub fn dark_theme() -> Theme {
     static THEME: OnceLock<Theme> = OnceLock::new();
@@ -638,7 +627,6 @@ mod tests {
             let resolved = theme.resolve(&theme.key_named(control, &[], &[]).expect("key"));
             assert!(resolved.root().value(property).is_some(), "{control}.{property}");
         }
-        assert!(sdk_menu_offset_share("popup_menu") > 0.0 && sdk_menu_offset_share("selector") > 0.0);
     }
 
     /// `assert_reads` fails when a part reads a different token, so passing checks mean something.

@@ -1,5 +1,4 @@
 mod styled;
-#[allow(deprecated)]
 pub use styled::{StyledSliderTheme, resolve_slider};
 mod constraints;
 mod control;
@@ -27,7 +26,6 @@ pub use template::{
     ThemedAngularDialTemplate, ThemedCircularRingTemplate, ThemedSliderTemplate, default_angular_dial_template,
     default_circular_ring_template, default_slider_template,
 };
-#[allow(deprecated)]
 pub use theme::{SliderTheme, default_slider_theme};
 
 pub use layout::{display_position, segment_corner_radii, segment_display_span};

@@ -21,34 +21,11 @@
 //! ```
 use std::{rc::Rc, sync::Arc};
 use gpui::{
-    AnyElement, App, AppContext, Context, Div, Edges, Entity, Hsla, IntoElement, Pixels, Refineable, Render,
-    SharedString, Stateful, StyleRefinement, Styled, Subscription, Window, div, prelude::*, px,
+    AnyElement, App, AppContext, Context, Div, Entity, IntoElement, Refineable, Render, SharedString, Stateful,
+    StyleRefinement, Styled, Subscription, Window, div, prelude::*, px,
 };
 use crate::style::{PartRead, StyleBinding};
 use crate::theme::observe_theme_revision;
-
-/// Decoration defaults supplied by a look. SDK frames are unpainted by default.
-#[deprecated(note = "frames draw from a `frame` style (`frame.lss`); see `FrameBuilder::style_source` (#433)")]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct FrameLook {
-    pub background: Hsla,
-    pub border_color: Hsla,
-    pub border_widths: Edges<Pixels>,
-    pub radius: Pixels,
-    pub padding: Edges<Pixels>,
-}
-#[allow(deprecated)]
-impl Default for FrameLook {
-    fn default() -> Self {
-        Self {
-            background: gpui::transparent_black(),
-            border_color: gpui::transparent_black(),
-            border_widths: Edges::all(px(0.0)),
-            radius: px(0.0),
-            padding: Edges::all(px(0.0)),
-        }
-    }
-}
 
 /// Called every render so look adapters can resolve current theme values: the frame's style, a `frame` control
 /// (#433).

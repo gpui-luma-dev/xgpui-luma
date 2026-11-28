@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::sync::{Arc, OnceLock};
 
 use crate::theme::{InteractionState, MetricTokens};

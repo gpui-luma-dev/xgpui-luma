@@ -4,10 +4,8 @@
 use crate::style::PartRead;
 use std::sync::Arc;
 
-use xgpui_luma_style::{PartId, Resolved};
+use xgpui_luma_style::Resolved;
 
-#[allow(deprecated)]
-use super::theme::ControlGroupListLook;
 use super::theme::{ControlGroupItemPalette, ControlGroupTheme};
 use crate::controls::button::StyledButtonTemplate;
 use crate::controls::button_family::ButtonFamilyRole;
@@ -18,26 +16,6 @@ use crate::theme::{InteractionState, MetricTokens, StandardBoxScale};
 /// its root; a disabled row's opacity is the `item` part's in the disabled style.
 pub fn resolve_control_group(binding: &StyleBinding, enabled: bool) -> Arc<Resolved> {
     binding.resolve(&[("disabled", !enabled)], 1.0)
-}
-
-#[allow(deprecated)]
-impl ControlGroupListLook {
-    /// The look `resolved` describes, with `disabled` the same group resolved disabled (for the row opacity): the
-    /// compatibility path for code that still reads a `ControlGroupListLook` (#433).
-    pub fn from_resolved(resolved: &Resolved, disabled: &Resolved) -> Self {
-        let root = resolved.root();
-        ControlGroupListLook {
-            background: root.color("background"),
-            border: root.color("border"),
-            radius: root.number("radius"),
-            padding_x: root.number("padding_x"),
-            padding_y: root.number("padding_y"),
-            gap: root.number("gap"),
-            vertical_gap: root.number("vertical_gap"),
-            border_width: root.number("border_width"),
-            item_disabled_opacity: disabled.part(PartId::new("item")).opacity(),
-        }
-    }
 }
 
 /// Supplies the control metrics the rows are laid out with.

@@ -1,5 +1,4 @@
 //! The values a textarea draws, read from its resolved style (#433).
-#![allow(deprecated)]
 
 use std::sync::Arc;
 

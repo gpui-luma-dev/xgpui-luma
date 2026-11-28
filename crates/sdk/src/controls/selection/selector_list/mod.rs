@@ -8,13 +8,11 @@ mod items_template;
 mod model;
 
 pub use item_template::{SelectorItemRenderModel, SelectorItemTemplate, make_selector_item_template};
-#[allow(deprecated)]
 pub use items_template::{
-    DefaultSelectorItemsTemplate, SelectorItemsPanelLook, SelectorPopupGeometry, SelectorPopupGeometryHandler,
-    SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers, SelectorItemsTemplateModifier,
-    SelectorPanelClickHandler, SelectorPanelHoverHandler, SelectorPanelMouseDownHandler,
-    SelectorPanelScrollWheelHandler, default_selector_items_panel_look, default_selector_items_template,
-    selector_items_panel_source, selector_panel_placement, styled_selector_items_panel_look,
+    DefaultSelectorItemsTemplate, SelectorPopupGeometry, SelectorPopupGeometryHandler, SelectorItemsRenderModel,
+    SelectorItemsTemplate, SelectorItemsTemplateHandlers, SelectorItemsTemplateModifier, SelectorPanelClickHandler,
+    SelectorPanelHoverHandler, SelectorPanelMouseDownHandler, SelectorPanelScrollWheelHandler,
+    default_selector_items_template, selector_items_panel_source, selector_panel_placement,
 };
 pub(crate) use items_template::PanelGeometry;
 pub use model::{SelectorItem, SelectorItemLike, SelectorPath, normalize_selector_items};

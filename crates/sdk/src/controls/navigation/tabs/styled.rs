@@ -7,7 +7,6 @@ use crate::style::StyleStates;
 use gpui::SharedString;
 use xgpui_luma_style::Resolved;
 
-#[allow(deprecated)]
 use super::theme::TabsTheme;
 use crate::style::StyleBinding;
 use crate::theme::InteractionState;

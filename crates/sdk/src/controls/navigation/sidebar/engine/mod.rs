@@ -22,8 +22,7 @@ pub use template::{
     default_sidebar_panel_template,
 };
 pub(crate) use template::modified_sidebar_panel_template;
-#[allow(deprecated)]
-pub use theme::{SidebarItemLook, SidebarSectionLook};
+
 pub use theme::{SidebarTheme, default_sidebar_theme};
 
 // Public presentation contracts; the retained engine remains internal.

@@ -1,6 +1,5 @@
 //! Catalog copied from Luma Studio’s Controls popup. IDs, membership, and entry order match Studio,
 //! except `LAB_ONLY` and `STUDIO_ONLY` (checked by the catalog test); folder labels use Explorer casing in the Lab.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 /// Entries the Lab has and Studio doesn’t: SDK controls that get their own design surface page.
 #[cfg(test)]

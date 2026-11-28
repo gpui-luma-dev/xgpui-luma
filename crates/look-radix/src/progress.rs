@@ -1,5 +1,4 @@
 //! Radix progress bar styling and SDK template adapter.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{BoxShadow, div, point, prelude::*, px};
 use xgpui_luma::controls::progress::{ProgressTemplate, ProgressTheme, StyledProgressTheme, ThemedLinearProgressTemplate};
@@ -138,6 +137,9 @@ pub fn progress_template(
 mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;
+    use xgpui_luma::controls::progress::resolve_progress;
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::PartId;
     #[test]
     fn sizes_and_radii_match_radix_geometry() {
         for size in ProgressSize::ALL {
@@ -164,7 +166,10 @@ mod tests {
                     };
                     for high_contrast in [false, true] {
                         let theme = progress_theme_with(&look, variant, Paint { tone, high_contrast });
-                        let normal = theme.resolve(true);
+                        let progress_color = |enabled| {
+                            resolve_progress(&theme.style(), enabled).part(PartId::new("fill")).color("background")
+                        };
+                        let normal = progress_color(true);
                         let step = if high_contrast {
                             12
                         } else if variant == ProgressVariant::Soft {
@@ -172,12 +177,9 @@ mod tests {
                         } else {
                             9
                         };
+                        crate::control_group::assert_close(normal, look.resolve_step(family, step).hsla());
                         crate::control_group::assert_close(
-                            normal.progress_color,
-                            look.resolve_step(family, step).hsla(),
-                        );
-                        crate::control_group::assert_close(
-                            theme.resolve(false).progress_color,
+                            progress_color(false),
                             look.resolve_step(ScaleFamily::Gray, 8).hsla(),
                         );
                     }

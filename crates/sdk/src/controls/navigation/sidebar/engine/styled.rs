@@ -8,8 +8,6 @@ use crate::style::StyleStates;
 use gpui::Hsla;
 use xgpui_luma_style::Resolved;
 
-#[allow(deprecated)]
-use super::theme::{SidebarItemLook, SidebarSectionLook};
 use super::theme::SidebarTheme;
 use crate::style::StyleBinding;
 use crate::theme::InteractionState;
@@ -42,33 +40,12 @@ impl StyledSidebar {
         self.binding.clone()
     }
 
-    /// A section label.
-    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
-    #[allow(deprecated)]
-    pub fn section(&self) -> SidebarSectionLook {
-        SidebarSectionLook::from_resolved(&resolve_sidebar_row(&self.binding, false, InteractionState::default()))
-    }
-
     /// The rows' text color at rest.
     pub fn foreground(&self) -> Hsla {
         use crate::style::PartRead;
         resolve_sidebar_row(&self.binding, false, InteractionState::default())
             .part(xgpui_luma_style::PartId::new("item"))
             .color("foreground")
-    }
-
-    /// A row, selected (the current page) or not, in `state`.
-    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
-    #[allow(deprecated)]
-    pub fn item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        SidebarItemLook::from_resolved(&resolve_sidebar_row(&self.binding, selected, state))
-    }
-
-    /// A branch row, which is never the current page.
-    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
-    #[allow(deprecated)]
-    pub fn branch(&self, state: InteractionState) -> SidebarItemLook {
-        self.item(false, state)
     }
 }
 

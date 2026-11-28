@@ -1,25 +1,9 @@
 //! The avatar read from `.lss` (issue #285): `avatar.lss`. Looks render the element from [`AvatarLook`].
 
 use crate::style::PartRead;
-use gpui::{Hsla, SharedString};
+use gpui::SharedString;
 
 use crate::style::StyleBinding;
-
-/// An avatar's colors, size and fallback text.
-#[deprecated(note = "the avatar draws from `StyledAvatar::resolve` (#433)")]
-#[derive(Clone, Debug, PartialEq)]
-pub struct AvatarLook {
-    pub background: Hsla,
-    pub foreground: Hsla,
-    pub diameter: f32,
-    pub radius: f32,
-    pub icon_size: f32,
-    pub font_size: f32,
-    pub two_letter_font_size: f32,
-    pub line_height: f32,
-    pub font_weight: gpui::FontWeight,
-    pub font_family: SharedString,
-}
 
 /// The avatar's `.lss` values for one binding (the `avatar` control, with the look's variant and size).
 #[derive(Clone)]
@@ -40,25 +24,6 @@ impl StyledAvatar {
     /// The avatar's style for the binding's attributes and states (#433): the avatar draws from its root.
     pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
         self.binding.resolve(&[], 1.0)
-    }
-
-    #[deprecated(note = "the avatar draws from `resolve()` (#433)")]
-    #[allow(deprecated)]
-    pub fn look(&self) -> AvatarLook {
-        let resolved = self.binding.resolve(&[], 1.0);
-        let root = resolved.root();
-        AvatarLook {
-            background: root.color("background"),
-            foreground: root.color("foreground"),
-            diameter: root.number("height"),
-            radius: root.number("radius"),
-            icon_size: root.number("icon_size"),
-            font_size: root.font_size().unwrap_or(16.0),
-            two_letter_font_size: root.number("two_letter_font_size"),
-            line_height: root.line_height().unwrap_or(16.0),
-            font_weight: root.font_weight(),
-            font_family: root.font_family_name(),
-        }
     }
 }
 

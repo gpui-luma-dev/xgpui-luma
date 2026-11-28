@@ -14,11 +14,7 @@ pub use template::{
     SplitFaceHandlers, PopupMenuTemplate, PopupMenuTemplateHandlers, PopupMenuTemplateModifier,
     ThemedPopupMenuTemplate, default_popup_menu_template,
 };
-#[allow(deprecated)]
-pub use theme::{
-    PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, compose_popup_menu_look,
-    default_popup_menu_theme,
-};
+pub use theme::{PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, default_popup_menu_theme};
 
 pub use crate::infra::presenter::{ControlPresenter, HasPresenter};
 pub use crate::infra::state::{ControlFocusState, MenuPath};

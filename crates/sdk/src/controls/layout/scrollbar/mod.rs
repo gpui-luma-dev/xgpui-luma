@@ -13,7 +13,6 @@ pub use template::{
     ThemedScrollbarTemplate, default_scrollbar_template,
 };
 
-#[allow(deprecated)]
 pub use theme::{ScrollbarTheme, default_scrollbar_theme};
 
 mod callback;
