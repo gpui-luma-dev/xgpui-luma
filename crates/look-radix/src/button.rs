@@ -1,5 +1,4 @@
-//! Radix-owned button variants: `.lss` templates (`style/button.lss`) and the native palette behind [`button_look_for`].
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
+//! Radix-owned button variants: `.lss` templates (`style/button.lss`).
 
 use std::sync::Arc;
 
@@ -98,19 +97,6 @@ pub fn button_cell_template<D: ButtonData>(
         );
     }
     template
-}
-
-/// Full look resolver for a Radix size × radius cell.
-#[deprecated(note = "use `button_cell_template` and read its faces (#433)")]
-pub fn button_look_for<D: 'static>(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    size: ButtonSize,
-    radius: Radius,
-) -> xgpui_luma::controls::button::ButtonLookSource<D> {
-    let template = button_cell_template::<()>(look, variant, paint, size, radius);
-    Arc::new(move |model| template.look(model.role, model.state, 1.0))
 }
 
 /// Tunable geometry for the [`Classic`](ButtonVariant::Classic) button.
@@ -296,7 +282,16 @@ mod tests {
         assert!(na.len() == nb.len() && na.iter().zip(&nb).all(|(x, y)| (x - y).abs() < 2e-3), "{sa} vs {sb}");
     }
 
-    /// The native palette for a variant × paint cell (what [`button_look_for`] paints).
+    /// A cell's face colors, read from its resolved style (#433).
+    struct Face {
+        background: Hsla,
+        foreground: Hsla,
+        border: Option<Hsla>,
+        focus_border: Hsla,
+        shadow: Option<Vec<BoxShadow>>,
+    }
+
+    /// The native palette for a variant × paint cell (what [`button_cell_template`] paints).
     struct Native {
         look: Look,
         variant: ButtonVariant,
@@ -304,14 +299,20 @@ mod tests {
     }
 
     impl Native {
-        /// The cell's `.lss` face (what [`button_look_for`] paints).
-        fn resolve(
-            &self,
-            role: ButtonFamilyRole,
-            state: InteractionState,
-        ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
-            let source = button_look_for::<()>(&self.look, self.variant, self.paint, ButtonSize::Two, Radius::Medium);
-            source(&xgpui_luma::controls::button::ButtonRenderModel::<()> { role, state, ..Default::default() })
+        /// The cell's `.lss` face (what [`button_cell_template`] paints).
+        fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> Face {
+            use xgpui_luma::style::PartRead;
+            let face =
+                button_cell_template::<()>(&self.look, self.variant, self.paint, ButtonSize::Two, Radius::Medium)
+                    .resolve_face(role, state, 1.0);
+            let root = face.root();
+            Face {
+                background: root.color("background"),
+                foreground: root.color("foreground"),
+                border: root.painted("border"),
+                focus_border: root.color("focus_border"),
+                shadow: root.box_shadow_opt(),
+            }
         }
     }
 

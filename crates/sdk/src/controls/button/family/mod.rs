@@ -1,10 +1,6 @@
 pub(crate) mod theme;
 
-#[allow(deprecated)]
-pub use theme::ButtonFamilyLook;
-pub use theme::{ButtonFamilyPalette, ButtonFamilyRole, button_family_effective_border};
-#[allow(deprecated)]
-pub use theme::compose_button_family_look;
+pub use theme::{ButtonFamilyRole, button_family_effective_border};
 
 use crate::theme::InteractionState;
 

@@ -127,7 +127,6 @@ where
             radius_override: Cell::new(None),
             elevation: false,
             compact: true,
-            look: None,
             ..Default::default()
         };
         let indicator = button_template.render(&indicator_render_model, window, cx);
@@ -160,7 +159,6 @@ where
             radius_override: Cell::new(None),
             elevation: true,
             compact: false,
-            look: None,
             ..Default::default()
         };
 

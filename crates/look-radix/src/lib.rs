@@ -90,7 +90,6 @@
 //! options to SDK construction; its companion module resolves styling/templates.
 //! Display controls keep their element and resolved style together. All public
 //! entry points are re-exported here; private modules are implementation details.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 mod accordion;
 mod control_group;
@@ -176,8 +175,8 @@ pub use size::{RadixControlMetrics, RadixSize};
 pub use avatar::{Avatar, AvatarSize, AvatarStyle, AvatarVariant};
 pub use badge::{Badge, BadgeSize, BadgeVariant};
 pub use button::{
-    ClassicButtonParams, Paint, ButtonVariant, button_cell_template, button_look_for, button_template,
-    button_template_for, classic_button_template, classic_button_template_with,
+    ClassicButtonParams, Paint, ButtonVariant, button_cell_template, button_template, button_template_for,
+    classic_button_template, classic_button_template_with,
 };
 pub use button_builder::Button;
 pub use callout::callout;

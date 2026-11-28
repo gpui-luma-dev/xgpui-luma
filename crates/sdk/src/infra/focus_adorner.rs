@@ -15,7 +15,6 @@
 //!
 //! Custom look overrides supply `focus_border` explicitly; no template probes a
 //! hypothetical focused appearance or derives focus paint from a face border.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use gpui::{Div, Hsla, div, prelude::*, px, transparent_black};
 
@@ -84,20 +83,19 @@ mod tests {
         for compact in [false, true] {
             let template = Arc::new(StyledButtonTemplate::<()>::sdk());
             testing::assert_stable_layout(move |state, selected, window, cx| {
-                let mut look = template.look(Default::default(), state, window.scale_factor());
+                let _ = window;
                 // Deliberately vary both face presence and focus alpha independently.
-                look.border = selected.then_some(gpui::red());
-                look.focus_border = if state.focused {
+                use crate::style::lss::{Color, Overrides, PartId, Prop};
+                let border = selected.then_some(gpui::red()).unwrap_or_else(transparent_black);
+                let focus_border = if state.focused {
                     gpui::blue()
                 } else {
                     transparent_black()
                 };
-                let model = ButtonRenderModel::<()> {
-                    state,
-                    compact,
-                    look: Some(Arc::new(move |_| look.clone())),
-                    ..Default::default()
-                };
+                let overrides = Overrides::new()
+                    .set(PartId::ROOT, Prop::<Color>::new("border"), crate::style::lss_color(border))
+                    .set(PartId::ROOT, Prop::<Color>::new("focus_border"), crate::style::lss_color(focus_border));
+                let model = ButtonRenderModel::<()> { state, compact, overrides, ..Default::default() };
                 template.render(&model, window, cx).into_any_element()
             });
         }

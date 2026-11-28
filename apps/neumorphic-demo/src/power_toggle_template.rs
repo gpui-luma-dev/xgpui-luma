@@ -84,10 +84,12 @@ impl ButtonTemplate<ToggleData> for NeumorphicPowerToggleTemplate {
             ButtonContentFace {
                 background,
                 foreground: icon_color,
+                muted_foreground: icon_color,
                 border: Some(border),
                 typography: LumaTextStyle { size: 14.0, line_height: 16.0, weight: FontWeight::NORMAL },
                 font_family: "System UI".into(),
                 radius: 14.0,
+                gap: 0.0,
                 height: 42.0,
                 icon_size: 18.0,
             },

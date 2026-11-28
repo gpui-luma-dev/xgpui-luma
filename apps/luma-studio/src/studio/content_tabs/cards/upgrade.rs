@@ -226,7 +226,6 @@ fn plan_option_item_element_template(look: Arc<ShadcnLook>) -> ControlGroupItemE
             radius_override: Cell::new(None),
             elevation: false,
             compact: true,
-            look: None,
             ..Default::default()
         };
 

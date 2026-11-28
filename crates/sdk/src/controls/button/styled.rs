@@ -5,8 +5,6 @@
 //! is selected through the `selected` state). Data that animates between off and on (a toggle's) blends
 //! the face colors with its progress. A model's own `look` override still wins.
 
-#![allow(deprecated)] // The face still builds the compatibility `ButtonFamilyLook` for presenters (#433).
-
 use crate::style::PartRead;
 use std::sync::Arc;
 
@@ -15,7 +13,7 @@ use xgpui_luma_style::{AttrId, AttrValue, ControlId, Overrides, PartView, Resolv
 
 use super::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use super::face::{Face, FaceLook, FaceShape};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::choice::styled::{ThemeProvider, focus_adorner, hsl, length, transparent};
 use crate::infra::template::{Modifier, TemplateWithModifiers};
 use crate::theme::{InteractionState, LumaTextStyle};
@@ -129,13 +127,6 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         theme.resolve_with(&self.key(&theme, role, state, selected, scale_factor), &self.overrides)
     }
 
-    /// The settled face for `role` in `state`, as a button-family look.
-    #[deprecated(note = "use `resolve_face` and read the resolved style (#433)")]
-    pub fn look(&self, role: ButtonFamilyRole, state: InteractionState, scale_factor: f32) -> ButtonFamilyLook {
-        let resolved = self.resolve_face(role, state, scale_factor);
-        look_from(resolved.root(), resolved.root(), role)
-    }
-
     /// `overrides` set over any values already set on this instance (#433).
     pub fn with_overrides(mut self, overrides: &Overrides) -> Self {
         self.overrides = self.overrides.merge(overrides);
@@ -197,15 +188,53 @@ impl<D: ButtonData> TemplateWithModifiers<ButtonRenderModel<D>> for StyledButton
     }
 }
 
+/// What a button face draws, read from its resolved style: geometry by role, colors, typography and shadow (#433).
+#[derive(Clone, Debug)]
+pub(crate) struct FaceValues {
+    pub focus_border: Hsla,
+    pub background: Hsla,
+    pub foreground: Hsla,
+    pub muted_foreground: Hsla,
+    /// The edge, when it has color.
+    pub border: Option<Hsla>,
+    pub typography: LumaTextStyle,
+    pub font_family: gpui::SharedString,
+    pub radius: f32,
+    pub padding_x: f32,
+    pub padding_y: f32,
+    pub gap: f32,
+    pub height: f32,
+    pub icon_size: f32,
+    pub shadow: Option<Vec<gpui::BoxShadow>>,
+}
+
+impl FaceValues {
+    /// The values the presenter's content context carries.
+    pub(crate) fn content_face(&self) -> super::ButtonContentFace {
+        super::ButtonContentFace {
+            background: self.background,
+            foreground: self.foreground,
+            muted_foreground: self.muted_foreground,
+            border: self.border,
+            typography: self.typography,
+            font_family: self.font_family.clone(),
+            radius: self.radius,
+            gap: self.gap,
+            height: self.height,
+            icon_size: self.icon_size,
+        }
+    }
+}
+
 /// A button-family look from a resolved face: geometry by role, colors, typography and shadow.
-fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -> ButtonFamilyLook {
+fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -> FaceValues {
     let icon = matches!(role, ButtonFamilyRole::Icon);
     let typography = LumaTextStyle {
         size: root.font_size().unwrap_or(14.0),
         line_height: root.line_height().unwrap_or(20.0),
         weight: gpui::FontWeight(root.value("font_weight").and_then(Value::as_number).unwrap_or(400.0)),
     };
-    ButtonFamilyLook {
+    FaceValues {
         focus_border: hsl(root.focus_border()).unwrap_or_else(transparent),
         background: hsl(colors.background()).unwrap_or_else(transparent),
         foreground: hsl(colors.foreground()).unwrap_or_else(transparent),
@@ -232,32 +261,18 @@ fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -
 }
 
 impl<D: ButtonData> StyledButtonTemplate<D> {
-    /// The face a render draws: the settled style, and the colors (blended for on/off data), with any model look
-    /// closure (#433) bridged to the style language: what it changes are overrides.
-    fn resolve_with_bridge(&self, model: &ButtonRenderModel<D>, scale: f32) -> (Arc<Resolved>, Resolved) {
-        let (mut settled, mut colors) = self.resolve(model, scale, &Overrides::new());
-        if let Some(source) = &model.look {
-            let before = look_from(settled.root(), colors.root(), model.role);
-            let extra = ButtonFamilyLook::overrides_between(&before, &source(model), model.role);
-            if !extra.is_empty() {
-                (settled, colors) = self.resolve(model, scale, &extra);
-            }
-        }
-        (settled, colors)
-    }
-
-    /// The settled face for a button `model` at `scale`, with its template overrides and any model look closure
-    /// applied (#433): for a custom template that draws the face itself.
+    /// The settled face for a button `model` at `scale`, with its template and model overrides applied (#433): for a
+    /// custom template that draws the face itself.
     pub fn resolve_model_face(&self, model: &ButtonRenderModel<D>, scale: f32) -> Arc<Resolved> {
-        self.resolve_with_bridge(model, scale).0
+        self.resolve(model, scale).0
     }
 }
 
 impl<D: ButtonData> StyledButtonTemplate<D> {
     /// The face for a render: the settled style, and the colors (blended for on/off data).
-    fn resolve(&self, model: &ButtonRenderModel<D>, scale: f32, extra: &Overrides) -> (Arc<Resolved>, Resolved) {
+    fn resolve(&self, model: &ButtonRenderModel<D>, scale: f32) -> (Arc<Resolved>, Resolved) {
         let theme = self.theme();
-        let overrides = self.overrides.clone().merge(extra);
+        let overrides = self.overrides.clone().merge(&model.overrides);
         let role_selected = matches!(model.role, ButtonFamilyRole::Toggle { selected: true });
         match model.data.toggle_state() {
             Some((on, progress)) => {
@@ -306,10 +321,10 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
     }
 
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let (settled, colors) = self.resolve_with_bridge(model, window.scale_factor());
+        let (settled, colors) = self.resolve(model, window.scale_factor());
         let root = settled.root();
         let look = look_from(root, colors.root(), model.role);
-        let presenter_model = button_content_context(model, look.clone());
+        let presenter_model = button_content_context(model, look.content_face());
         let trigger = model.data.trigger();
 
         let toggle = matches!(model.role, ButtonFamilyRole::Toggle { .. });
@@ -528,56 +543,9 @@ mod disabled_opacity_tests {
     }
 }
 
-impl ButtonFamilyLook {
-    /// The face `resolved` describes for `role`: the compatibility path for code that still reads a
-    /// `ButtonFamilyLook` (#433). See [`StyledButtonTemplate::resolve_face`].
+impl super::ButtonContentFace {
+    /// The face `resolved` describes for `role` (#433).
     pub fn from_resolved(resolved: &Resolved, role: ButtonFamilyRole) -> Self {
-        look_from(resolved.root(), resolved.root(), role)
-    }
-
-    /// The style overrides a look closure made: what `after` changes from `before` for `role` (#433). A shadow can
-    /// only be removed, not replaced; an icon's padding is always zero.
-    pub fn overrides_between(before: &ButtonFamilyLook, after: &ButtonFamilyLook, role: ButtonFamilyRole) -> Overrides {
-        use xgpui_luma_style::{Color, PartId, Prop};
-        let root = PartId::ROOT;
-        let icon = matches!(role, ButtonFamilyRole::Icon);
-        let mut overrides = Overrides::new();
-        let mut color = |name: &'static str, before: Hsla, after: Hsla| {
-            if before != after {
-                overrides =
-                    std::mem::take(&mut overrides).set(root, Prop::<Color>::new(name), crate::style::lss_color(after));
-            }
-        };
-        color("focus_border", before.focus_border, after.focus_border);
-        color("background", before.background, after.background);
-        color("foreground", before.foreground, after.foreground);
-        color("muted_foreground", before.muted_foreground, after.muted_foreground);
-        let transparent = gpui::hsla(0.0, 0.0, 0.0, 0.0);
-        color("border", before.border.unwrap_or(transparent), after.border.unwrap_or(transparent));
-        let mut number = |name: &'static str, before: f32, after: f32| {
-            if before != after {
-                overrides = std::mem::take(&mut overrides).set(root, Prop::<f32>::new(name), after);
-            }
-        };
-        number("font_size", before.typography.size, after.typography.size);
-        number("line_height", before.typography.line_height, after.typography.line_height);
-        number("font_weight", before.typography.weight.0, after.typography.weight.0);
-        number(if icon { "icon_radius" } else { "radius" }, before.radius, after.radius);
-        if !icon {
-            number("padding_x", before.padding_x, after.padding_x);
-            number("padding_y", before.padding_y, after.padding_y);
-        }
-        number("gap", before.gap, after.gap);
-        number("height", before.height, after.height);
-        number(if icon { "icon_size" } else { "text_icon_size" }, before.icon_size, after.icon_size);
-        if before.font_family != after.font_family {
-            overrides =
-                overrides.set(root, Prop::<Arc<str>>::new("font_family"), Arc::<str>::from(after.font_family.as_ref()));
-        }
-        if before.shadow.is_some() && after.shadow.is_none() {
-            let none: Arc<[xgpui_luma_style::ShadowLayer]> = Arc::from(Vec::new());
-            overrides = overrides.set(root, Prop::<Arc<[xgpui_luma_style::ShadowLayer]>>::new("shadow"), none);
-        }
-        overrides
+        look_from(resolved.root(), resolved.root(), role).content_face()
     }
 }

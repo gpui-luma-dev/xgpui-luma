@@ -4,7 +4,6 @@
 //! - [`family`] — shared look/metrics recipe (`button_family` re-export)
 //! - [`split_button`] — single-focus retained action/menu specialization
 //! - [`CommandCore`] — presentation-agnostic activation/interaction core used by `Button`
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 mod callback;
 mod control;
@@ -26,8 +25,7 @@ pub use core::{CommandCore, CommandEvent};
 pub use crate::infra::template::{ControlTemplate, Modifier, TemplateWithModifiers};
 pub use model::{
     button_content_context, button_content_context_from, button_content_context_painted, ButtonContentFace,
-    ButtonBuilder, ButtonContentContext, ButtonLookSource, ButtonModel, ButtonRenderModel, ControlIcon,
-    ControlPresenter, HasPresenter,
+    ButtonBuilder, ButtonContentContext, ButtonModel, ButtonRenderModel, ControlIcon, ControlPresenter, HasPresenter,
 };
 pub use template::{ButtonTemplate, ButtonTemplateModifier, default_button_template};
 pub use styled::{ButtonData, StyledButtonTemplate};
