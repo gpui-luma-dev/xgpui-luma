@@ -1,5 +1,4 @@
 //! Toggle control exposition — gallery-aligned primary/secondary text and round-icon toggles.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
@@ -152,14 +151,14 @@ impl ToggleControlExposition {
             .secondary()
             .with_data(false)
             .round(true)
-            .content(|model, _| round_icon_glyph(false, model.look.foreground).into_any_element())
+            .content(|model, _| round_icon_glyph(false, model.foreground()).into_any_element())
             .spawn(cx);
         let primary_round_icon_toggle = shadcn::Toggle::new("controls-doc-toggle-primary-round-icon")
             .look(look.as_ref())
             .primary()
             .with_data(true)
             .round(true)
-            .content(|model, _| round_icon_glyph(true, model.look.foreground).into_any_element())
+            .content(|model, _| round_icon_glyph(true, model.foreground()).into_any_element())
             .spawn(cx);
 
         let event_stream = cx.new(|cx| {
@@ -247,7 +246,7 @@ fn wire_toggle(
                     this.secondary_round_icon_toggle.update(cx, |toggle, cx| {
                         toggle.set_presenter(
                             Arc::new(move |model, _| {
-                                let foreground = model.look.foreground;
+                                let foreground = model.foreground();
                                 round_icon_glyph(selected, foreground).into_any_element()
                             }),
                             cx,
@@ -260,7 +259,7 @@ fn wire_toggle(
                     this.primary_round_icon_toggle.update(cx, |toggle, cx| {
                         toggle.set_presenter(
                             Arc::new(move |model, _| {
-                                let foreground = model.look.foreground;
+                                let foreground = model.foreground();
                                 round_icon_glyph(selected, foreground).into_any_element()
                             }),
                             cx,

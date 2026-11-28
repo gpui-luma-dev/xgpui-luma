@@ -1,8 +1,8 @@
 //! Radix popup menus (Copy / Actions menus), drawn from `.lss`.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
-#[allow(deprecated)]
 use xgpui_luma::controls::floating_menu::FloatingMenuLook;
 use xgpui_luma::controls::popup_menu::{PopupMenuTemplate, PopupMenuTheme, StyledPopupMenuTheme, ThemedPopupMenuTemplate};
 
@@ -28,7 +28,6 @@ pub enum PopupMenuVariant {
 /// Explicit and forked Looks are used directly; no ambient Look is consulted.
 /// Uses the existing Radix menu size (`"2"`) and its shared stylesheet overrides.
 #[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
-#[allow(deprecated)]
 pub fn floating_menu_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> FloatingMenuLook {
     floating_menu_look_for(look, variant, tone, crate::RadixSize::Two)
 }
@@ -62,7 +61,6 @@ pub fn floating_menu_binding_for(
 
 /// Size-aware shared menu chrome as a look snapshot, from [`floating_menu_binding_for`].
 #[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
-#[allow(deprecated)]
 pub fn floating_menu_look_for(
     look: &Look,
     variant: PopupMenuVariant,
@@ -123,7 +121,6 @@ pub fn popup_menu_template_with_menu_size(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::control_group::assert_close;

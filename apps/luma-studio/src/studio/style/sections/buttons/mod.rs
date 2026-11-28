@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma::controls::button::ButtonTemplate as _;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
@@ -140,15 +140,14 @@ fn render_button_shadow_matrix(look: &ShadcnLook, window: &mut Window, cx: &mut 
     ];
 
     let chrome = look.chrome();
-    let shadow_template = look.button_family_template::<()>(ShadcnButtonStyle::Primary, None);
     div()
         .w_full()
         .flex()
         .flex_col()
         .gap(px(12.0))
         .children(SHADOWS.into_iter().map(|(shadow, label)| {
-            let primary = look.clone();
             let shadows = look.shadow(shadow);
+            let shadow_template = look.button_family_template_with_shadow::<()>(ShadcnButtonStyle::Primary, &shadows);
             let model = ButtonRenderModel {
                 id: SharedString::from(format!("luma-studio-button-shadow-{label}")),
                 data: (),
@@ -159,13 +158,6 @@ fn render_button_shadow_matrix(look: &ShadcnLook, window: &mut Window, cx: &mut 
                 radius_override: std::cell::Cell::new(None),
                 elevation: true,
                 compact: false,
-                // The shadow token under test replaces the primary face's own shadow.
-                look: Some(Arc::new(move |model| {
-                    let mut resolved =
-                        primary.button_face(ShadcnButtonStyle::Primary, model.role, primary.size(), None, model.state);
-                    resolved.shadow = (!shadows.is_empty()).then(|| shadows.clone());
-                    resolved
-                })),
                 ..Default::default()
             };
 

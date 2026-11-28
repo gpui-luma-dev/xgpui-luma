@@ -1,7 +1,7 @@
 //! The theme's CSS `--radius` must reach every SDK control Shadcn themes, now that
 //! the SDK has no radius vocabulary and its own defaults are fixed pixels.
 // Some radii are read from the compatibility Looks (#433).
-#![allow(deprecated)]
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use xgpui_luma::controls::overlay_window::OverlayWindowMode;
 use xgpui_luma::controls::toolbar::ToolbarVariant;

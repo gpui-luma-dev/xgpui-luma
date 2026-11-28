@@ -1,7 +1,7 @@
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::SharedString;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::textarea::TextAreaState;
 use xgpui_luma::theme::StandardBoxScale;
 
@@ -21,23 +21,21 @@ impl EventLogTheme for RadixEventLogTheme {
     }
     fn resolve_look(&self, rows: usize, scale: &StandardBoxScale, focused: bool) -> super::theme::EventLogLook {
         use crate::theme::ColorVizLookExt;
-        let textarea = xgpui_luma_look_radix::textarea_theme(&self.look).resolve_look(
-            TextAreaState { focused, focus_visible: focused, ..Default::default() },
-            true,
-            scale,
-        );
+        let textarea_style = xgpui_luma_look_radix::textarea_theme(&self.look)
+            .resolve_style(TextAreaState { focused, focus_visible: focused, ..Default::default() }, true);
+        let textarea = textarea_style.root();
         compose_event_log_look(
             EventLogColors {
-                background: textarea.background,
-                foreground: textarea.foreground,
-                border: textarea.border,
-                placeholder: textarea.placeholder,
+                background: textarea.color("background"),
+                foreground: textarea.color("foreground"),
+                border: textarea.color("border"),
+                placeholder: textarea.color("placeholder"),
             },
             self.look.typography_scale(crate::theme::TextSize::Xs),
-            textarea.font_family,
+            textarea.font_family_name().to_string(),
             rows,
             scale,
-            textarea.border_width,
+            textarea.number("border_width"),
         )
     }
 }

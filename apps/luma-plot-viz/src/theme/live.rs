@@ -2,7 +2,7 @@
 //!
 //! Only the mode is mutable. Both SDK snapshots and their default themes are
 //! prepared once; controls delegate to the selected snapshot at resolve time.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},

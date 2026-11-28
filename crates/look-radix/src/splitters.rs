@@ -1,4 +1,5 @@
 //! Radix resize chrome over the SDK splitter and split-view engines.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{SharedString, px};
 use xgpui_luma::controls::{dock_splitter::*, split_view::*};
@@ -56,7 +57,6 @@ pub fn split_view_builder(look: &Look, id: impl Into<SharedString>) -> SplitView
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
@@ -116,7 +116,6 @@ mod tests {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod lss_tests {
     use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
     use xgpui_luma::theme::{InteractionState, ThemeMode};

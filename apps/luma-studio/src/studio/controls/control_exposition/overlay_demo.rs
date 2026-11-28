@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma::style::PartRead;
 use gpui::{AnyElement, FontWeight, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::grid_layout;
@@ -82,13 +82,15 @@ fn render_overlay_dialog_header(
     header_end: Option<impl IntoElement + Clone + 'static>,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let header_action = look.resolve_content_only_button(
+    let header_action = look.button_face_style(
+        xgpui_luma_look_shadcn::ShadcnButtonStyle::ContentOnly,
         ButtonFamilyRole::Icon,
         xgpui_luma_look_shadcn::ShadcnSize::Md,
+        None,
         InteractionState::default(),
     );
-    let header_h = header_action.height;
-    let action_w = header_action.height;
+    let header_h = header_action.root().number("height");
+    let action_w = header_h;
 
     let title_cell = div()
         .h(px(header_h))

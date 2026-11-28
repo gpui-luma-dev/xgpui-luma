@@ -1,5 +1,5 @@
 //! Look-owned button builder. Spawn synthesizes the SDK [`xgpui_luma::controls::button::Button`].
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
 use xgpui_luma::controls::button::{

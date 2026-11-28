@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::collections::HashMap;
 use std::sync::{
     Arc,
@@ -15,7 +15,6 @@ use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, Theme
 
 use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
-#[allow(deprecated)]
 use crate::controls::{selection_panel::selection_panel_look, selector_items_panel_look, templates};
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{StylesheetConfig};
@@ -603,6 +602,21 @@ impl ShadcnLook {
         }
     }
 
+    /// A button face from `.lss` for `style` and `role` at `size` as a resolved style (#433): the root carries the
+    /// face's colors, text, box and shadow. `radius` is an optional corner preset.
+    pub fn button_face_style(
+        &self,
+        style: ShadcnButtonStyle,
+        role: xgpui_luma::controls::button_family::ButtonFamilyRole,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+        state: xgpui_luma::theme::InteractionState,
+    ) -> Arc<xgpui_luma::style::lss::Resolved> {
+        crate::controls::button_builder::template_for::<()>(&self.with_size(size), style, radius)
+            .resolve_face(role, state, 1.0)
+    }
+
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn resolve_primary_button(
         &self,
         role: ButtonFamilyRole,
@@ -612,6 +626,7 @@ impl ShadcnLook {
         self.button_face(ShadcnButtonStyle::Primary, role, size, None, state)
     }
 
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn resolve_secondary_button(
         &self,
         role: ButtonFamilyRole,
@@ -621,6 +636,7 @@ impl ShadcnLook {
         self.button_face(ShadcnButtonStyle::Secondary, role, size, None, state)
     }
 
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn resolve_outline_button(
         &self,
         role: ButtonFamilyRole,
@@ -630,6 +646,7 @@ impl ShadcnLook {
         self.button_face(ShadcnButtonStyle::Outline, role, size, None, state)
     }
 
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn resolve_ghost_button(
         &self,
         role: ButtonFamilyRole,
@@ -639,6 +656,7 @@ impl ShadcnLook {
         self.button_face(ShadcnButtonStyle::Ghost, role, size, None, state)
     }
 
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn resolve_content_only_button(
         &self,
         role: ButtonFamilyRole,
@@ -810,7 +828,6 @@ impl ShadcnLook {
     }
 
     #[deprecated(note = "use `selector_items_panel_style`; the SDK's panel templates draw from the style (#433)")]
-    #[allow(deprecated)]
     pub fn selector_items_panel_look(
         &self,
         size: ShadcnSize,
@@ -820,7 +837,6 @@ impl ShadcnLook {
     }
 
     #[deprecated(note = "use `selection_panel_style`; the SDK's template draws from the style (#433)")]
-    #[allow(deprecated)]
     pub fn selection_panel_look(&self, size: ShadcnSize) -> xgpui_luma::controls::selection_panel::SelectionPanelLook {
         let tokens = self.mode_tokens();
         selection_panel_look(tokens.as_ref(), self.mode(), size)
@@ -1003,6 +1019,7 @@ impl ShadcnLook {
 
     /// A button face from `.lss` for `style` and `role` at `size`, with an optional corner preset (the
     /// `radius` attribute; none keeps the size's corner). A toggle role draws the toggle.
+    #[deprecated(note = "use `button_face_style` and read the resolved style (#433)")]
     pub fn button_face(
         &self,
         style: ShadcnButtonStyle,
@@ -1025,7 +1042,61 @@ impl ShadcnLook {
         Arc::new(crate::controls::button_builder::template_for::<D>(self, style, radius))
     }
 
+    /// The `.lss` button-family template for `style` with its shadow replaced by `shadows` (#433): for a design
+    /// surface that previews a shadow token on a button's face.
+    pub fn button_family_template_with_shadow<D: xgpui_luma::controls::button::ButtonData>(
+        &self,
+        style: ShadcnButtonStyle,
+        shadows: &[gpui::BoxShadow],
+    ) -> xgpui_luma::controls::button::StyledButtonTemplate<D> {
+        use xgpui_luma::style::lss::{Overrides, PartId, Prop, ShadowLayer};
+        let layers: Arc<[ShadowLayer]> = shadows
+            .iter()
+            .map(|shadow| ShadowLayer {
+                x: f32::from(shadow.offset.x),
+                y: f32::from(shadow.offset.y),
+                blur: f32::from(shadow.blur_radius),
+                spread: f32::from(shadow.spread_radius),
+                color: xgpui_luma::style::lss_color(shadow.color),
+                inset: shadow.inset,
+            })
+            .collect();
+        crate::controls::button_builder::template_for::<D>(self, style, None).with_overrides(&Overrides::new().set(
+            PartId::ROOT,
+            Prop::<Arc<[ShadowLayer]>>::new("shadow"),
+            layers,
+        ))
+    }
+
+    /// An icon-only toggle's template (#433): the toggle's colors, shadow and corner on the icon button's square box
+    /// at `size`, with an optional corner preset.
+    pub fn icon_toggle_template<D: xgpui_luma::controls::button::ButtonData>(
+        &self,
+        style: ShadcnButtonStyle,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+    ) -> xgpui_luma::controls::button::StyledButtonTemplate<D> {
+        use xgpui_luma::controls::button_family::ButtonFamilyRole;
+        use xgpui_luma::style::PartRead;
+        use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+        let icon = self.button_face_style(style, ButtonFamilyRole::Icon, size, radius, Default::default());
+        let icon = icon.root();
+        let root = PartId::ROOT;
+        let mut overrides = Overrides::new()
+            .set(root, Prop::<f32>::new("height"), icon.number("height"))
+            .set(root, Prop::<f32>::new("padding_x"), 0.0)
+            .set(root, Prop::<f32>::new("padding_y"), 0.0)
+            .set(root, Prop::<f32>::new("text_icon_size"), icon.number("icon_size"));
+        // A preset sizes the corner to the square box; otherwise the toggle keeps its own corner.
+        if radius.is_some() {
+            overrides = overrides.set(root, Prop::<f32>::new("radius"), icon.number("icon_radius"));
+        }
+        crate::controls::button_builder::template_for::<D>(&self.with_size(size), style, radius)
+            .with_overrides(&overrides)
+    }
+
     /// An icon-only toggle from `.lss`: the toggle's colors, shadow and corner on the icon button's square box.
+    #[deprecated(note = "use `icon_toggle_template` (#433)")]
     pub fn icon_toggle_face(
         &self,
         style: ShadcnButtonStyle,

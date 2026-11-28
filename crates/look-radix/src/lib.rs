@@ -90,6 +90,7 @@
 //! options to SDK construction; its companion module resolves styling/templates.
 //! Display controls keep their element and resolved style together. All public
 //! entry points are re-exported here; private modules are implementation details.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 mod accordion;
 mod control_group;
@@ -157,7 +158,6 @@ mod typography;
 
 // Palette state, scales, and shared styling.
 pub use look::{PageBackground, Look};
-#[allow(deprecated)]
 pub use hover_card::hover_card_look;
 pub use hover_card::{HoverCard, HoverCardBuilder, HoverCardEvent, HoverCardEventExt, hover_card_style};
 pub use listbox::{ListBoxBuilder, listbox_row, listbox_template, listbox_surface_template};
@@ -177,8 +177,8 @@ pub use size::{RadixControlMetrics, RadixSize};
 pub use avatar::{Avatar, AvatarSize, AvatarStyle, AvatarVariant};
 pub use badge::{Badge, BadgeSize, BadgeVariant};
 pub use button::{
-    ClassicButtonParams, Paint, ButtonVariant, button_look_for, button_template, button_template_for,
-    classic_button_template, classic_button_template_with,
+    ClassicButtonParams, Paint, ButtonVariant, button_cell_template, button_look_for, button_template,
+    button_template_for, classic_button_template, classic_button_template_with,
 };
 pub use button_builder::Button;
 pub use callout::callout;
@@ -188,7 +188,6 @@ pub use card::{Card, CardSize, CardStyle, CardVariant};
 pub use checkbox::{CheckboxSize, CheckboxVariant, checkbox_template, checkbox_template_for};
 pub use checkbox_builder::Checkbox;
 pub use checkbox_group::{CheckboxGroup, checkbox_group_template};
-#[allow(deprecated)]
 pub use popup_menu::{floating_menu_look, floating_menu_look_for};
 pub use popup_menu::{PopupMenuVariant, floating_menu_binding_for, popup_menu_template, popup_menu_theme};
 pub use popup_menu_builder::PopupMenu;
@@ -225,12 +224,10 @@ pub use ext::LookControlExt;
 pub use overlay_window::overlay_window_theme;
 pub use segmented::segmented_radio_template;
 pub use selector::{Selector, selector_template, selector_theme};
-#[allow(deprecated)]
 pub use selector_list::{
     selector_items_panel_look, selector_items_panel_look_for, selector_items_panel_style,
     selector_items_panel_style_for,
 };
-#[allow(deprecated)]
 pub use selection::{
     autocomplete_builder, autocomplete_theme, combobox_builder, search_selector_builder, selection_panel_builder,
     selection_panel_look, selection_panel_style,

@@ -1,5 +1,5 @@
 //! Look-owned text-field builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textfield::TextField`].
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -34,6 +34,7 @@ pub struct TextField {
     propagate_home_end_to_parent: bool,
     max_clipboard_paste_bytes: Option<usize>,
     validator: Option<Validator>,
+    overrides: xgpui_luma::style::lss::Overrides,
     look_override: Option<TextFieldLookOverride>,
     modifiers: Vec<TextFieldModifier>,
 }
@@ -122,6 +123,7 @@ impl TextField {
             propagate_home_end_to_parent: false,
             max_clipboard_paste_bytes: Some(xgpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
             validator: None,
+            overrides: xgpui_luma::style::lss::Overrides::new(),
             look_override: None,
             modifiers: Vec::new(),
         }
@@ -220,6 +222,13 @@ impl TextField {
         self
     }
 
+    /// Style overrides for this control (#433): values set over its style, such as `padding_x` or `font_size`.
+    pub fn overrides(mut self, overrides: xgpui_luma::style::lss::Overrides) -> Self {
+        self.overrides = overrides;
+        self
+    }
+
+    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
     pub fn look_override<F>(mut self, look_override: F) -> Self
     where
         F: Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static,
@@ -280,6 +289,7 @@ impl TextField {
         if let Some(validator) = self.validator {
             builder = builder.validator(validator);
         }
+        builder = builder.overrides(self.overrides);
         if let Some(look_override) = self.look_override {
             builder = builder.look_override(move |look| (look_override)(look));
         }

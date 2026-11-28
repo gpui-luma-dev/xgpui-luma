@@ -1,4 +1,5 @@
 //! Radix overlay-window theme for swatch info panels.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -20,7 +21,6 @@ pub fn overlay_window_theme(look: &Look) -> Arc<dyn OverlayWindowTheme> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::controls::overlay_window::OverlayWindowMode;

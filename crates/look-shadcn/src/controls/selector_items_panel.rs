@@ -1,6 +1,5 @@
 //! Selector / combobox dropdown panel — same surface as floating menu (`popover` + accent item hover).
-
-#![allow(deprecated)] // `selector_items_panel_look` is a compatibility path.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
 use xgpui_luma::theme::{ThemeMode};

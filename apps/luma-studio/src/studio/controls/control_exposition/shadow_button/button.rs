@@ -1,9 +1,9 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{App, BoxShadow, Div, Hsla, SharedString, Stateful, Window, div, point, prelude::*, px};
-use xgpui_luma::controls::button_family::{ButtonFamilyLook, button_family_effective_border};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::style::PartRead;
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context_from};
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
@@ -97,42 +97,53 @@ struct PrototypeShadowButtonTemplate {
 
 impl ButtonTemplate<()> for PrototypeShadowButtonTemplate {
     fn render(&self, model: &ButtonRenderModel<()>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let look = self.resolve_look(model);
-        let border = button_family_effective_border(look.border);
+        let face = self.resolve_face(model);
+        let root = face.root();
+        let icon = matches!(model.role, ButtonFamilyRole::Icon);
+        let typography = root.typography(14.0, 20.0);
+        let (foreground, background) = (root.color("foreground"), root.color("background"));
+        let (gap, height) = (root.number("gap"), root.number("height"));
+        let (padding_x, padding_y) = if icon {
+            (0.0, 0.0)
+        } else {
+            (root.number("padding_x"), root.number("padding_y"))
+        };
+        let corner = root.number(if icon { "icon_radius" } else { "radius" });
+        let border = root.painted("border").unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.0, 0.0));
 
         let mut control = div()
             .id(format!("{}-control", model.id))
             .flex()
             .items_center()
             .justify_center()
-            .gap(px(look.gap))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .font_family(look.font_family.clone())
-            .font_weight(look.typography.weight)
-            .h(px(look.height));
+            .gap(px(gap))
+            .bg(background)
+            .text_color(foreground)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .font_family(root.font_family_name())
+            .font_weight(typography.weight)
+            .h(px(height));
 
         if border.a > 0.0 {
             control = control.border_1().border_color(border);
         }
 
         if model.round {
-            control = control.w(px(look.height)).p_0().rounded_full();
+            control = control.w(px(height)).p_0().rounded_full();
         } else {
-            control = control.px(px(look.padding_x)).py(px(look.padding_y)).rounded(px(look.radius));
+            control = control.px(px(padding_x)).py(px(padding_y)).rounded(px(corner));
         }
 
-        let content_model = button_content_context(model, look.clone());
-        control = control.child(div().text_color(look.foreground).child((model.content)(&content_model, cx)));
+        let content_model = button_content_context_from(model, &face);
+        control = control.child(div().text_color(foreground).child((model.content)(&content_model, cx)));
 
         let radius = if let Some(radius_override) = model.radius_override.get() {
             radius_override
         } else if model.round {
-            look.height / 2.0
+            height / 2.0
         } else {
-            look.radius
+            corner
         };
 
         let state = ButtonVisualState::from(model.state);
@@ -174,11 +185,18 @@ impl ButtonTemplate<()> for PrototypeShadowButtonTemplate {
 }
 
 impl PrototypeShadowButtonTemplate {
-    fn resolve_look(&self, model: &ButtonRenderModel<()>) -> ButtonFamilyLook {
-        if let Some(resolve) = &model.look {
-            resolve(model)
+    fn resolve_face(&self, model: &ButtonRenderModel<()>) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+        use xgpui_luma::controls::button::StyledButtonTemplate;
+        if model.look.is_some() {
+            StyledButtonTemplate::<()>::sdk().resolve_model_face(model, 1.0)
         } else {
-            self.look.resolve_primary_button(model.role, self.look.size(), model.state)
+            self.look.button_face_style(
+                xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary,
+                model.role,
+                self.look.size(),
+                None,
+                model.state,
+            )
         }
     }
 }

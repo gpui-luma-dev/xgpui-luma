@@ -1,4 +1,5 @@
 //! Interactive hover cards composed with the SDK anchored popover engine.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::{sync::Arc, time::Duration};
 use gpui::{
     AnyElement, App, Context, Entity, EventEmitter, IntoElement, Render, SharedString, Subscription, Task, Window, div,
@@ -7,7 +8,6 @@ use gpui::{
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent};
-#[allow(deprecated)]
 use xgpui_luma::controls::overlay_window::OverlayWindowLook;
 use xgpui_luma::controls::overlay_window::{OverlayWindowMode, resolve_overlay_window};
 use xgpui_luma::style::PartRead;
@@ -30,7 +30,6 @@ pub fn hover_card_style(look: &Look) -> Arc<Resolved> {
 
 /// Raised popup surface, distinct from the gray-step-2 page panels.
 #[deprecated(note = "the hover card draws from `hover_card_style` (#433)")]
-#[allow(deprecated)]
 pub fn hover_card_look(look: &Look) -> OverlayWindowLook {
     OverlayWindowLook::from_resolved(&hover_card_style(look))
 }

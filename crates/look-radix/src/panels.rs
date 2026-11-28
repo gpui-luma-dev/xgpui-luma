@@ -1,4 +1,5 @@
 //! Radix panel and drawer chrome over the SDK layout and overlay engines.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{AnyElement, Pixels, SharedString, Size};
 use xgpui_luma::controls::{resizable_panels::*, slide_panel::*};
@@ -108,7 +109,6 @@ pub fn render_slide_panel_inset(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::InteractionState;

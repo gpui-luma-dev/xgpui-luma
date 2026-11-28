@@ -1,4 +1,5 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma_look_shadcn::ShadcnButtonStyle;
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, FocusHandle, IntoElement, MouseButton, ParentElement, Render, div, prelude::*};
@@ -106,8 +107,15 @@ fn theme_toggle_presenter(icon: LucideIcon, color: gpui::Hsla) -> ControlPresent
 }
 
 fn shell_icon_color(look: &ShadcnLook) -> gpui::Hsla {
-    look.resolve_content_only_button(ButtonFamilyRole::Icon, ShadcnSize::Sm, InteractionState::default())
-        .foreground
+    look.button_face_style(
+        ShadcnButtonStyle::ContentOnly,
+        ButtonFamilyRole::Icon,
+        ShadcnSize::Sm,
+        None,
+        InteractionState::default(),
+    )
+    .root()
+    .color("foreground")
 }
 
 pub fn render_app_root(

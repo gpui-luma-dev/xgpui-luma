@@ -22,7 +22,6 @@ fn resident_bytes() -> Option<u64> {
     let mut count = libc::MACH_TASK_BASIC_INFO_COUNT;
     // SAFETY: The buffer and count describe exactly mach_task_basic_info. The
     // kernel initializes it only on KERN_SUCCESS; this queries our own task.
-    #[allow(deprecated)]
     unsafe {
         let result =
             libc::task_info(libc::mach_task_self(), libc::MACH_TASK_BASIC_INFO, info.as_mut_ptr().cast(), &mut count);

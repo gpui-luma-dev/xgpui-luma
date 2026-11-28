@@ -28,7 +28,7 @@ mod panel;
 pub(crate) use card::LabCard;
 pub(crate) use card_button::{CardWidth, card_button};
 pub(crate) use hero::{ComparePane, Hero, Legend, Mark};
-pub(crate) use metrics::{LabMetrics, TextRole, mono_family, readout, text, value_field_look};
+pub(crate) use metrics::{LabMetrics, TextRole, mono_family, readout, text, value_field_overrides};
 pub(crate) use panel::{
     ChainPanel, FormRow, Panel, PanelShell, Param, ParametersPanel, PreviewPanel, form_group, form_groups, properties,
 };

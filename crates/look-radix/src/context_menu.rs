@@ -1,4 +1,5 @@
 //! Radix context menus use the same panel and item treatments as popup menus.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use xgpui_luma::controls::context_menu::{
     ContextMenuTemplate, ContextMenuTheme, StyledContextMenuTheme, ThemedContextMenuTemplate,
@@ -31,7 +32,6 @@ pub fn context_menu_template(look: &Look, variant: ContextMenuVariant, tone: Ton
     Arc::new(ThemedContextMenuTemplate::new(context_menu_theme(look, variant, tone)))
 }
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::SemanticRole;

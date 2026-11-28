@@ -1,4 +1,5 @@
 //! Non-interactive Radix badge element. Applications supply labels and placement.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 #[cfg(test)]
 use gpui::Hsla;
@@ -104,7 +105,6 @@ impl Badge {
 
     /// The badge from `.lss` (`style/badge.lss`) for this variant, tone, contrast and size.
     #[deprecated(note = "the badge draws from `resolve()` (#433)")]
-    #[allow(deprecated)]
     pub fn look(&self) -> xgpui_luma::controls::badge::BadgeLook {
         xgpui_luma::controls::badge::StyledBadge::new(self.binding()).look()
     }
@@ -170,7 +170,6 @@ impl IntoElement for Badge {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;

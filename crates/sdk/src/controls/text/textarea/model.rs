@@ -28,6 +28,8 @@ pub struct TextAreaModel {
     pub(crate) resize_handle_icon_explicit: bool,
     pub(crate) resize_handle_icon: IconSource,
     pub(crate) validator: Option<Validator>,
+    /// Style overrides set on this area, over its theme's style (#433).
+    pub(crate) overrides: crate::style::lss::Overrides,
     pub(crate) look_override: Option<TextAreaLookOverride>,
     pub(crate) template: Arc<dyn TextAreaTemplate>,
     pub(crate) theme: Arc<dyn TextAreaTheme>,
@@ -134,6 +136,7 @@ impl TextAreaBuilder {
                     .icons
                     .resolve(crate::theme::stylesheet::IconRole::TextareaResize),
                 validator: None,
+                overrides: crate::style::lss::Overrides::new(),
                 look_override: None,
                 template: default_textarea_template(),
                 theme: default_textarea_theme(),
@@ -230,6 +233,13 @@ impl TextAreaBuilder {
         self
     }
 
+    /// Style overrides for this area (#433): values set over its style, such as `padding_x` or `font_size`.
+    pub fn overrides(mut self, overrides: crate::style::lss::Overrides) -> Self {
+        self.model.overrides = overrides;
+        self
+    }
+
+    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
     pub fn look_override<F>(mut self, look_override: F) -> Self
     where
         F: Fn(TextAreaLook) -> TextAreaLook + Send + Sync + 'static,

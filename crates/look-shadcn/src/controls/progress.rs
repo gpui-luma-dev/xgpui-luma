@@ -1,4 +1,5 @@
 //! Progress — accent track + accent-foreground fill.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use crate::size::ShadcnSize;
 
@@ -17,7 +18,6 @@ pub fn progress_style(mode: &ShadcnModeTokens, size: ShadcnSize) -> xgpui_luma::
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
 
     use std::collections::BTreeMap;

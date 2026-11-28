@@ -4,6 +4,7 @@
 //! - **Surface** — gray track with an inset rim; accent fill; flat thumb ring
 //! - **Classic** — same gray track, raised thumb (shadow-1 style)
 //! - **Soft** — gray tint track; accent-6 fill; softer thumb elevation
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -119,7 +120,6 @@ pub fn slider_template(look: &Look, variant: SliderVariant) -> Arc<dyn SliderTem
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::scale::ScaleFamily;
@@ -216,7 +216,6 @@ mod tests {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod track_border_tests {
     /// Radix tracks keep no outline although the SDK's have one (#397).
     #[test]

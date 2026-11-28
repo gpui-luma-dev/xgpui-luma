@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 pub(crate) mod accordion;
 pub(crate) mod accordion_builder;
 pub(crate) mod autocomplete;
@@ -92,5 +93,4 @@ pub use slide_panel::{slide_panel_background, slide_panel_panels_style};
 pub use textfield::ShadcnTextFieldStyle;
 pub use toolbar_item::{ShadcnToolbarItemExt, ToolbarTextFieldItemBuilder};
 
-#[allow(deprecated)]
 pub(crate) use selector_items_panel::selector_items_panel_look;

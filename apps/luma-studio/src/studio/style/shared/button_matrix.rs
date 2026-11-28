@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
@@ -169,8 +168,8 @@ fn render_button_size_radius_cell(
         xgpui_luma::controls::button::ButtonContentContext<()>,
     > = if icon_only {
         Arc::new(move |model, _| {
-            let icon_size = model.look.icon_size;
-            render_lucide_icon(LucideIcon::Heart, model.look.foreground, icon_size)
+            let icon_size = model.icon_size();
+            render_lucide_icon(LucideIcon::Heart, model.foreground(), icon_size)
         })
     } else {
         let label = SharedString::from("Button");

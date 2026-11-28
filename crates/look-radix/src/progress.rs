@@ -1,4 +1,5 @@
 //! Radix progress bar styling and SDK template adapter.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{BoxShadow, div, point, prelude::*, px};
 use xgpui_luma::controls::progress::{ProgressTemplate, ProgressTheme, StyledProgressTheme, ThemedLinearProgressTemplate};
@@ -134,7 +135,6 @@ pub fn progress_template(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;
@@ -188,7 +188,6 @@ mod tests {
 }
 
 #[cfg(all(test, feature = "test-support"))]
-#[allow(deprecated)]
 mod render_tests {
     use super::*;
     use gpui::{Context, Render, TestAppContext, Window};

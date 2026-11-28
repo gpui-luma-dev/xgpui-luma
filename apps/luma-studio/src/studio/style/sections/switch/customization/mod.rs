@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use xgpui_luma::controls::switch::SwitchEventExt;
 use std::sync::Arc;
 
@@ -110,12 +109,12 @@ fn labeled_track_content(
         .part(xgpui_luma::style::lss::PartId::new("thumb"))
         .background()
         .map(gpui::Hsla::from)
-        .unwrap_or(model.look.foreground);
+        .unwrap_or(model.foreground());
         let state_label = if checked { "ON" } else { "OFF" };
         let state_label_color = if checked && !model.state.disabled {
             on_thumb
         } else {
-            model.look.foreground
+            model.foreground()
         };
 
         div()
@@ -125,9 +124,9 @@ fn labeled_track_content(
             .px(px(LABEL_TRACK_PADDING_X))
             .when(checked, |label_row| label_row.justify_start())
             .when(!checked, |label_row| label_row.justify_end())
-            .text_size(px((model.look.typography.size * 0.85).max(10.0)))
-            .line_height(px((model.look.typography.line_height * 0.85).max(12.0)))
-            .font_family(model.look.font_family.clone())
+            .text_size(px((model.typography().size * 0.85).max(10.0)))
+            .line_height(px((model.typography().line_height * 0.85).max(12.0)))
+            .font_family(model.font_family().clone())
             .font_weight(FontWeight::SEMIBOLD)
             .text_color(state_label_color)
             .child(state_label)
@@ -139,7 +138,7 @@ fn icon_thumb_content() -> impl Fn(&ButtonContentContext<SwitchData>, &mut App) 
     move |model, _| {
         let checked = model.data.checked;
         // The track color, from the switch's content look.
-        let track = model.look.background;
+        let track = model.background();
         let icon = if checked { LucideIcon::Check } else { LucideIcon::X };
         div().text_color(track).child(render_lucide_icon(icon, track, 11.0)).into_any_element()
     }

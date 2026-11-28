@@ -1,5 +1,4 @@
 //! Toggle-style page navigation backed by the SDK screen content slots.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
@@ -67,7 +66,7 @@ impl ScreenNav {
                     ThemeMode::Light => "sun",
                 };
                 icon_named(name)
-                    .map(|icon| react_icon(icon, model.look.foreground, THEME_ICON_SIZE))
+                    .map(|icon| react_icon(icon, model.foreground(), THEME_ICON_SIZE))
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)
@@ -77,7 +76,7 @@ impl ScreenNav {
             .content(|model, cx| {
                 let enabled = cx.try_global::<TooltipSettings>().is_none_or(|settings| settings.enabled);
                 icon_named(if enabled { "eye-open" } else { "eye-closed" })
-                    .map(|icon| react_icon(icon, model.look.foreground, THEME_ICON_SIZE))
+                    .map(|icon| react_icon(icon, model.foreground(), THEME_ICON_SIZE))
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)
@@ -86,7 +85,7 @@ impl ScreenNav {
         let theme_reset = super::icon_button::ghost_no_hover("screen-nav-reset-theme", action_look, ())
             .content(|model, _| {
                 icon_named("reset")
-                    .map(|icon| react_icon(icon, model.look.foreground, THEME_ICON_SIZE))
+                    .map(|icon| react_icon(icon, model.foreground(), THEME_ICON_SIZE))
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)
@@ -95,7 +94,7 @@ impl ScreenNav {
         let github = super::icon_button::ghost_no_hover("screen-nav-github", action_look, ())
             .content(|model, _| {
                 icon_named("github-logo")
-                    .map(|icon| react_icon(icon, model.look.foreground, THEME_ICON_SIZE))
+                    .map(|icon| react_icon(icon, model.foreground(), THEME_ICON_SIZE))
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)
@@ -107,7 +106,7 @@ impl ScreenNav {
             .gray()
             .size(radix::ButtonSize::One)
             .compact()
-            .content(|model, _| radix_lockup(model.look.foreground))
+            .content(|model, _| radix_lockup(model.foreground()))
             .with_template_modifier(|root, _| root.aria_label("Radix website"))
             .spawn(cx)
             .help("Visit the original Radix website", cx);

@@ -8,6 +8,7 @@
 //! | Item hover bg | `accent`                           |
 //! | Item hover fg | `accent-foreground`                |
 //! | Item disabled | `muted-foreground`               |
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::ThemeMode;
@@ -35,7 +36,6 @@ pub fn floating_menu_binding(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
 
     use std::collections::BTreeMap;

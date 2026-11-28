@@ -25,8 +25,9 @@ pub use callback::{ButtonCallbacks, ButtonEventExt};
 pub use core::{CommandCore, CommandEvent};
 pub use crate::infra::template::{ControlTemplate, Modifier, TemplateWithModifiers};
 pub use model::{
-    button_content_context, ButtonBuilder, ButtonContentContext, ButtonLookSource, ButtonModel, ButtonRenderModel,
-    ControlIcon, ControlPresenter, HasPresenter,
+    button_content_context, button_content_context_from, button_content_context_painted, ButtonContentFace,
+    ButtonBuilder, ButtonContentContext, ButtonLookSource, ButtonModel, ButtonRenderModel, ControlIcon,
+    ControlPresenter, HasPresenter,
 };
 pub use template::{ButtonTemplate, ButtonTemplateModifier, default_button_template};
 pub use styled::{ButtonData, StyledButtonTemplate};

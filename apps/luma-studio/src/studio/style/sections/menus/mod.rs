@@ -1,4 +1,4 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
@@ -379,14 +379,15 @@ fn menu_trigger_focus_for_sample(sample: &ButtonStateSample) -> PopupMenuControl
 }
 
 fn menu_trigger_radius_px(look: &ShadcnLook, size: ShadcnSize, radius: ButtonRadiusPreset) -> f32 {
-    look.button_face(
+    look.button_face_style(
         ShadcnButtonStyle::Outline,
         ButtonFamilyRole::Text,
         size,
         Some(radius),
         InteractionState::default(),
     )
-    .radius
+    .root()
+    .number("radius")
 }
 
 fn menu_trigger_style_id(style: PopupMenuTriggerStyle) -> &'static str {

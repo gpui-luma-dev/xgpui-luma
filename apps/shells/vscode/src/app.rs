@@ -1,4 +1,5 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma_look_shadcn::ShadcnButtonStyle;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
 use xgpui_luma::controls::control_group::ControlGroupEventExt;
 use std::sync::Arc;
@@ -299,8 +300,15 @@ impl VscodeShellApp {
 }
 
 fn app_bar_icon_color(look: &ShadcnLook) -> gpui::Hsla {
-    look.resolve_content_only_button(ButtonFamilyRole::Icon, ShadcnSize::Sm, InteractionState::default())
-        .foreground
+    look.button_face_style(
+        ShadcnButtonStyle::ContentOnly,
+        ButtonFamilyRole::Icon,
+        ShadcnSize::Sm,
+        None,
+        InteractionState::default(),
+    )
+    .root()
+    .color("foreground")
 }
 
 impl HasShellTheme for VscodeShellApp {

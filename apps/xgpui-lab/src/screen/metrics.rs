@@ -1,10 +1,6 @@
 //! Every size, gap and type role a lab screen uses. Defaults are Color Spaces' values.
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use gpui::{Div, ParentElement, Pixels, Rems, SharedString, Styled, div, px, rems};
-use xgpui_luma::{
-    controls::textfield::TextFieldLook,
-    theme::{LumaTextStyle, tokens::TextTokens},
-};
+use xgpui_luma::theme::{LumaTextStyle, tokens::TextTokens};
 use xgpui_luma_look_radix::Look;
 
 use crate::theme::{ColorVizLookExt, TypographyExt};
@@ -172,13 +168,18 @@ pub(crate) fn readout<K: Into<SharedString>, V: Into<SharedString>>(
     }))
 }
 
-/// Text-field look for editing a value: the same mono `code` style as `TextRole::Value`.
-pub(crate) fn value_field_look(look: &Look) -> impl Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static {
+/// Style overrides for a text field that edits a value: the same mono `code` size and family as
+/// `TextRole::Value` (the field keeps its own weight).
+pub(crate) fn value_field_overrides(look: &Look) -> xgpui_luma::style::lss::Overrides {
+    use xgpui_luma::style::lss::{Overrides, PartId, Prop};
     let style = TextRole::Value.style(look);
     let family = mono_family(look);
-    move |mut field| {
-        field.typography = LumaTextStyle { weight: field.typography.weight, ..style };
-        field.font_family = family.clone();
-        field
-    }
+    Overrides::new()
+        .set(PartId::ROOT, Prop::<f32>::new("font_size"), style.size)
+        .set(PartId::ROOT, Prop::<f32>::new("line_height"), style.line_height)
+        .set(
+            PartId::ROOT,
+            Prop::<std::sync::Arc<str>>::new("font_family"),
+            std::sync::Arc::<str>::from(family.as_ref()),
+        )
 }

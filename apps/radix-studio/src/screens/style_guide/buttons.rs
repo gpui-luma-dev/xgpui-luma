@@ -4,7 +4,6 @@
 //! - **Template Preview** — variants × interaction states (`table` + `states`)
 //! - **Colors** — accents × variants (default + high-contrast pair per cell)
 //! - **All Sizes** — per-variant size × radius grids
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use std::sync::Arc;
 
@@ -15,7 +14,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::infra::icon::lucide_icon;
 use xgpui_luma::{hstack, vstack};
 use xgpui_luma_look_radix::{
-    Accent, Paint, ButtonSize, ButtonVariant, Gray, Look, LookControlExt, Radius, ScaleFamily, button_look_for,
+    Accent, Paint, ButtonSize, ButtonVariant, Gray, Look, LookControlExt, Radius, ScaleFamily, button_cell_template,
 };
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -94,7 +93,6 @@ fn sizes_variant_table(
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
-    let template = look.button_template(def.variant, Paint::accent());
     let mut grid =
         fixed_grid(equal_data_columns(ROW_LABEL_WIDTH, SIZE_COLUMN_WIDTH, Radius::ALL.len()), COL_GAP, SIZE_ROW_GAP);
 
@@ -107,7 +105,7 @@ fn sizes_variant_table(
         let row = row + 1;
         grid = grid.child(row_label(size.label(), fg), row, 0);
         for (col, radius) in Radius::ALL.iter().enumerate() {
-            grid = grid.child(sizes_cell(look, &template, def, *size, *radius, window, cx), row, col + 1);
+            grid = grid.child(sizes_cell(look, def, *size, *radius, window, cx), row, col + 1);
         }
     }
 
@@ -116,7 +114,6 @@ fn sizes_variant_table(
 
 fn sizes_cell(
     look: &Arc<Look>,
-    template: &Arc<dyn ButtonTemplate<()>>,
     def: &VariantDef,
     size: ButtonSize,
     radius: Radius,
@@ -128,10 +125,10 @@ fn sizes_cell(
         id: SharedString::from(id),
         content: next_content(),
         role: ButtonFamilyRole::Text,
-        look: Some(button_look_for(look, def.variant, Paint::accent(), size, radius)),
         ..Default::default()
     };
 
+    let template = button_cell_template::<()>(look, def.variant, Paint::accent(), size, radius);
     centered(template.render(&model, window, cx))
 }
 
@@ -190,9 +187,9 @@ fn preview_next(template: &Arc<dyn ButtonTemplate<()>>, id: &str, window: &mut W
 
 fn next_content() -> ControlPresenter<ButtonContentContext<()>> {
     Arc::new(|model, _| {
-        let fg = model.look.foreground;
-        let icon = model.look.icon_size;
-        let gap = model.look.gap;
+        let fg = model.foreground();
+        let icon = model.icon_size();
+        let gap = model.gap();
         div()
             .flex()
             .items_center()

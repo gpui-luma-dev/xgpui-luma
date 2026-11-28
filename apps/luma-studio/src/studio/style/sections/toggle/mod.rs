@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
@@ -225,7 +224,7 @@ fn render_toggle_size_radius_matrix(
 }
 
 fn render_toggle_size_radius_cell(
-    template: &Arc<dyn ButtonTemplate<ToggleData>>,
+    _template: &Arc<dyn ButtonTemplate<ToggleData>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     size: ShadcnSize,
@@ -243,27 +242,17 @@ fn render_toggle_size_radius_cell(
         if icon_only { "icon" } else { "text" }
     ));
     let content: xgpui_luma::controls::button::ControlPresenter<ButtonContentContext<ToggleData>> = if icon_only {
-        Arc::new(move |model, _| {
-            let icon_size = button_preview_look(model).map(|look| look.icon_size).unwrap_or(16.0);
-            render_lucide_icon(
-                LucideIcon::Heart,
-                button_preview_look(model).map(|look| look.foreground).unwrap_or_default(),
-                icon_size,
-            )
-        })
+        Arc::new(move |model, _| render_lucide_icon(LucideIcon::Heart, model.foreground(), model.icon_size()))
     } else {
         let label = SharedString::from("Toggle");
         Arc::new(move |_, _| div().child(label.clone()).into_any_element())
     };
     // Icon toggles combine the toggle's colors with the icon button's square box, which no single
     // template draws; text toggles are the `.lss` template with the size and radius preset.
-    let (template, look_source) = if icon_only {
-        (
-            template.clone(),
-            Some(toggle_icon_look_for_semantic(Arc::new(look.clone()), style, size, radius, selected)),
-        )
+    let template: Arc<dyn ButtonTemplate<ToggleData>> = if icon_only {
+        Arc::new(look.icon_toggle_template::<ToggleData>(style, size, Some(radius)))
     } else {
-        (look.with_size(size).button_family_template::<ToggleData>(style, Some(radius)), None)
+        look.with_size(size).button_family_template::<ToggleData>(style, Some(radius))
     };
     let model = ButtonRenderModel {
         id,
@@ -275,7 +264,6 @@ fn render_toggle_size_radius_cell(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: look_source,
         ..Default::default()
     };
 
@@ -294,7 +282,7 @@ fn toggle_selected_for_sample(sample: &ButtonStateSample) -> bool {
 }
 
 fn render_toggle_state_sample(
-    template: &Arc<dyn ButtonTemplate<ToggleData>>,
+    _template: &Arc<dyn ButtonTemplate<ToggleData>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     icon_only: bool,
@@ -325,11 +313,10 @@ fn render_toggle_state_sample(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: icon_only.then(|| toggle_icon_look_for_style(Arc::new(look.clone()), style)),
         ..Default::default()
     };
-    let template = if icon_only {
-        template.clone()
+    let template: Arc<dyn ButtonTemplate<ToggleData>> = if icon_only {
+        Arc::new(look.icon_toggle_template::<ToggleData>(style, look.size(), Some(ButtonRadiusPreset::Full)))
     } else {
         look.button_family_template::<ToggleData>(style, None)
     };
@@ -343,34 +330,9 @@ fn render_toggle_state_sample(
         .into_any_element()
 }
 
-fn toggle_icon_look_for_style(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
-    Arc::new(move |model| {
-        theme.icon_toggle_face(style, model.data.selected, theme.size(), Some(ButtonRadiusPreset::Full), model.state)
-    })
-}
-
-fn toggle_icon_look_for_semantic(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-    size: ShadcnSize,
-    radius: ButtonRadiusPreset,
-    selected: bool,
-) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
-    Arc::new(move |model| theme.icon_toggle_face(style, selected, size, Some(radius), model.state))
-}
-
-fn button_preview_look(
-    model: &ButtonContentContext<ToggleData>,
-) -> Option<xgpui_luma::controls::button_family::ButtonFamilyLook> {
-    Some(model.look.clone())
-}
-
 pub(crate) fn round_icon_glyph(model: &ButtonContentContext<ToggleData>, selected: bool) -> AnyElement {
     let icon = if selected { LucideIcon::Check } else { LucideIcon::Plus };
-    let icon_size = model.look.icon_size;
-    let color = model.look.foreground;
+    let icon_size = model.icon_size();
+    let color = model.foreground();
     render_lucide_icon(icon, color, icon_size)
 }

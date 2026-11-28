@@ -2,7 +2,6 @@
 //! from what the control's `.lss` declares, and the control's events, beside the `.lss` inspector in a
 //! resizable split. What differs per control comes from its [`SurfaceControl`]; the page is the same for
 //! every control.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use std::sync::Arc;
 
@@ -197,8 +196,8 @@ fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::Ap
         lucide_svg_static::Icon::Sun
     };
     // `look.height` is the track's outer length along the thumb's travel; `look.icon_size` is the thumb.
-    let thumb = model.look.icon_size;
-    let empty = (model.look.height - 2. * MODE_TRACK_BORDER - thumb - MODE_TRACK_PADDING).max(0.);
+    let thumb = model.icon_size();
+    let empty = (model.height() - 2. * MODE_TRACK_BORDER - thumb - MODE_TRACK_PADDING).max(0.);
     let size = (empty - 4.).min(thumb * 0.6).max(0.);
     div()
         .size_full()
@@ -214,7 +213,7 @@ fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::Ap
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(svg().size(px(size)).path(icon.asset_path()).text_color(model.look.foreground)),
+                .child(svg().size(px(size)).path(icon.asset_path()).text_color(model.foreground())),
         )
         .into_any_element()
 }

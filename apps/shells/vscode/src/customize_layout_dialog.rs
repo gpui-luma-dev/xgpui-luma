@@ -1,4 +1,5 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma_look_shadcn::ShadcnButtonStyle;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::overlay_window::OverlayWindowEventExt;
 use std::sync::Arc;
@@ -128,8 +129,15 @@ impl CustomizeLayoutDialog {
             .width(DIALOG_W)
             .with_template_modifier(move |shell, _| {
                 let dialog_background = overlay_look
-                    .resolve_secondary_button(Default::default(), ShadcnSize::Sm, InteractionState::default())
-                    .background;
+                    .button_face_style(
+                        ShadcnButtonStyle::Secondary,
+                        Default::default(),
+                        ShadcnSize::Sm,
+                        None,
+                        InteractionState::default(),
+                    )
+                    .root()
+                    .color("background");
                 shell.p_0().overflow_hidden().bg(dialog_background)
             })
             .content(move |overlay_model, window, app| dialog.read(app).render_body(overlay_model, window, app))
@@ -303,8 +311,15 @@ fn dialog_header(look: &ShadcnLook, reset_button: IconButton, close_button: Icon
 
 fn sync_header_icon_presenters(close_button: &IconButton, reset_button: &IconButton, look: &ShadcnLook, cx: &mut App) {
     let color = look
-        .resolve_ghost_button(ButtonFamilyRole::Icon, ShadcnSize::Sm, InteractionState::default())
-        .foreground;
+        .button_face_style(
+            ShadcnButtonStyle::Ghost,
+            ButtonFamilyRole::Icon,
+            ShadcnSize::Sm,
+            None,
+            InteractionState::default(),
+        )
+        .root()
+        .color("foreground");
     close_button.update(cx, |button, cx| {
         button.set_presenter(header_icon_presenter(ControlIcon::Lucide(LucideIcon::X), color), cx);
     });

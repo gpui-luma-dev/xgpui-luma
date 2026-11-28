@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use crate::studio::color_format::{format_color_readout, parse_color_input};
 use std::collections::HashMap;
@@ -6,7 +5,8 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
-use xgpui_luma::controls::textfield::{TextField, TextFieldEvent, TextFieldLook, TextFieldLookOverride};
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
 use xgpui_luma::vstack;
 use xgpui_luma_look_shadcn::{ShadcnFont, ShadcnLook};
 use xgpui_luma_look_shadcn as shadcn;
@@ -237,26 +237,24 @@ impl Render for ColorsPanel {
 const TOKEN_FIELD_FONT_SIZE: f32 = 12.0;
 const TOKEN_FIELD_LINE_HEIGHT: f32 = 16.0;
 
-pub(super) fn token_field_look_override_arc(theme: &ShadcnLook) -> TextFieldLookOverride {
+/// The compact token fields' mono text: its family and a small size, over the field's style.
+pub(super) fn token_field_overrides(theme: &ShadcnLook) -> Overrides {
     let font_family = theme.font(ShadcnFont::Mono);
-    Arc::new(move |mut look: TextFieldLook| {
-        look.font_family = font_family.clone();
-        look.typography.size = TOKEN_FIELD_FONT_SIZE;
-        look.typography.line_height = TOKEN_FIELD_LINE_HEIGHT;
-        look
-    })
+    Overrides::new()
+        .set(PartId::ROOT, Prop::<Arc<str>>::new("font_family"), Arc::<str>::from(font_family.as_ref()))
+        .set(PartId::ROOT, Prop::<f32>::new("font_size"), TOKEN_FIELD_FONT_SIZE)
+        .set(PartId::ROOT, Prop::<f32>::new("line_height"), TOKEN_FIELD_LINE_HEIGHT)
 }
 
 pub(super) fn apply_token_field_style(theme: &ShadcnLook, builder: shadcn::TextField) -> shadcn::TextField {
-    let override_fn = token_field_look_override_arc(theme);
-    builder.compact().look_override(move |look| override_fn(look))
+    builder.compact().overrides(token_field_overrides(theme))
 }
 
 /// Keep compact token fields on the same Primary template used by `shadcn::TextField::new().look(look.as_ref())`.
 pub(super) fn sync_token_field_template<T>(theme: &Arc<ShadcnLook>, field: &TextField, cx: &mut Context<T>) {
     field.update(cx, |field, cx| {
         field.set_template(theme.primary_textfield_template(), cx);
-        field.set_look_override(Some(token_field_look_override_arc(theme)), cx);
+        field.set_overrides(token_field_overrides(theme), cx);
     });
 }
 

@@ -254,7 +254,7 @@ impl ColorPage {
                 let field = radix::TextField::new(format!("color-lab-field-{parameter:?}"))
                     .look(look.as_ref())
                     .surface()
-                    .look_override(crate::screen::value_field_look(&look))
+                    .overrides(crate::screen::value_field_overrides(&look))
                     .full_width(true)
                     .value(parameter.format(parameter.config().3 as f64))
                     .select_all_on_tab_focus(true)

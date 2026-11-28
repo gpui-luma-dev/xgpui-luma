@@ -15,7 +15,6 @@ fn rss() -> Option<u64> {
     let mut count = libc::MACH_TASK_BASIC_INFO_COUNT;
     // SAFETY: task_info receives a correctly sized writable buffer for our task;
     // assume_init is used only after the kernel reports success.
-    #[allow(deprecated)]
     unsafe {
         let status =
             libc::task_info(libc::mach_task_self(), libc::MACH_TASK_BASIC_INFO, info.as_mut_ptr().cast(), &mut count);

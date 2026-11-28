@@ -1,4 +1,5 @@
 //! Tooltip presentation bound to the control's mutable Shadcn look.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use xgpui_luma::controls::tooltip::{StyledTooltipTheme, TooltipTheme};
 use crate::ShadcnLook;
@@ -13,7 +14,6 @@ pub fn tooltip_theme(look: &ShadcnLook) -> Arc<dyn TooltipTheme> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ShadcnToken;

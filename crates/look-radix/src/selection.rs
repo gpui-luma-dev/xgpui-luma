@@ -1,12 +1,12 @@
 //! Selection factories retain SDK builders, callbacks, policies, and templates.
 //! Pass an explicit Look (including forks); themes resolve live colors while
 //! builder-owned geometry and motion defaults are captured at construction.
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use gpui::SharedString;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
 use xgpui_luma::controls::autocomplete::{AutocompleteTheme, SelectionItem};
-#[allow(deprecated)]
 use xgpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
 use crate::{Look, PopupMenuVariant, TextFieldVariant, Tone};
 
@@ -111,7 +111,6 @@ pub fn selection_panel_style(look: &Look, size: crate::RadixSize) -> xgpui_luma:
 
 /// Inline selection-panel chrome, built from [`selection_panel_style`]. Returns a snapshot.
 #[deprecated(note = "use `selection_panel_style`; the SDK's template draws from the style (#433)")]
-#[allow(deprecated)]
 pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPanelLook {
     SelectionPanelLook::from_style(&selection_panel_style(look, size))
 }
