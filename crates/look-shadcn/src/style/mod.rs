@@ -51,6 +51,7 @@ shadcn_sources![
     "progress.lss",
     "control_group.lss",
     "toolbar.lss",
+    "frame.lss",
     "stepper.lss",
     "accordion.lss",
     "pager.lss",

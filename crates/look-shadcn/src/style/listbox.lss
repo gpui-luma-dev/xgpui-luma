@@ -4,6 +4,8 @@
 // disabled. Row text at the control font size.
 
 listbox {
+  drag_marker = first(css.ring, css.border)
+
   part root {
     background = css.background
     border     = css.input

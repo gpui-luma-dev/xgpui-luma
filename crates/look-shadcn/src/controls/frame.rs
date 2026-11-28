@@ -3,11 +3,9 @@
 //! `Frame::new` uses general panel tokens. `Frame::sidebar` explicitly selects
 //! sidebar tokens. GPUI's `Styled` methods override either preset, including
 //! border widths per edge, asymmetric padding, min/max bounds, and flex layout.
-use gpui::{App, Context, Entity, IntoElement, SharedString, Stateful, Div, StyleRefinement, Styled, px};
+use gpui::{App, Context, Entity, IntoElement, SharedString, Stateful, Div, StyleRefinement, Styled};
 use xgpui_luma::controls::frame::{FrameBuilder, FrameControl};
 use crate::look::{ShadcnLook, resolve_look_from};
-use crate::ShadcnRadius;
-use super::sidebar::sidebar_container_look;
 
 /// Look-owned builder; rendering and retained state live in the SDK.
 pub struct Frame {
@@ -56,30 +54,18 @@ impl Styled for Frame {
     }
 }
 
-/// The frame's style: the SDK `frame` with this look's panel or sidebar surface set over it (#433).
+/// The frame's style: `frame.lss` (the sidebar variant for a sidebar), live with the look (#433).
 fn frame_style(look: &ShadcnLook, sidebar: bool) -> xgpui_luma::style::StyleBinding {
-    use xgpui_luma::style::lss::{Overrides, PartId, Prop};
-    use xgpui_luma::style::lss_color;
-    let (background, border_color, radius) = if sidebar {
-        let container = sidebar_container_look(look.mode_tokens().as_ref());
-        (container.background, container.border, px(container.radius))
-    } else {
-        (look.chrome().panel_background, look.chrome().border, px(look.radius(ShadcnRadius::Lg)))
-    };
-    let (root, padding) = (PartId::ROOT, if sidebar { 8.0 } else { 0.0 });
-    xgpui_luma::style::StyleBinding::sdk("frame").overrides(
-        Overrides::new()
-            .set(root, Prop::new("background"), lss_color(background))
-            .set(root, Prop::new("border"), lss_color(border_color))
-            .set(root, Prop::<f32>::new("radius"), f32::from(radius))
-            .set(root, Prop::<f32>::new("padding_x"), padding)
-            .set(root, Prop::<f32>::new("padding_y"), padding),
-    )
+    let binding = look.style_binding("frame");
+    if sidebar { binding.variant("sidebar") } else { binding }
 }
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
+    use super::super::sidebar::sidebar_container_look;
+    use crate::ShadcnRadius;
+    use gpui::px;
     use gpui::TestAppContext;
     use xgpui_luma::theme::ThemeMode;
 

@@ -34,7 +34,7 @@ impl ListBoxTemplate for ShadcnListBoxTemplate {
         self.look.listbox_row(model.id.clone(), model.state, model.focus_visible)
     }
     fn drag_look(&self) -> ListBoxDragLook {
-        let color = self.look.token_color("ring").unwrap_or(self.look.chrome().border);
+        let color = self.look.styled_listbox().resolve_surface(true, false).root().color("drag_marker");
         ListBoxDragLook {
             marker_color: color,
             marker_width: 2.0,
