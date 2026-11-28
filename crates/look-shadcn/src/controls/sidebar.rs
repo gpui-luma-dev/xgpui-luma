@@ -13,8 +13,10 @@
 //! | Selected fg       | `sidebar-primary-foreground`       |
 //! | Focus ring        | `sidebar-ring`                     |
 
+#[cfg(all(test, feature = "test-support"))]
 use crate::mode::ShadcnModeTokens;
 
+#[cfg(all(test, feature = "test-support"))]
 /// A standalone sidebar frame's colors, from the look's `sidebar.lss` (`container_background`,
 /// `container_border`), and the large radius.
 pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
@@ -36,6 +38,7 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
     }
 }
 
+#[cfg(all(test, feature = "test-support"))]
 /// Theme colors used by standalone sidebar frames, separate from navigation items.
 #[derive(Clone, Copy, Debug)]
 pub struct SidebarContainerLook {

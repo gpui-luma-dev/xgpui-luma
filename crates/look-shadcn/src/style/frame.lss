@@ -1,0 +1,19 @@
+// Shadcn frame. Layer: look. A panel: the card (or background) surface with the border edge at the large
+// radius and no inset; the sidebar variant takes the sidebar surface and edge, inset by 8.
+
+frame {
+  part root {
+    background = first(css.card, css.background)
+    border     = css.border
+    radius     = exact(shadcn.radius_large)
+  }
+
+  variant sidebar {
+    part root {
+      background = first(css.sidebar, css.card, css.background)
+      border     = first(css.sidebar_border, css.border)
+      padding_x  = exact(8)
+      padding_y  = exact(8)
+    }
+  }
+}

@@ -10,6 +10,8 @@ pub fn slide_panel_panels_style(look: &ShadcnLook) -> std::sync::Arc<xgpui_luma:
     )
 }
 
+/// The drawer's fill: the frame's panel surface, from `frame.lss`.
 pub fn slide_panel_background(look: &ShadcnLook) -> Hsla {
-    look.token_color("card").unwrap_or_else(|_| look.chrome().panel_background)
+    use xgpui_luma::style::PartRead;
+    look.style_binding("frame").resolve(&[], 1.0).root().color("background")
 }
