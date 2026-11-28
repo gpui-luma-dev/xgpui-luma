@@ -1,5 +1,5 @@
 mod styled;
-pub use styled::{MetricsSource, StyledControlGroupTheme};
+pub use styled::{MetricsSource, StyledControlGroupTheme, resolve_control_group};
 mod menu_choice_template;
 mod button_item_template;
 mod toggle_button_item_template;
@@ -30,10 +30,9 @@ pub use template::{
     control_group_template_with_theme, default_control_group_template, make_control_group_item_element_template,
     make_control_group_item_template, render_control_group_item_elements, shared_control_group_template,
 };
-pub use theme::{
-    ControlGroupItemPalette, ControlGroupItemVisualContext, ControlGroupListLook, ControlGroupTheme,
-    default_control_group_theme,
-};
+#[allow(deprecated)]
+pub use theme::ControlGroupListLook;
+pub use theme::{ControlGroupItemPalette, ControlGroupItemVisualContext, ControlGroupTheme, default_control_group_theme};
 pub use themed_template::ThemedControlGroupTemplate;
 
 pub use crate::infra::state::{CompositeItemState as ControlGroupItemState, ControlFocusState};

@@ -35,9 +35,8 @@ fn math_values_resolve_through_layers_and_geometry_validation() {
 
 #[test]
 fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
-    use crate::controls::selector_list::default_selector_items_panel_look;
     let tokens = crate::theme::ThemeTokens::default();
-    let panel = default_selector_items_panel_look(&tokens);
+    let panel = crate::controls::selector_list::PanelGeometry::of(&crate::style::StyleBinding::sdk("floating_menu"));
     assert_eq!(panel.min_width, 180.0);
     assert_eq!(panel.padding, tokens.metrics.padding_y() * 0.5);
     assert_eq!(panel.item_height, tokens.metrics.control_height() * 0.9);
@@ -46,24 +45,18 @@ fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
 
 #[test]
 fn selector_panel_chrome_inherits_tokens_and_popover_placement() {
-    use crate::controls::{selector_list::default_selector_items_panel_look, selection_panel::default_selection_panel_look};
-    let mut tokens =
-        CommonStylesheet::sdk_default().theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    tokens.metrics.border_width = 3.0;
-    let look = default_selector_items_panel_look(&tokens);
-    // The menu's colors and rows come from `.lss`, the border width from the tokens, and the placement from
-    // the SDK's `popover.lss` panel offset and margin.
+    use crate::controls::selector_list::PanelGeometry;
+    use crate::style::StyleBinding;
+    let look = PanelGeometry::of(&StyleBinding::sdk("floating_menu"));
+    // The menu's rows and border come from `.lss`, and the placement from the SDK's `popover.lss` panel offset
+    // and margin.
     let sdk = |name| crate::style::sdk_number("popover", name);
     assert_eq!(
         (look.border_width, look.popup_offset_y, look.window_margin),
-        (3.0, sdk("panel_offset_y"), sdk("window_margin"))
+        (crate::theme::MetricTokens::default().border_width, sdk("panel_offset_y"), sdk("window_margin"))
     );
-    let selection = default_selection_panel_look(&tokens);
-    // The selection panel is the items panel: no geometry of its own.
-    assert_eq!(
-        (selection.border_width, selection.item_disabled_opacity, selection.radius),
-        (look.border_width, look.item_disabled_opacity, look.radius)
-    );
+    // The selection panel is the floating menu: no geometry of its own.
+    assert_eq!(PanelGeometry::of(&StyleBinding::sdk("selection_panel")), look);
 }
 
 #[test]

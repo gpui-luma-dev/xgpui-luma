@@ -1,8 +1,11 @@
+use crate::infra::focus_report::ReportsFocus as _;
+use crate::style::PartRead;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, Pixels, Render, ScrollEvent,
     SharedString, Subscription, TextRun, Window, font, px,
 };
-use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::infra::popup_placement::PopupSpace;
+use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::controls::scrollbar::ScrollbarEvent;
 
 use super::behavior::{SelectionBehavior, SelectionEvent, SelectionStatus, SubmitResult};
@@ -37,6 +40,7 @@ pub struct AutocompleteControl {
     trigger_bounds: Option<Bounds<Pixels>>,
     presence: OverlayPresence,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     _subscriptions: Vec<Subscription>,
 }
@@ -99,6 +103,7 @@ impl AutocompleteControl {
             trigger_bounds: None,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             _subscriptions: subscriptions,
         }
@@ -124,15 +129,13 @@ impl AutocompleteControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 cx.notify();
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 if self.behavior.state.status == SelectionStatus::Searching
                     && let Some(index) = self
                         .behavior
@@ -145,7 +148,7 @@ impl AutocompleteControl {
 
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Blur, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, true, cx);
                 cx.notify();
             }
@@ -377,13 +380,9 @@ impl AutocompleteControl {
         cx.notify();
     }
 
-    /// Replace where the popup's panel look comes from, e.g. to rebind it to a look's `floating_menu.lss`.
-    pub fn set_popup_look_provider(
-        &mut self,
-        provider: super::model::AutocompletePopupLookProvider,
-        cx: &mut Context<Self>,
-    ) {
-        self.model.popup_look_provider = provider;
+    /// Replace where the popup panel's style comes from, e.g. to rebind it to a look's `floating_menu.lss`.
+    pub fn set_popup_menu(&mut self, menu: crate::controls::popup_menu::MenuSource, cx: &mut Context<Self>) {
+        self.model.popup_menu = menu;
         cx.notify();
     }
 
@@ -419,31 +418,25 @@ impl AutocompleteControl {
         }
         true
     }
-
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(AutocompleteEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
 }
 
 impl Render for AutocompleteControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let autocomplete_style = self.model.autocomplete_theme.style().resolve(&[], 1.0);
+        let autocomplete = autocomplete_style.root();
+        let (status_color, muted_text_color) = (autocomplete.color("status"), autocomplete.color("muted_text"));
         let geometry = crate::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: autocomplete_look.status_typography.size,
-            status_line_height: autocomplete_look.status_typography.line_height,
+            status_font_size: crate::controls::autocomplete::status_typography(autocomplete).size,
+            status_line_height: crate::controls::autocomplete::status_typography(autocomplete).line_height,
             ..self.model.geometry
         };
-        let mut status_typography = autocomplete_look.status_typography;
+        let mut status_typography = crate::controls::autocomplete::status_typography(autocomplete);
         status_typography.size = geometry.status_font_size;
         status_typography.line_height = geometry.status_line_height;
-        let look = (self.model.popup_look_provider)();
+        let menu = (self.model.popup_menu)();
+        let panel = crate::controls::selector_list::PanelGeometry::of(&menu);
         let selected_label = self
             .behavior
             .state
@@ -498,7 +491,7 @@ impl Render for AutocompleteControl {
         let trigger_width = self.trigger_bounds.map(|bounds| bounds.size.width).unwrap_or(px(geometry.trigger_width));
         let popup_width = {
             let mut text_font = font(".SystemUIFont");
-            text_font.weight = look.item_typography.weight;
+            text_font.weight = panel.item_typography.weight;
             let max_label_width = menu_items
                 .iter()
                 .map(|item| {
@@ -506,28 +499,36 @@ impl Render for AutocompleteControl {
                     let run = TextRun {
                         len: label.len(),
                         font: text_font.clone(),
-                        color: look.foreground,
+                        color: gpui::transparent_black(),
                         background_color: None,
                         underline: None,
                         strikethrough: None,
                     };
-                    window.text_system().shape_line(label.clone(), px(look.item_typography.size), &[run], None).width()
+                    window.text_system().shape_line(label.clone(), px(panel.item_typography.size), &[run], None).width()
                 })
                 .max_by(|a, b| a.as_f32().total_cmp(&b.as_f32()))
                 .unwrap_or(px(0.0));
 
-            let horizontal_chrome = px((look.padding * 2.0) + (look.item_padding_x * 2.0) + geometry.popup_extra_width);
+            let horizontal_chrome =
+                px((panel.padding * 2.0) + (panel.item_padding_x * 2.0) + geometry.popup_extra_width);
             trigger_width.max(max_label_width + horizontal_chrome)
         };
 
+        let mut popup_placement = None;
         let popup_content = if self.model.enabled && self.presence.should_paint() && !menu_items.is_empty() {
             let menu_id = SharedString::from("autocomplete-menu");
-            let row_height = px(look.item_height);
-            let content_top_padding = px(look.padding);
-            let min_visible_rows = self.model.row_limits.0.max(1) as f32;
-            let max_visible_rows = (self.model.row_limits.1 as f32).max(min_visible_rows);
-            let visible_rows = (menu_items.len() as f32).clamp(min_visible_rows, max_visible_rows);
-            let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
+            let row_height = px(panel.item_height);
+            let content_top_padding = px(panel.padding);
+            let min_visible_rows = self.model.row_limits.0.max(1);
+            let max_visible_rows = self.model.row_limits.1.max(min_visible_rows);
+            let wanted_rows = menu_items.len().clamp(min_visible_rows, max_visible_rows);
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(trigger, popup_width, &panel, px(0.0), wanted_rows, PopupSpace::of(window, cx))
+            });
+            popup_placement = fit.map(|fit| fit.placement);
+            // Rows beyond the space on the opening side scroll.
+            let visible_rows = fit.map_or(wanted_rows, |fit| wanted_rows.min(fit.max_rows)) as f32;
+            let viewport_height = px((panel.padding * 2.0) + (panel.item_height * visible_rows));
 
             self.popup_surface.configure(menu_items.len(), row_height, content_top_padding, viewport_height);
             self.popup_surface.sync(cx);
@@ -536,7 +537,7 @@ impl Render for AutocompleteControl {
                 &AutocompleteItemsRenderModel {
                     id: &menu_id,
                     items: &menu_items,
-                    look: look.clone(),
+                    menu: menu.clone(),
                     highlighted_index: self.behavior.state.highlighted_filtered,
                 },
                 AutocompleteItemsTemplateHandlers { item_hovers, item_clicks },
@@ -568,14 +569,30 @@ impl Render for AutocompleteControl {
             popup_width,
             status_label,
             status_detail,
-            status_color: autocomplete_look.status_color,
-            muted_text_color: autocomplete_look.muted_text_color,
-            popup_bounds: self.trigger_bounds,
-            popup_look: look,
+            status_color: status_color,
+            muted_text_color: muted_text_color,
+            popup_placement,
+            popup_menu: menu,
             popup_content,
             presence: self.presence.clone(),
         };
 
         self.model.template.render(render_model, handlers, window, cx)
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for AutocompleteControl {
+    type FocusEvent = AutocompleteEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> AutocompleteEvent {
+        AutocompleteEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

@@ -1,23 +1,28 @@
 //! Tabs read from `.lss` (issue #285): `tabs.lss`. Looks keep their own drag preview, baseline and content
 //! padding, and delegate the list and tabs to [`StyledTabs`].
 
-use gpui::{Hsla, SharedString};
-use xgpui_luma_style::{PartId, PartView, Value};
+use std::sync::Arc;
 
-use super::theme::{TabsItemLook, TabsListLook, TabsTheme};
+use crate::style::StyleStates;
+use gpui::SharedString;
+use xgpui_luma_style::Resolved;
+
+#[allow(deprecated)]
+use super::theme::{TabsItemLook, TabsListLook};
+use super::theme::TabsTheme;
 use crate::style::StyleBinding;
-use crate::theme::{InteractionState, LumaTextStyle};
+use crate::theme::InteractionState;
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
+/// The tab list's style for `binding` (the `tabs` control), enabled or not (#433): the template draws from its
+/// `list` part.
+pub fn resolve_tabs_list(binding: &StyleBinding, enabled: bool) -> Arc<Resolved> {
+    binding.resolve(&[("disabled", !enabled)], 1.0)
 }
 
-fn painted(part: PartView<'_>, name: &str) -> Option<Hsla> {
-    Some(color(part, name)).filter(|color| color.a > 0.0)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
+/// A tab's style for `binding`, `active` or not, in `state` (#433): the template draws from its root and `item`
+/// part.
+pub fn resolve_tab(binding: &StyleBinding, active: bool, state: InteractionState) -> Arc<Resolved> {
+    binding.resolve_states(StyleStates::new(state).selected(active), 1.0)
 }
 
 /// The tabs' `.lss` values for one binding (the `tabs` control).
@@ -36,53 +41,31 @@ impl StyledTabs {
         Self { binding: StyleBinding::sdk("tabs") }
     }
 
+    /// The binding the tabs resolve.
+    pub fn binding(&self) -> StyleBinding {
+        self.binding.clone()
+    }
+
     /// The tab list, enabled or not.
+    #[deprecated(note = "the template draws from the resolved style; use `resolve_tabs_list` (#433)")]
+    #[allow(deprecated)]
     pub fn list(&self, enabled: bool) -> TabsListLook {
-        let resolved = self.binding.resolve(&[("disabled", !enabled)], 1.0);
-        let list = resolved.part(PartId::new("list"));
-        TabsListLook {
-            border_width: number(list, "border_width"),
-            background: painted(list, "background"),
-            border: painted(list, "border"),
-            radius: number(list, "radius"),
-            padding: number(list, "padding"),
-            gap: number(list, "gap"),
-        }
+        TabsListLook::from_resolved(&resolve_tabs_list(&self.binding, enabled))
     }
 
     /// A tab, active or not, in `state`.
+    #[deprecated(note = "the template draws from the resolved style; use `resolve_tab` (#433)")]
+    #[allow(deprecated)]
     pub fn item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let states = [
-            ("selected", active),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
-        let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
-        TabsItemLook {
-            accessory_size: number(root, "accessory_size"),
-            accessory_gap: number(root, "accessory_gap"),
-            label_color: color(item, "foreground"),
-            indicator: if active { painted(root, "indicator") } else { None },
-            background: painted(item, "background"),
-            label_typography: LumaTextStyle {
-                size: item.font_size().unwrap_or(14.0),
-                line_height: item.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(item, "font_weight").max(100.0)),
-            },
-            radius: number(item, "radius"),
-            padding_x: number(item, "padding_x"),
-            height: number(item, "height"),
-            indicator_height: number(root, "indicator_height"),
-        }
+        TabsItemLook::from_resolved(&resolve_tab(&self.binding, active, state), active)
     }
 
     /// The tabs' font family.
     pub fn font_family(&self) -> SharedString {
-        let resolved = self.binding.resolve(&[], 1.0);
-        resolved.part(PartId::new("item")).font_family().unwrap_or("").to_string().into()
+        use crate::style::PartRead;
+        resolve_tabs_list(&self.binding, true)
+            .part(xgpui_luma_style::PartId::new("item"))
+            .font_family_name()
     }
 }
 
@@ -100,15 +83,7 @@ impl StyledTabsTheme {
 }
 
 impl TabsTheme for StyledTabsTheme {
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        self.0.list(enabled)
-    }
-
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        self.0.item(active, state)
-    }
-
-    fn font_family(&self) -> SharedString {
-        self.0.font_family()
+    fn style(&self) -> StyleBinding {
+        self.0.binding()
     }
 }

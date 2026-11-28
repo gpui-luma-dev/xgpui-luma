@@ -1,15 +1,20 @@
+#![allow(deprecated)] // The popup search field is styled through the look-closure bridge (#433).
+use crate::infra::trigger::{TriggerOpenOn, TriggerToggle, toggle_on_click};
+use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
 
+use crate::infra::popup_placement::PopupSpace;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
+use crate::style::PartRead;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, KeyDownEvent,
     MouseDownEvent, Pixels, Render, ScrollEvent, SharedString, Subscription, TextRun, Window, div, font, prelude::*,
     px,
 };
 
-use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::motion::DisclosureMotion;
 use crate::controls::selector::SelectorVisualState;
 use crate::infra::interaction::ControlInteraction;
@@ -22,7 +27,7 @@ use crate::theme::observe_theme_revision;
 
 use super::behavior::{SelectionBehavior, SelectionEvent, SelectionStatus, SubmitResult};
 use super::item_template::SearchSelectorItemTemplate;
-use super::model::{SearchSelectorBuilder, SearchSelectorPopupLookProvider};
+use super::model::SearchSelectorBuilder;
 use super::panel_template::{SearchSelectorPanelRenderModel, SearchSelectorPanelTemplate};
 use super::template::{
     SearchSelectorItemsRenderModel, SearchSelectorItemsTemplate, SearchSelectorItemsTemplateHandlers,
@@ -54,6 +59,7 @@ pub struct SearchSelectorControl {
     trigger_bounds: Option<Bounds<Pixels>>,
     presence: OverlayPresence,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     trigger_toggle_pending: bool,
@@ -137,6 +143,7 @@ impl SearchSelectorControl {
             trigger_bounds: None,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             committed_selection,
             trigger_toggle_pending: false,
@@ -210,10 +217,9 @@ impl SearchSelectorControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 if self.behavior.state.query.trim().is_empty() {
                     self.open_popup_with_all_items(cx);
@@ -224,7 +230,6 @@ impl SearchSelectorControl {
                 }
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 if self.trigger_toggle_pending && was_open {
                     // Trigger mouse-down moves focus away from the popup before the
@@ -234,7 +239,7 @@ impl SearchSelectorControl {
                 } else {
                     self.behavior.apply(SelectionEvent::Blur, &self.model.items);
                 }
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 if was_open && !self.trigger_toggle_pending {
                     self.emit_open_changed_if_needed(was_open, true, cx);
                 }
@@ -468,18 +473,15 @@ impl SearchSelectorControl {
 
     fn handle_trigger_click(&mut self, event: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
         self.trigger_toggle_pending = false;
-        if !self.model.enabled || event.is_keyboard() {
-            return;
+        // Always on click: opening moves focus into the popup's search field.
+        match toggle_on_click(TriggerOpenOn::Click, event, self.model.enabled, self.behavior.state.open) {
+            Some(TriggerToggle::Close) => self.close_popup(cx),
+            Some(TriggerToggle::Open) => {
+                self.open_popup_with_all_items(cx);
+                self.focus_popup_search(window, cx);
+            }
+            None => return,
         }
-
-        if self.behavior.state.open {
-            self.close_popup(cx);
-            cx.stop_propagation();
-            return;
-        }
-
-        self.open_popup_with_all_items(cx);
-        self.focus_popup_search(window, cx);
         cx.stop_propagation();
     }
 
@@ -634,8 +636,9 @@ impl SearchSelectorControl {
         cx.notify();
     }
 
-    pub fn set_popup_look_provider(&mut self, provider: SearchSelectorPopupLookProvider, cx: &mut Context<Self>) {
-        self.model.popup_look_provider = provider;
+    /// Replace where the popup panel's style comes from, e.g. to rebind it to a look's `floating_menu.lss`.
+    pub fn set_popup_menu(&mut self, menu: crate::controls::popup_menu::MenuSource, cx: &mut Context<Self>) {
+        self.model.popup_menu = menu;
         cx.notify();
     }
 
@@ -687,15 +690,6 @@ impl SearchSelectorControl {
         true
     }
 
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(SearchSelectorEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
-
     fn restore_trigger_focus(&self, window: &mut Window, cx: &mut Context<Self>) {
         if self.model.enabled && self.popup_search_textfield.read(cx).focus_handle(cx).is_focused(window) {
             self.interaction.focus_handle().focus(window, cx);
@@ -728,35 +722,45 @@ impl Render for SearchSelectorControl {
         }
 
         let trigger_focused = self.interaction.focus_handle().is_focused(window);
-        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let autocomplete_style = self.model.autocomplete_theme.style().resolve(&[], 1.0);
+        let autocomplete = autocomplete_style.root();
+        let (status_color, muted_text_color) = (autocomplete.color("status"), autocomplete.color("muted_text"));
         let geometry = self.model.geometry;
-        let look = (self.model.popup_look_provider)();
+        let menu = (self.model.popup_menu)();
+        let panel = crate::controls::selector_list::PanelGeometry::of(&menu);
         let selected_label = self
             .committed_selection
             .and_then(|index| self.model.items.get(index))
             .map(|item| item.label.to_string());
 
         let minimum_trigger_width = {
-            let textfield_look = self.model.textfield_template.resolve_look(TextFieldState::default(), true);
+            let textfield_style = self.model.textfield_template.resolve_style(
+                TextFieldState::default(),
+                true,
+                &crate::style::lss::Overrides::new(),
+            );
+            let textfield_look = textfield_style.root();
+            let textfield_typography = textfield_look.typography(14.0, 20.0);
             let mut text_font = font(".SystemUIFont");
-            text_font.weight = textfield_look.typography.weight;
+            text_font.weight = textfield_typography.weight;
             let placeholder_run = TextRun {
                 len: self.model.placeholder.len(),
                 font: text_font,
-                color: autocomplete_look.muted_text_color,
+                color: muted_text_color,
                 background_color: None,
                 underline: None,
                 strikethrough: None,
             };
             let placeholder_line = window.text_system().shape_line(
                 self.model.placeholder.clone(),
-                px(textfield_look.typography.size),
+                px(textfield_typography.size),
                 &[placeholder_run],
                 None,
             );
             let placeholder_width = placeholder_line.width().as_f32();
 
-            let textfield_side_padding = (textfield_look.padding_x * 2.0) + textfield_look.border_width;
+            let textfield_side_padding =
+                (textfield_look.number("padding_x") * 2.0) + textfield_look.number("border_width");
             let search_icon_width = geometry.search_icon_width + geometry.trigger_icon_extra_width;
             let spacing = geometry.trigger_extra_gap;
 
@@ -798,24 +802,37 @@ impl Render for SearchSelectorControl {
 
         let popup_content = if self.model.enabled && self.presence.should_paint() {
             let list_id = SharedString::from("search-selector-menu");
-            let row_height = px(look.item_height);
-            let content_top_padding = px(look.padding);
+            let row_height = px(panel.item_height);
+            let content_top_padding = px(panel.padding);
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
-            let effective_max_visible_rows = if self.model.fill_popup_viewport {
-                max_visible_rows_for_viewport(
-                    self.trigger_bounds,
-                    window.viewport_size().height,
-                    &look,
-                    min_visible_rows,
-                    geometry.search_chrome_height,
-                )
+            // Filling the viewport, the popup asks for every row; otherwise for its row limit.
+            let fill = self.model.fill_popup_viewport;
+            let wanted_rows = if fill {
+                item_count.max(min_visible_rows)
             } else {
-                max_visible_rows
+                item_count.max(1).clamp(min_visible_rows, max_visible_rows)
             };
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(
+                    trigger,
+                    trigger.size.width,
+                    &panel,
+                    px(geometry.search_chrome_height),
+                    wanted_rows,
+                    PopupSpace::of(window, cx),
+                )
+            });
+            let popup_placement = fit.map(|fit| fit.placement);
+            let effective_max_visible_rows = match fit {
+                Some(fit) if fill => fit.max_rows.max(min_visible_rows),
+                Some(fit) => max_visible_rows.min(fit.max_rows),
+                None => max_visible_rows,
+            };
+            let min_visible_rows = min_visible_rows.min(effective_max_visible_rows);
             let visible_rows = item_count.max(1).clamp(min_visible_rows, effective_max_visible_rows) as f32;
-            let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
+            let viewport_height = px((panel.padding * 2.0) + (panel.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > effective_max_visible_rows;
 
             self.popup_surface.set_scrolling_enabled(allow_scrolling);
@@ -826,12 +843,12 @@ impl Render for SearchSelectorControl {
                 div()
                     .flex()
                     .items_center()
-                    .min_h(px(look.item_height))
-                    .px(px(look.item_padding_x))
-                    .text_size(px(look.item_typography.size))
-                    .line_height(px(look.item_typography.line_height))
-                    .font_weight(look.item_typography.weight)
-                    .text_color(autocomplete_look.muted_text_color)
+                    .min_h(px(panel.item_height))
+                    .px(px(panel.item_padding_x))
+                    .text_size(px(panel.item_typography.size))
+                    .line_height(px(panel.item_typography.line_height))
+                    .font_weight(panel.item_typography.weight)
+                    .text_color(muted_text_color)
                     .child("No matches")
                     .into_any_element()
             } else {
@@ -849,7 +866,7 @@ impl Render for SearchSelectorControl {
                             open: self.presence.should_paint(),
                             enabled: self.model.enabled,
                             item_template: self.model.item_template.as_ref(),
-                            look: look.clone(),
+                            menu: menu.clone(),
                         },
                         SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks },
                         cx,
@@ -869,7 +886,8 @@ impl Render for SearchSelectorControl {
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
-                    popup_look: look.clone(),
+                    popup_placement,
+                    popup_menu: menu.clone(),
                     search_content: Some(self.popup_search_textfield.clone().into_any_element()),
                     list_content: self
                         .popup_surface
@@ -896,7 +914,8 @@ impl Render for SearchSelectorControl {
         };
 
         let interaction_state = self.interaction.render_state(self.model.enabled, window);
-        let trigger_look = self.model.selector_theme.resolve_visual_look(
+        let trigger = crate::controls::selector::resolve_selector_trigger(
+            &self.model.selector_theme.style(),
             self.model.trigger_style,
             SelectorVisualState {
                 interaction: interaction_state,
@@ -904,8 +923,7 @@ impl Render for SearchSelectorControl {
                 selected: self.committed_selection.is_some(),
                 invalid: self.model.invalid,
             },
-            &crate::theme::StandardBoxScale::compute(&self.model.selector_theme.metrics(), window.scale_factor()),
-            self.model.without_elevation,
+            1.0,
         );
         let render_model = SearchSelectorRenderModel {
             icons: self.model.icons.clone(),
@@ -916,25 +934,27 @@ impl Render for SearchSelectorControl {
             trigger_state: TextFieldState {
                 hovered: interaction_state.hovered,
                 focused: self.behavior.state.open || trigger_focused,
-                focus_visible: self.behavior.state.open || trigger_focused,
+                // Open, the trigger is a field being typed in, so it shows focus however it got it.
+                focus_visible: self.behavior.state.open || crate::infra::state::focus_visible(trigger_focused, window),
                 invalid: self.model.invalid,
                 ..TextFieldState::default()
             },
-            trigger_look,
+            trigger,
+            without_elevation: self.model.without_elevation,
             trigger_typography_override: None,
             enabled: self.model.enabled,
             full_width: self.model.full_width,
             minimum_trigger_width,
             status_label,
             status_detail,
-            status_color: autocomplete_look.status_color,
-            muted_text_color: autocomplete_look.muted_text_color,
+            status_color: status_color,
+            muted_text_color: muted_text_color,
             popup_content,
             presence: self.presence.clone(),
             disclosure_progress: self.disclosure_transition.progress(),
         };
 
-        let mut tip_state = interaction_state;
+        let mut tip_state = self.interaction.attachment_state(self.model.enabled, window);
         tip_state.disabled |= self.behavior.state.open;
         let root = self.model.template.render(render_model, handlers, window, cx);
         let root = self.attachments.render(root, tip_state, cx);
@@ -949,25 +969,6 @@ impl Render for SearchSelectorControl {
             )))
             .into_any_element()
     }
-}
-
-fn max_visible_rows_for_viewport(
-    trigger_bounds: Option<Bounds<Pixels>>,
-    viewport_height: Pixels,
-    look: &SelectorItemsPanelLook,
-    min_visible_rows: usize,
-    search_chrome_height: f32,
-) -> usize {
-    if look.item_height <= 0.0 {
-        return min_visible_rows.max(1);
-    }
-    let viewport_bottom = viewport_height - px(look.window_margin);
-    let available_below = trigger_bounds
-        .map(|bounds| (viewport_bottom - (bounds.bottom() + px(look.popup_offset_y))).max(px(0.0)))
-        .unwrap_or(viewport_bottom)
-        .as_f32();
-    let list_area = (available_below - search_chrome_height - (look.padding * 2.0)).max(look.item_height);
-    ((list_area / look.item_height).floor() as usize).max(min_visible_rows).max(1)
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -1013,22 +1014,18 @@ impl AttachmentTarget for SearchSelectorControl {
     }
 }
 
-#[cfg(test)]
-mod geometry_tests {
-    use super::*;
+impl crate::infra::focus_report::ReportsFocus for SearchSelectorControl {
+    type FocusEvent = SearchSelectorEvent;
 
-    #[test]
-    fn viewport_row_budget_uses_resolved_placement_and_handles_zero_row_height() {
-        let mut look =
-            crate::controls::selector_list::default_selector_items_panel_look(&crate::theme::ThemeTokens::default());
-        look.item_height = 10.0;
-        look.padding = 2.0;
-        let trigger = Some(Bounds::new(gpui::point(px(0.0), px(10.0)), gpui::size(px(80.0), px(20.0))));
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 1, 57.0), 1);
-        look.window_margin = 0.0;
-        look.popup_offset_y = 0.0;
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 1, 10.0), 5);
-        look.item_height = 0.0;
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 3, 0.0), 3);
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SearchSelectorEvent {
+        SearchSelectorEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

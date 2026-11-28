@@ -1,12 +1,11 @@
 //! Progress — accent track + accent-foreground fill.
 
-use xgpui_luma::controls::progress::ProgressLook;
 use crate::size::ShadcnSize;
 
 use crate::mode::ShadcnModeTokens;
 
-/// Shadcn progress at `size`, drawn from `.lss` (`style/progress.lss`) for `mode`'s catalog.
-pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> ProgressLook {
+/// Shadcn progress's style at `size` (`style/progress.lss`) for `mode`'s catalog (#433).
+pub fn progress_style(mode: &ShadcnModeTokens, size: ShadcnSize) -> xgpui_luma::style::StyleBinding {
     let binding =
         xgpui_luma::style::StyleBinding::new("progress", xgpui_luma::style::ThemeSource::Fixed(mode.style_theme()));
     let binding = if size != ShadcnSize::Md {
@@ -14,10 +13,11 @@ pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -
     } else {
         binding
     };
-    xgpui_luma::controls::progress::styled_progress_look(&binding, enabled)
+    binding
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
 
     use std::collections::BTreeMap;
@@ -25,7 +25,19 @@ mod tests {
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use super::progress_look;
+    use super::progress_style;
+
+    /// The compatibility look, built from the style (#433).
+    fn progress_look(
+        mode: &crate::mode::ShadcnModeTokens,
+        enabled: bool,
+        size: crate::ShadcnSize,
+    ) -> xgpui_luma::controls::progress::ProgressLook {
+        xgpui_luma::controls::progress::ProgressLook::from_resolved(&xgpui_luma::controls::progress::resolve_progress(
+            &progress_style(mode, size),
+            enabled,
+        ))
+    }
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([

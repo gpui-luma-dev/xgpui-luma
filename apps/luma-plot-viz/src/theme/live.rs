@@ -2,6 +2,7 @@
 //!
 //! Only the mode is mutable. Both SDK snapshots and their default themes are
 //! prepared once; controls delegate to the selected snapshot at resolve time.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -11,37 +12,32 @@ use gpui::SharedString;
 use xgpui_luma::controls::{
     button::StyledButtonTemplate,
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
-    scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
-    selector::{
-        SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme,
-    },
-    tabs::{StyledTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
-    tooltip::{TooltipLook, TooltipTheme},
+    scrollbar::{ScrollbarTheme, StyledScrollbarTheme},
+    selector::{SelectorTheme, StyledSelectorTheme},
+    tabs::{StyledTabsTheme, TabsTheme},
+    tooltip::TooltipTheme,
 };
 use xgpui_luma::style::ThemeSource;
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
+use xgpui_luma::theme::{MetricTokens, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
     scrollbar: StyledScrollbarTheme,
     selector: StyledSelectorTheme,
     tabs: StyledTabsTheme,
-    tooltip: TooltipLook,
 }
 
 impl Snapshot {
     /// `style` is the SDK's `.lss` theme for the same mode as `tokens`.
     fn new(tokens: ThemeTokens, style: xgpui_luma::style::lss::Theme) -> Self {
-        let panel_tokens = tokens.clone();
         let binding = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
         Self {
             scrollbar: StyledScrollbarTheme::new(binding("scrollbar"), tokens.metrics),
             tabs: StyledTabsTheme::new(binding("tabs")),
             selector: StyledSelectorTheme::new(
                 ThemeSource::Fixed(style),
-                Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
+                Arc::new(|| xgpui_luma::style::StyleBinding::sdk("floating_menu")),
             ),
-            tooltip: TooltipLook::from_tokens(&tokens),
             tokens,
         }
     }
@@ -118,15 +114,12 @@ impl AppTheme {
 }
 
 impl TabsTheme for AppTheme {
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        self.current().tabs.resolve_drag()
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+        self.current().tabs.drag_style()
     }
 
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        self.current().tabs.resolve_list(enabled)
-    }
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        self.current().tabs.resolve_item(active, state)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().tabs.style()
     }
     fn font_family(&self) -> SharedString {
         self.current().tabs.font_family()
@@ -134,45 +127,20 @@ impl TabsTheme for AppTheme {
 }
 
 impl SelectorTheme for AppTheme {
-    fn resolve(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        without_elevation: bool,
-    ) -> SelectorPalette {
-        self.current().selector.resolve(style, state, without_elevation)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().selector.style()
+    }
+    fn menu(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().selector.menu()
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
     }
-    fn resolve_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.current().selector.resolve_look(style, state, scale, without_elevation)
-    }
-    fn resolve_visual_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: SelectorVisualState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.current().selector.resolve_visual_look(style, state, scale, without_elevation)
-    }
 }
 
 impl ScrollbarTheme for AppTheme {
-    fn resolve(
-        &self,
-        state: InteractionState,
-        orientation: ScrollbarOrientation,
-        style: ScrollbarStyle,
-    ) -> ScrollbarLook {
-        self.current().scrollbar.resolve(state, orientation, style)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().scrollbar.style()
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
@@ -180,14 +148,17 @@ impl ScrollbarTheme for AppTheme {
 }
 
 impl TooltipTheme for AppTheme {
-    fn resolve(&self) -> TooltipLook {
-        self.current().tooltip.clone()
+    /// The SDK tooltip in the current mode.
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        xgpui_luma::style::StyleBinding::new("tooltip", ThemeSource::Fixed(self.style_theme()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::theme::InteractionState;
+    use xgpui_luma::controls::selector::SelectorTriggerStyle;
     use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
     #[test]
@@ -227,30 +198,50 @@ mod tests {
             let expected = tokens.palette.app.foreground.to_rgb();
             let got = radio_label.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
-            let tab = tabs.resolve_item(true, state);
-            assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
-            let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
+            let label = |binding: &xgpui_luma::style::StyleBinding| {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::tabs::resolve_tab(binding, true, state)
+                    .part(xgpui_luma::style::lss::PartId::new("item"))
+                    .color("foreground")
+            };
+            assert_eq!(label(&tabs.style()), label(&StyledTabsTheme::new(sdk("tabs")).style()));
+            let selector = xgpui_luma::controls::selector::resolve_selector_trigger(
+                &selectors.style(),
+                SelectorTriggerStyle::default(),
+                xgpui_luma::controls::selector::SelectorVisualState { interaction: state, ..Default::default() },
+                1.0,
+            );
+            let selector_background = {
+                use xgpui_luma::style::PartRead;
+                selector.root().color("background")
+            };
             // The selector trigger is the SDK's base `.lss` trigger for the mode: the outline variant is a
             // look's, not the SDK's (#287).
             let expected = tokens.palette.surface.subtle.background.to_rgb();
-            let got = selector.trigger_background.to_rgb();
+            let got = selector_background.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
-            let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
-            assert_eq!(
-                scrollbar.thumb_background,
-                StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics)
-                    .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
-                    .thumb_background
-            );
-            let tip = tooltip.resolve();
-            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens).background);
+            let thumb = |binding: &xgpui_luma::style::StyleBinding| {
+                use xgpui_luma::controls::scrollbar::{ScrollbarStyle, resolve_scrollbar};
+                use xgpui_luma::style::PartRead;
+                resolve_scrollbar(binding, state, ScrollbarStyle::Soft).root().color("thumb")
+            };
+            let scrollbar_thumb = thumb(&scrollbars.style());
+            assert_eq!(scrollbar_thumb, thumb(&StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics).style()));
+            let tip = {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::tooltip::resolve_tooltip(&tooltip.style()).root().color("background")
+            };
+            let expected =
+                tokens.stylesheet.recipes.palette("tooltip", &tokens.palette).surface.floating.background.to_rgb();
+            let got = tip.to_rgb();
+            assert!((got.r - expected.r).abs() < 2e-3, "tooltip follows the mode: {got:?} != {expected:?}");
             colors.push([
                 button.foreground,
                 radio_label,
-                tab.label_color,
-                selector.trigger_background,
-                scrollbar.thumb_background,
-                tip.background,
+                label(&tabs.style()),
+                selector_background,
+                scrollbar_thumb,
+                tip,
             ]);
         }
         for i in 0..colors[0].len() {

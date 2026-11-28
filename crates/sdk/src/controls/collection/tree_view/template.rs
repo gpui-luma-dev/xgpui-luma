@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::{rc::Rc, sync::Arc};
 
 use gpui::{
@@ -87,6 +88,13 @@ where
     }
 }
 
+impl<T> RenderModel for dyn TreeViewTemplate<T>
+where
+    T: Send + Sync + 'static,
+{
+    type Model<'a> = TreeViewRenderModel<'a>;
+}
+
 pub struct ThemedTreeViewTemplate {
     theme: Arc<dyn TreeViewTheme>,
 }
@@ -94,35 +102,6 @@ pub struct ThemedTreeViewTemplate {
 impl ThemedTreeViewTemplate {
     pub fn new(theme: Arc<dyn TreeViewTheme>) -> Self {
         Self { theme }
-    }
-}
-
-struct ModifiedTreeViewTemplate<T>
-where
-    T: Send + Sync + 'static,
-{
-    base: Arc<dyn TreeViewTemplate<T>>,
-    modifiers: Vec<TreeViewTemplateModifier>,
-}
-
-impl<T> ModifiedTreeViewTemplate<T>
-where
-    T: Send + Sync + 'static,
-{
-    fn new(base: Arc<dyn TreeViewTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TreeViewTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TreeViewRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -141,10 +120,10 @@ where
     T: Send + Sync + 'static,
     F: Fn(Stateful<Div>, &TreeViewRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTreeViewTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl<T> TreeViewTemplate<T> for ModifiedTreeViewTemplate<T>
+impl<T> TreeViewTemplate<T> for ModifiedTemplate<dyn TreeViewTemplate<T>>
 where
     T: Send + Sync + 'static,
 {
@@ -156,7 +135,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, body, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 
     fn render_node(

@@ -21,15 +21,6 @@ pub enum PopoverPlacement {
     AboveStart,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum PopoverDismissPolicy {
-    #[default]
-    CloseOnClickAway,
-    CloseOnFocusLoss,
-    CloseOnClickAwayOrFocusLoss,
-    KeepOpen,
-}
-
 pub struct PopoverRenderModel<'a, D> {
     pub id: &'a SharedString,
     pub data: &'a D,
@@ -45,7 +36,7 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) trigger: PopoverTrigger<D>,
     pub(super) content: PopoverContent<D>,
     pub(super) placement: PopoverPlacement,
-    pub(super) dismiss_policy: PopoverDismissPolicy,
+    pub(super) dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(super) explicit_offset_y: bool,
     pub(super) explicit_window_margin: bool,
     pub(super) offset_y: Pixels,
@@ -53,9 +44,9 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) initial_content_size: Option<gpui::Size<Pixels>>,
     pub(super) focus_on_open: bool,
     pub(super) motion_enabled: bool,
-    pub(super) trigger_on_pointer_down: bool,
+    pub(super) open_on: crate::infra::trigger::TriggerOpenOn,
     pub(super) measure_trigger: bool,
-    pub(super) panel_look: super::panel::PopoverPanelLook,
+    pub(super) panel_style: crate::style::StyleBinding,
 }
 
 impl<D: Default + 'static> PopoverButtonBuilder<D> {
@@ -95,7 +86,7 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             trigger: Arc::new(|_, _| div().into_any_element()),
             content: Arc::new(|_, _, _| div().into_any_element()),
             placement: PopoverPlacement::default(),
-            dismiss_policy: PopoverDismissPolicy::default(),
+            dismiss: crate::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
             explicit_offset_y: false,
             explicit_window_margin: false,
             offset_y: px(geometry.button_offset_y),
@@ -103,9 +94,9 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             initial_content_size: None,
             focus_on_open: true,
             motion_enabled: true,
-            trigger_on_pointer_down: true,
+            open_on: crate::infra::trigger::TriggerOpenOn::Press,
             measure_trigger: true,
-            panel_look: super::panel::PopoverPanelLook::sdk(),
+            panel_style: crate::style::StyleBinding::sdk("popover"),
         }
     }
 
@@ -131,8 +122,9 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         self.placement = value;
         self
     }
-    pub fn dismiss_policy(mut self, value: PopoverDismissPolicy) -> Self {
-        self.dismiss_policy = value;
+    /// What closes the popover; an outside click or Escape by default.
+    pub fn dismiss(mut self, value: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.dismiss = value;
         self
     }
     pub fn offset_y(mut self, value: impl Into<Pixels>) -> Self {
@@ -156,9 +148,10 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         }
         self
     }
-    /// The panel drawn around the content (a look's `popover.lss` `panel` part); off in the SDK.
-    pub fn panel_look(mut self, look: super::panel::PopoverPanelLook) -> Self {
-        self.panel_look = look;
+    /// The panel drawn around the content: a `popover` style (a look's `popover.lss` `panel` part, #433); off in
+    /// the SDK.
+    pub fn panel_style(mut self, style: crate::style::StyleBinding) -> Self {
+        self.panel_style = style;
         self
     }
     pub fn initial_content_size(mut self, value: gpui::Size<Pixels>) -> Self {
@@ -173,8 +166,10 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         self.motion_enabled = value;
         self
     }
-    pub fn trigger_on_pointer_down(mut self, value: bool) -> Self {
-        self.trigger_on_pointer_down = value;
+    /// What on the trigger opens the popover: a press by default. `Never`
+    /// leaves opening to the app (for hover cards and custom triggers).
+    pub fn open_on(mut self, value: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.open_on = value;
         self
     }
     /// Uses bounds supplied by the host instead of measuring the trigger child.

@@ -5,9 +5,13 @@ mod look;
 mod model;
 
 pub(super) use control::{PopoverPanel, PopoverPanelEvent};
-pub(super) use model::{PopoverPanelDismissPolicy, PopoverPanelPlacement};
+pub(super) use model::PopoverPanelPlacement;
 
+#[allow(deprecated)]
 pub use look::PopoverPanelLook;
+pub use look::{
+    popover_panel_chrome_height, popover_panel_shown, resolve_popover_panel, show_popover_panel, wrap_popover_panel,
+};
 pub use model::PopoverMotion;
 
 crate::theme::stylesheet::geometry::lss_geometry!(

@@ -1,27 +1,10 @@
 //! Autocomplete / combobox chrome — textfield + floating menu tokens.
 
-use xgpui_luma::controls::autocomplete::AutocompleteLook;
-use xgpui_luma::theme::ThemeMode;
-
 use crate::mode::ShadcnModeTokens;
 
-/// The Shadcn autocomplete at `size`, drawn from `.lss` (`style/autocomplete.lss`) for `mode`'s catalog.
-pub fn autocomplete_textbox_look(
-    mode: &ShadcnModeTokens,
-    _theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-) -> AutocompleteLook {
-    let binding =
-        xgpui_luma::style::StyleBinding::new("autocomplete", xgpui_luma::style::ThemeSource::Fixed(mode.style_theme()));
-    let binding = if size != crate::ShadcnSize::Md {
-        binding.attr("size", size.key())
-    } else {
-        binding
-    };
-    let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
-        &super::selector_items_panel::mode_binding(mode, "floating_menu", size),
-    );
-    xgpui_luma::controls::autocomplete::styled_autocomplete_look(&binding, menu)
+/// The Shadcn autocomplete's style at `size` (#433): `style/autocomplete.lss` for `mode`'s catalog.
+pub fn autocomplete_style(mode: &ShadcnModeTokens, size: crate::ShadcnSize) -> xgpui_luma::style::StyleBinding {
+    super::selector_items_panel::mode_binding(mode, "autocomplete", size)
 }
 
 #[cfg(test)]
@@ -35,7 +18,8 @@ mod tests {
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use super::autocomplete_textbox_look;
+    use super::autocomplete_style;
+    use xgpui_luma::style::PartRead;
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -62,8 +46,9 @@ mod tests {
     fn autocomplete_chrome_uses_primary_and_muted_tokens() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = autocomplete_textbox_look(&mode, ThemeMode::Light, ShadcnSize::Md);
-        crate::assert_close(look.status_color, catalog.color("primary").expect("primary"));
-        crate::assert_close(look.muted_text_color, catalog.color("muted-foreground").expect("muted-foreground"));
+        let style = autocomplete_style(&mode, ShadcnSize::Md).resolve(&[], 1.0);
+        let root = style.root();
+        crate::assert_close(root.color("status"), catalog.color("primary").expect("primary"));
+        crate::assert_close(root.color("muted_text"), catalog.color("muted-foreground").expect("muted-foreground"));
     }
 }

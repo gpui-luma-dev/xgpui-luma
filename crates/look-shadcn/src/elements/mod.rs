@@ -1,3 +1,5 @@
 pub(crate) mod badge;
 
-pub use badge::{Badge, BadgeLook, BadgeIconPlacement, BadgeVariant, badge_look};
+#[allow(deprecated)]
+pub use badge::{BadgeLook, badge_look};
+pub use badge::{Badge, BadgeIconPlacement, BadgeVariant, badge_style};

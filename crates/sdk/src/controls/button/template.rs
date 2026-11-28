@@ -1,3 +1,5 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
 use gpui::{App, Div, Stateful, Window};
@@ -26,34 +28,8 @@ pub trait ButtonTemplate<D = ()>: Send + Sync {
     }
 }
 
-struct ModifiedButtonTemplate<D = ()> {
-    base: Arc<dyn ButtonTemplate<D>>,
-    modifiers: Vec<ButtonTemplateModifier<D>>,
-}
-
-impl<D> ModifiedButtonTemplate<D> {
-    fn new(base: Arc<dyn ButtonTemplate<D>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ButtonTemplateModifier<D>) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ButtonRenderModel<D>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-
-    fn into_arc(self) -> Arc<dyn ButtonTemplate<D>>
-    where
-        D: 'static,
-    {
-        Arc::new(self)
-    }
+impl<D> RenderModel for dyn ButtonTemplate<D> {
+    type Model<'a> = ButtonRenderModel<D>;
 }
 
 /// The SDK button drawn from the SDK's `.lss` files.
@@ -69,13 +45,13 @@ where
     D: 'static,
     F: Fn(Stateful<Div>, &ButtonRenderModel<D>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedButtonTemplate::new(template).with_modifier(Box::new(modifier)).into_arc()
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
+impl<D: 'static> ButtonTemplate<D> for ModifiedTemplate<dyn ButtonTemplate<D>> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let root = self.base.render(model, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 
     fn transition(&self, data: &D) -> Option<crate::motion::Transition> {

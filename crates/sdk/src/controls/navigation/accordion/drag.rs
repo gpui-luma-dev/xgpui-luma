@@ -102,8 +102,8 @@ impl AccordionControl {
             self.transitions = order.iter().map(|i| self.transitions[*i].clone()).collect();
             self.content_heights_px = order.iter().map(|i| self.content_heights_px[*i]).collect();
             self.focused_item_index = focused.and_then(|id| self.model.items.iter().position(|i| i.id == id));
-            self.hovered_item_index = None;
-            self.pressed_item_index = None;
+            let changes = self.items_pointer.clear();
+            self.emit_item_changes(changes, cx);
             self.item_bounds.borrow_mut().clear();
         }
         for event in proposal.committed(changed, proposal.keys().to_vec()) {
@@ -152,7 +152,8 @@ impl AccordionControl {
     fn drag_event(&mut self, event: AccordionDragEvent, cx: &mut Context<Self>) {
         if matches!(event, DragDropEvent::DragStarted { .. }) {
             self.drop_layout.cancel();
-            self.pressed_item_index = None;
+            let changes = self.items_pointer.release();
+            self.emit_item_changes(changes, cx);
         }
         if matches!(event, DragDropEvent::DragEnded { .. }) {
             self.active_drag = None;
@@ -175,7 +176,7 @@ impl AccordionControl {
             return None;
         }
         let scope = cx.entity_id();
-        let look = self.model.template.resolve_drag();
+        let style = self.model.template.drag_style();
         self.drop_layout.configure_transition(&self.model.motion.profile().drop_layout);
         self.drop_layout.set_motion_enabled(self.model.motion_enabled);
         let mut root = div().id(self.model.id.clone()).cancel_drag_on_escape();
@@ -200,7 +201,7 @@ impl AccordionControl {
                 let drag = AccordionDrag::new(scope, scope, vec![item.id.clone()])?;
                 let owner = cx.weak_entity();
                 let label = item.trigger.label.clone().unwrap_or_else(|| item.id.clone());
-                let preview_look = look.clone();
+                let preview_style = style.clone();
                 let focus_id = item.id.clone();
                 let id = item.id.clone();
                 let hover_id = id.clone();
@@ -252,7 +253,7 @@ impl AccordionControl {
                             cx.new(|_| crate::infra::drag_drop::DragPreview {
                                 label: label.clone(),
                                 offset,
-                                look: preview_look.clone(),
+                                style: preview_style.clone(),
                                 selector: "accordion-drag-preview",
                             })
                         },
@@ -293,15 +294,17 @@ impl AccordionControl {
                     let valid = drag.propose(scope, scope, before.clone()).is_some_and(|p| {
                         self.drop_order(&p, scope).is_ok_and(|order| order.iter().enumerate().any(|(i, j)| i != *j))
                     });
-                    let color = if valid { look.valid_marker } else { look.invalid_marker };
+                    let color = crate::infra::drag_drop::drag_marker_color(&style, valid);
                     let marker_name = name.clone();
                     let marker = div()
                         .id("marker")
                         .absolute()
                         .left_0()
                         .right_0()
-                        .top(px(marker - start - look.geometry.drag_marker_width / 2.0))
-                        .h(px(look.geometry.drag_marker_width))
+                        .top(px(marker
+                            - start
+                            - crate::theme::stylesheet::SharedGeometry::sdk().drag_marker_width / 2.0))
+                        .h(px(crate::theme::stylesheet::SharedGeometry::sdk().drag_marker_width))
                         .bg(color)
                         .opacity(0.)
                         .debug_selector(move || format!("{marker_name}-marker"))
@@ -322,7 +325,7 @@ impl AccordionControl {
                     let anchor = before.clone();
                     let target = crate::infra::drag_drop::bind_feedback(
                         target,
-                        look.clone(),
+                        style.clone(),
                         scope,
                         move |drag: &AccordionDrag, app| {
                             owner.upgrade().is_some_and(|owner| {

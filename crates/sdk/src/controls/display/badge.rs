@@ -1,12 +1,13 @@
 //! The badge read from `.lss` (issue #285): `badge.lss`. Looks render the element from [`BadgeLook`].
 
+use crate::style::PartRead;
 use gpui::{Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use xgpui_luma_style::{PartView, Value};
 
 use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
 
 /// A badge's colors, frame and text.
+#[deprecated(note = "the badge draws from `StyledBadge::resolve` (#433)")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct BadgeLook {
     pub background: Hsla,
@@ -22,14 +23,6 @@ pub struct BadgeLook {
     pub icon_size: f32,
     pub typography: LumaTextStyle,
     pub font_family: SharedString,
-}
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
 }
 
 /// The badge's `.lss` values for one binding (the `badge` control, with the look's variant and size).
@@ -48,28 +41,31 @@ impl StyledBadge {
         Self::new(StyleBinding::sdk("badge"))
     }
 
+    /// The badge's style for the binding's attributes and states (#433): the badge draws from its root.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
     /// The badge for the binding's attributes and states.
+    #[deprecated(note = "the badge draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> BadgeLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
-        let border = color(root, "border");
+        let border = root.color("border");
         BadgeLook {
-            background: color(root, "background"),
-            foreground: color(root, "foreground"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
             border: (border.a > 0.0).then_some(border),
-            border_width: number(root, "border_width"),
-            radius: number(root, "radius"),
-            min_height: number(root, "min_height"),
-            padding_x: number(root, "padding_x"),
-            padding_y: number(root, "padding_y"),
-            gap: number(root, "gap"),
-            icon_size: number(root, "icon_size"),
-            typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(12.0),
-                line_height: root.line_height().unwrap_or(16.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            font_family: root.font_family().unwrap_or("").to_string().into(),
+            border_width: root.number("border_width"),
+            radius: root.number("radius"),
+            min_height: root.number("min_height"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.number("gap"),
+            icon_size: root.number("icon_size"),
+            typography: root.typography(12.0, 16.0),
+            font_family: root.font_family_name(),
         }
     }
 }
@@ -98,29 +94,33 @@ impl IntoElement for Badge {
     type Element = Div;
 
     fn into_element(self) -> Div {
-        let look = self.styled.look();
+        let resolved = self.styled.resolve();
+        let root = resolved.root();
+        let (typography, font_family, border) =
+            (root.typography(12.0, 16.0), root.font_family_name(), root.painted("border"));
         div()
             .flex()
             .flex_none()
             .items_center()
             .justify_center()
-            .gap(px(look.gap))
-            .min_h(px(look.min_height))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .when(!look.font_family.is_empty(), |badge| badge.font_family(look.font_family.clone()))
-            .font_weight(look.typography.weight)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
-            .when_some(look.border, |badge, border| badge.border(px(look.border_width)).border_color(border))
+            .gap(px(root.number("gap")))
+            .min_h(px(root.number("min_height")))
+            .px(px(root.number("padding_x")))
+            .py(px(root.number("padding_y")))
+            .rounded(px(root.number("radius")))
+            .bg(root.color("background"))
+            .text_color(root.color("foreground"))
+            .when(!font_family.is_empty(), |badge| badge.font_family(font_family))
+            .font_weight(typography.weight)
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .when_some(border, |badge, border| badge.border(px(root.number("border_width"))).border_color(border))
             .child(self.label)
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use gpui::{App, AnyElement, SharedString, Stateful, Div, Window, Styled};
 use xgpui_luma::controls::table::*;
-use xgpui_luma::theme::{InteractionState, ListRowScale, MetricTokens};
+use xgpui_luma::theme::MetricTokens;
 use crate::Look;
 
 /// The Radix table: frame, header and rows from `.lss` (`style/table.lss`); the drag preview is the look's
@@ -12,20 +12,17 @@ struct TableThemeAdapter {
     styled: StyledTable,
 }
 impl TableTheme for TableThemeAdapter {
-    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook {
-        self.styled.look(enabled, focused)
-    }
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
-        self.styled.row(selected, state)
-    }
-    fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        self.styled.row_look(selected, state, scale)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.styled.binding()
     }
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
     }
-    fn resolve_drag(&self) -> TableDragLook {
-        table_drag_look(crate::navigation::drag_look(&self.look, self.look.size()), self.styled.drag_geometry())
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        crate::navigation::drag_style(&self.look, self.look.size())
+    }
+    fn drag_geometry(&self) -> xgpui_luma::controls::table::TableGeometry {
+        self.styled.drag_geometry()
     }
 }
 struct TableTemplateAdapter {
@@ -96,7 +93,15 @@ mod tests {
     use crate::control_group::assert_close;
     use super::*;
     use crate::{Accent, Gray};
-    use xgpui_luma::theme::ThemeMode;
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::PartId;
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
+
+    /// The frame's resolved background in `theme`, enabled and unfocused.
+    fn frame_background(theme: &Arc<dyn TableTheme>) -> gpui::Hsla {
+        StyledTable::new(theme.style()).resolve(true, false).root().color("background")
+    }
+
     #[test]
     fn table_states_follow_live_look_and_disabled_precedence() {
         let look = Look::built_in();
@@ -105,7 +110,7 @@ mod tests {
             for accent in [Accent::Blue, Accent::Lime] {
                 look.set_palettes(accent, Gray::Auto);
                 for size in [crate::RadixSize::One, crate::RadixSize::Two, crate::RadixSize::Three] {
-                    let theme = table_theme(&look.with_size(size));
+                    let theme = StyledTable::new(table_theme(&look.with_size(size)).style());
                     for selected in [false, true] {
                         for bits in 0..16 {
                             let state = InteractionState {
@@ -116,9 +121,13 @@ mod tests {
                                 ..Default::default()
                             };
                             let row = theme.resolve_row(selected, state);
+                            let row = row.part(PartId::new("row"));
                             if state.disabled {
-                                assert_eq!(row.background.a, 0.0);
-                                assert_close(row.label_color, look.resolve_role(SemanticRole::MutedForeground).hsla());
+                                assert_eq!(row.color("background").a, 0.0);
+                                assert_close(
+                                    row.color("foreground"),
+                                    look.resolve_role(SemanticRole::MutedForeground).hsla(),
+                                );
                             } else if selected {
                                 let step = if state.pressed {
                                     5
@@ -127,12 +136,12 @@ mod tests {
                                 } else {
                                     3
                                 };
-                                assert_close(row.background, Tone::Accent.step(&look, step));
-                                assert_close(row.label_color, Tone::Accent.step(&look, 11));
+                                assert_close(row.color("background"), Tone::Accent.step(&look, step));
+                                assert_close(row.color("foreground"), Tone::Accent.step(&look, 11));
                             }
-                            let shell = theme.resolve_look(!state.disabled, state.focused);
+                            let shell = theme.resolve(!state.disabled, state.focused);
                             assert_close(
-                                shell.border,
+                                shell.root().color("border"),
                                 look.resolve_role(if !state.disabled && state.focused {
                                     SemanticRole::Focus
                                 } else {
@@ -151,13 +160,12 @@ mod tests {
         let base = Look::built_in();
         let fork = base.fork();
         let theme = table_theme(&fork);
-        let original = table_theme(&base).resolve_look(true, false);
+        let original = frame_background(&table_theme(&base));
         fork.set_mode(ThemeMode::Dark);
-        let changed = theme.resolve_look(true, false);
-        assert_ne!(changed.background, original.background);
-        assert_eq!(table_theme(&base).resolve_look(true, false).background, original.background);
-        let drag = theme.resolve_drag();
-        assert_close(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
-        assert_close(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
+        assert_ne!(frame_background(&theme), original);
+        assert_eq!(frame_background(&table_theme(&base)), original);
+        let drag = theme.drag_style();
+        assert_close(drag.root().color("valid_marker"), fork.resolve_role(SemanticRole::Focus).hsla());
+        assert_close(drag.root().color("invalid_marker"), fork.resolve_role(SemanticRole::Destructive).hsla());
     }
 }

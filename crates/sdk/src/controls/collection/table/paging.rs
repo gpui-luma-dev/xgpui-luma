@@ -10,6 +10,7 @@ use crate::controls::pager::{
 
 use super::control::{TableControl, TableEvent};
 use super::model::TableBuilder;
+use crate::style::PartRead;
 
 pub type PagingTable<T> = Entity<PagingTableControl<T>>;
 
@@ -124,7 +125,9 @@ impl PagerTemplate for TablePagerTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> gpui::AnyElement {
-        let look = self.theme.resolve(model.enabled, PagerStyle::MinimalEdge);
+        let resolved =
+            crate::controls::pager::resolve_pager(&self.theme.style(), model.enabled, PagerStyle::MinimalEdge);
+        let look = resolved.root();
 
         div()
             .w_full()
@@ -132,11 +135,11 @@ impl PagerTemplate for TablePagerTemplate {
             .flex()
             .items_center()
             .justify_between()
-            .gap(px(look.group_gap))
-            .py(px(look.padding_y))
-            .text_color(look.muted_text)
-            .text_size(px(look.typography.size))
-            .line_height(px(look.typography.line_height))
+            .gap(px(look.number("group_gap")))
+            .py(px(look.number("padding_y")))
+            .text_color(look.color("muted_text"))
+            .text_size(px(look.typography(11.0, 16.0).size))
+            .line_height(px(look.typography(11.0, 16.0).line_height))
             .child(
                 render_info_slot(model, window, cx).unwrap_or_else(|| div().flex_1().min_w(px(0.0)).into_any_element()),
             )
@@ -145,25 +148,25 @@ impl PagerTemplate for TablePagerTemplate {
                     .flex_none()
                     .flex()
                     .items_center()
-                    .gap(px(look.group_gap))
-                    .child(div().flex_none().flex().items_center().gap(px(look.page_size_label_gap)).when(
+                    .gap(px(look.number("group_gap")))
+                    .child(div().flex_none().flex().items_center().gap(px(look.number("page_size_label_gap"))).when(
                         !model.page_size_options.is_empty(),
                         |slot| {
                             slot.when_some(model.page_size_label(), |slot, label| {
                                 slot.child(
                                     div()
                                         .flex_none()
-                                        .text_color(look.muted_text)
-                                        .text_size(px(look.typography.size))
-                                        .line_height(px(look.typography.line_height))
+                                        .text_color(look.color("muted_text"))
+                                        .text_size(px(look.typography(11.0, 16.0).size))
+                                        .line_height(px(look.typography(11.0, 16.0).line_height))
                                         .child(label.clone()),
                                 )
                             })
-                            .child(render_page_size_select(model, &look, &handlers))
+                            .child(render_page_size_select(model, look, &handlers))
                         },
                     ))
-                    .child(render_page_indicator(model, &look))
-                    .child(render_nav_group(model, &look, &self.theme, &handlers, true, window, cx)),
+                    .child(render_page_indicator(model, look))
+                    .child(render_nav_group(model, look, &self.theme, &handlers, true, window, cx)),
             )
             .into_any_element()
     }

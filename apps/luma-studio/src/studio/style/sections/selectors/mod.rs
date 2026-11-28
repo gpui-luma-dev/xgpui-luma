@@ -1,3 +1,4 @@
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{
@@ -24,12 +25,12 @@ use xgpui_luma::controls::selector::{
 };
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
 use xgpui_luma::controls::selector_list::{
-    SelectorItem as SelectorPanelItem, SelectorItemsPanelLook, SelectorItemsRenderModel, SelectorItemsTemplateHandlers,
+    SelectorItem as SelectorPanelItem, SelectorItemsRenderModel, SelectorItemsTemplateHandlers,
     SelectorPanelClickHandler, SelectorPanelHoverHandler, default_selector_items_template,
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -403,17 +404,23 @@ fn render_selector_autocomplete_trigger(
     let autocomplete_template = default_autocomplete_template();
     let value = SharedString::from(if state.selector_selected { "California" } else { "" });
     let placeholder = SharedString::from(placeholder);
-    let status_theme = look.autocomplete_theme().resolve();
-    let popup_look = look.selector_items_panel_look(size);
+    let status_style = look.autocomplete_theme().style().resolve(&[], 1.0);
+    let status_root = status_style.root();
+    let status_typography = xgpui_luma::controls::autocomplete::status_typography(status_root);
+    let (status_color, muted_text_color) = {
+        use xgpui_luma::style::PartRead;
+        (status_root.color("status"), status_root.color("muted_text"))
+    };
+    let popup_look = look.selector_items_panel_style(size);
 
     let model = AutocompleteRenderModel {
         icons: look.stylesheet().common.icons.clone(),
         geometry: xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: status_theme.status_typography.size,
-            status_line_height: status_theme.status_typography.line_height,
+            status_font_size: status_typography.size,
+            status_line_height: status_typography.line_height,
             ..xgpui_luma::theme::stylesheet::AutocompleteGeometry::sdk()
         },
-        status_typography: status_theme.status_typography,
+        status_typography,
         id: id.clone(),
         textfield: render_selector_preview_textfield(
             SelectorPreviewTextfieldRequest {
@@ -431,10 +438,10 @@ fn render_selector_autocomplete_trigger(
         popup_width: px(SELECTOR_TRIGGER_WIDTH),
         status_label: SharedString::from(""),
         status_detail: SharedString::from(""),
-        status_color: status_theme.status_color,
-        muted_text_color: status_theme.muted_text_color,
-        popup_bounds: None,
-        popup_look,
+        status_color: status_color,
+        muted_text_color: muted_text_color,
+        popup_placement: None,
+        popup_menu: popup_look,
         popup_content: None,
         presence: OverlayPresence::new(state.selector_open, true),
     };
@@ -471,8 +478,13 @@ fn render_selector_combobox_trigger(
     let combobox_template = default_combobox_template();
     let value = SharedString::from(if state.selector_selected { "California" } else { "" });
     let placeholder = SharedString::from(placeholder);
-    let status_theme = look.autocomplete_theme().resolve();
-    let popup_look = look.selector_items_panel_look(size);
+    let status_style = look.autocomplete_theme().style().resolve(&[], 1.0);
+    let status_root = status_style.root();
+    let (status_color, muted_text_color) = {
+        use xgpui_luma::style::PartRead;
+        (status_root.color("status"), status_root.color("muted_text"))
+    };
+    let popup_look = look.selector_items_panel_style(size);
     let popup_bounds = (state.id == "pressed" || state.selector_open)
         .then(|| gpui::Bounds::new(gpui::point(px(0.0), px(0.0)), gpui::size(px(SELECTOR_TRIGGER_WIDTH), px(32.0))));
     let popup_open = popup_bounds.is_some();
@@ -499,10 +511,10 @@ fn render_selector_combobox_trigger(
         minimum_trigger_width: px(SELECTOR_TRIGGER_WIDTH),
         status_label: SharedString::from(""),
         status_detail: SharedString::from(""),
-        status_color: status_theme.status_color,
-        muted_text_color: status_theme.muted_text_color,
+        status_color: status_color,
+        muted_text_color: muted_text_color,
         popup_bounds,
-        popup_look,
+        popup_menu: popup_look,
         popup_content: None,
         presence: OverlayPresence::new(popup_open, true),
     };
@@ -542,7 +554,8 @@ fn render_selector_search_selector_trigger(
         disabled: !state.textfield_enabled,
         ..InteractionState::default()
     };
-    let trigger_look = selector_theme.resolve_visual_look(
+    let trigger = xgpui_luma::controls::selector::resolve_selector_trigger(
+        &selector_theme.style(),
         Default::default(),
         SelectorVisualState {
             interaction,
@@ -550,8 +563,7 @@ fn render_selector_search_selector_trigger(
             selected: state.selector_selected,
             invalid: state.selector_state.invalid,
         },
-        &StandardBoxScale::compute(&selector_theme.metrics(), window.scale_factor()),
-        false,
+        1.0,
     );
     let model = SearchSelectorRenderModel {
         icons: look.stylesheet().common.icons.clone(),
@@ -564,7 +576,8 @@ fn render_selector_search_selector_trigger(
         },
         trigger_label_is_placeholder: !state.selector_selected,
         trigger_state: state.textfield_state,
-        trigger_look,
+        trigger,
+        without_elevation: false,
         trigger_typography_override: Some(look.mode_tokens().typography.text.body),
         enabled: state.textfield_enabled,
         full_width: true,
@@ -671,7 +684,7 @@ fn render_selector_preview_textfield(
         caret_visible: false,
         horizontal_scroll: 0.0,
         character_offsets,
-        look,
+        style: look,
     };
 
     template.render(&text_model, input_textfield_handlers(), window, cx).into_any_element()
@@ -689,7 +702,7 @@ fn render_selector_popup_preview(
 ) -> AnyElement {
     let sized_look = Arc::new(look.with_size(size));
     let look = &sized_look;
-    let popup_look = look.selector_items_panel_look(size);
+    let popup_look = look.selector_items_panel_style(size);
     let popup_id = SharedString::from(format!("{id}-popup-preview"));
     let items = selector_popup_items_for_control(control);
     let item_hovers = (0..items.len())
@@ -705,7 +718,7 @@ fn render_selector_popup_preview(
                 &AutocompleteItemsRenderModel {
                     id: &popup_id,
                     items: &items,
-                    look: popup_look.clone(),
+                    menu: popup_look.clone(),
                     highlighted_index: Some(0),
                 },
                 AutocompleteItemsTemplateHandlers { item_hovers, item_clicks },
@@ -740,7 +753,7 @@ fn render_selector_popup_preview(
                     enabled: true,
                     focus: ControlFocusState { focused: true, focus_visible: true },
                     item_template: None,
-                    look: popup_look.clone(),
+                    menu: popup_look.clone(),
                     max_height: px(240.0),
                     scrolling: true,
                     selection_icon: &SelectorIcons::default().selected,
@@ -779,7 +792,7 @@ fn render_selector_popup_preview(
                 caret_visible: false,
                 horizontal_scroll: 0.0,
                 character_offsets: search_offsets,
-                look: search_look,
+                style: search_look,
             };
 
             let search_content = look
@@ -809,7 +822,10 @@ fn render_selector_popup_preview(
     };
 
     div()
-        .w(px(popup_look.min_width))
+        .w(px({
+            use xgpui_luma::style::PartRead;
+            popup_look.resolve(&[], 1.0).root().number("min_width")
+        }))
         .on_scroll(move |event, window, cx| scroll_wheel(event, window, cx))
         .child(rows)
         .into_any_element()
@@ -953,21 +969,23 @@ fn selector_textfield_character_offsets(
     enabled: bool,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = selector_preview_textfield_look(&theme, state, enabled, window);
+    let style = selector_preview_textfield_look(&theme, state, enabled, window);
+    let root = style.root();
+    let typography = root.typography(14.0, 20.0);
     let value_shared = SharedString::from(value.to_string());
     let run = TextRun {
         len: value_shared.len(),
         font: {
             let mut font = font(".SystemUIFont");
-            font.weight = look.typography.weight;
+            font.weight = typography.weight;
             font
         },
-        color: look.foreground,
+        color: root.color("foreground"),
         background_color: None,
         underline: None,
         strikethrough: None,
     };
-    let line = window.text_system().shape_line(value_shared, px(look.typography.size), &[run], None);
+    let line = window.text_system().shape_line(value_shared, px(typography.size), &[run], None);
     let chars = value.chars().count();
 
     let mut offsets = Vec::with_capacity(chars + 1);
@@ -992,15 +1010,15 @@ fn selector_preview_textfield_look(
     state: TextFieldState,
     enabled: bool,
     window: &Window,
-) -> xgpui_luma::controls::textfield::TextFieldLook {
-    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, &scale)
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    let _ = window;
+    theme.resolve_style(state, enabled)
 }
 
 fn render_selector_combobox_popup_preview_from_templates(
     popup_id: &SharedString,
     items: &[SelectorPanelItem],
-    look: SelectorItemsPanelLook,
+    look: xgpui_luma::style::StyleBinding,
     templates: ComboBoxPopupTemplates<'_>,
     handlers: SelectorPopupHandlers,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
@@ -1029,7 +1047,7 @@ fn render_selector_combobox_popup_preview_from_templates(
                 open: true,
                 enabled: true,
                 item_template: None,
-                look: look.clone(),
+                menu: look.clone(),
             },
             ComboBoxItemsTemplateHandlers { item_hovers, item_clicks },
             cx,
@@ -1050,7 +1068,8 @@ fn render_selector_combobox_popup_preview_from_templates(
             enabled: true,
             item_template: None,
             popup_bounds: None,
-            popup_look: look,
+            popup_placement: None,
+            popup_menu: look,
             list_content: list.into_any_element(),
         },
         cx,
@@ -1061,7 +1080,7 @@ fn render_selector_combobox_popup_preview_from_templates(
 fn render_selector_search_selector_popup_preview_from_templates(
     popup_id: &SharedString,
     items: &[SelectorPanelItem],
-    look: SelectorItemsPanelLook,
+    look: xgpui_luma::style::StyleBinding,
     templates: SearchSelectorPopupTemplates<'_>,
     search_content: AnyElement,
     handlers: SelectorPopupHandlers,
@@ -1092,7 +1111,7 @@ fn render_selector_search_selector_popup_preview_from_templates(
                 open: true,
                 enabled: true,
                 item_template: None,
-                look: look.clone(),
+                menu: look.clone(),
             },
             SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks },
             cx,
@@ -1115,7 +1134,8 @@ fn render_selector_search_selector_popup_preview_from_templates(
             enabled: true,
             item_template: None,
             popup_bounds: None,
-            popup_look: look,
+            popup_placement: None,
+            popup_menu: look,
             search_content: Some(search_content),
             list_content: rows,
         },

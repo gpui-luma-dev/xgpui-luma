@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::f32::consts::PI;
 use std::sync::{Arc, OnceLock};
 
@@ -36,15 +37,16 @@ pub fn default_circular_progress_template() -> Arc<dyn ProgressTemplate> {
 
 impl ProgressTemplate for CircularProgressTemplate {
     fn render(&self, model: &ProgressRenderModel<'_>, _window: &mut Window, _cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled);
+        let look = super::super::resolve_progress(&self.theme.style(), model.enabled);
+        let geometry = crate::theme::stylesheet::ProgressGeometry::from_resolved(&look);
         let percentage = model.percentage.clamp(0.0, 1.0);
         let indeterminate = model.indeterminate;
         let phase = model.phase.clamp(0.0, 1.0);
-        let size = px(look.size);
-        let stroke_width = px(look.stroke_width);
-        let track_color = look.track_color;
-        let progress_color = look.progress_color;
-        let sweep_fraction = look.geometry.indeterminate_fraction;
+        let size = px(look.root().number("ring_size"));
+        let stroke_width = px(look.root().number("stroke_width"));
+        let track_color = look.part(xgpui_luma_style::PartId::new("track")).color("background");
+        let progress_color = look.part(xgpui_luma_style::PartId::new("fill")).color("background");
+        let sweep_fraction = geometry.indeterminate_fraction;
 
         let progress_canvas = canvas(
             |_, _, _| {},

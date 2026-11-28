@@ -6,6 +6,7 @@ use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
 use xgpui_luma::controls::autocomplete::{AutocompleteTheme, SelectionItem};
+#[allow(deprecated)]
 use xgpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
 use crate::{Look, PopupMenuVariant, TextFieldVariant, Tone};
 
@@ -22,7 +23,7 @@ pub fn autocomplete_theme(look: &Look) -> Arc<dyn AutocompleteTheme> {
     };
     Arc::new(autocomplete::StyledAutocompleteTheme::new(
         binding,
-        Arc::new(move || crate::floating_menu_look_for(&menu_look, PopupMenuVariant::Solid, Tone::Accent, size)),
+        Arc::new(move || crate::floating_menu_binding_for(&menu_look, PopupMenuVariant::Solid, Tone::Accent, size)),
     ))
 }
 
@@ -51,8 +52,8 @@ pub fn autocomplete_builder(
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move || {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
+        .popup_menu(Arc::new(move || {
+            crate::selector_items_panel_style_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
@@ -70,8 +71,8 @@ pub fn combobox_builder(
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move || {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
+        .popup_menu(Arc::new(move || {
+            crate::selector_items_panel_style_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
@@ -90,23 +91,29 @@ pub fn search_selector_builder(
         .selector_theme(crate::selector_theme(look))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move || {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
+        .popup_menu(Arc::new(move || {
+            crate::selector_items_panel_style_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
 /// Inline selection-panel chrome, with selector-list overrides followed by
 /// independent `selection_panel` overrides using Radix size keys `1`–`3`.
-/// Returns a snapshot; resolve again after changing the supplied Look.
-pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPanelLook {
-    // The `selection_panel` control: the solid accent floating menu unless a look restyles it.
+/// The selection panel's style at Radix size `1`–`3` (#433): the `selection_panel` binding (the solid accent
+/// floating menu unless a look restyles it) the SDK's template resolves and draws from. Follows the look's edits.
+pub fn selection_panel_style(look: &Look, size: crate::RadixSize) -> xgpui_luma::style::StyleBinding {
     let binding = xgpui_luma::style::StyleBinding::new("selection_panel", crate::textfield::live_source(look));
-    let binding = if size != crate::RadixSize::Two {
+    if size != crate::RadixSize::Two {
         binding.attr("size", size.key())
     } else {
         binding
-    };
-    xgpui_luma::controls::selection_panel::styled_selection_panel_look(&binding, &look.metrics_for(size))
+    }
+}
+
+/// Inline selection-panel chrome, built from [`selection_panel_style`]. Returns a snapshot.
+#[deprecated(note = "use `selection_panel_style`; the SDK's template draws from the style (#433)")]
+#[allow(deprecated)]
+pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPanelLook {
+    SelectionPanelLook::from_style(&selection_panel_style(look, size))
 }
 
 /// Radix SelectionPanel with SDK typed items and embedded/popup interaction policies.
@@ -121,7 +128,7 @@ pub fn selection_panel_builder<T: SelectionPanelItemLike + 'static>(
         .items(items)
         .stylesheet(&look.stylesheet_snapshot())
         .scrollbar_template(crate::scrollbar_template(look))
-        .look_provider(Arc::new(move || selection_panel_look(&panel_look, panel_look.size())))
+        .menu(Arc::new(move || selection_panel_style(&panel_look, panel_look.size())))
 }
 
 #[cfg(test)]
@@ -136,29 +143,37 @@ mod tests {
         let look = Look::built_in();
         let fork = look.fork();
         let theme = autocomplete_theme(&fork);
-        let initial = theme.resolve();
+        let status = |theme: &std::sync::Arc<dyn AutocompleteTheme>, name: &str| {
+            use xgpui_luma::style::PartRead;
+            theme.style().resolve(&[], 1.0).root().color(name)
+        };
+        let initial = status(&theme, "status");
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             fork.set_mode(mode);
             for accent in [Accent::Red, Accent::Blue] {
                 fork.set_palettes(accent, Gray::Slate);
-                let resolved = theme.resolve();
                 crate::control_group::assert_close(
-                    resolved.status_color,
+                    status(&theme, "status"),
                     fork.resolve_role(SemanticRole::Primary).hsla(),
                 );
                 crate::control_group::assert_close(
-                    resolved.clear_icon_color,
+                    status(&theme, "clear_icon"),
                     fork.resolve_role(SemanticRole::MutedForeground).hsla(),
                 );
                 crate::control_group::assert_close(
-                    resolved.clear_icon_hover_color,
+                    status(&theme, "clear_icon_hover"),
                     fork.resolve_role(SemanticRole::Foreground).hsla(),
                 );
-                crate::control_group::assert_close(resolved.menu.item_hover_background, resolved.status_color);
+                crate::control_group::assert_close(
+                    xgpui_luma::controls::floating_menu::MenuStyle::resolve(&theme.menu())
+                        .row_colors()
+                        .hover_background,
+                    status(&theme, "status"),
+                );
             }
         }
-        assert_eq!(autocomplete_theme(&look).resolve().status_color, initial.status_color);
-        assert_ne!(theme.resolve().status_color, initial.status_color);
+        assert_eq!(status(&autocomplete_theme(&look), "status"), initial);
+        assert_ne!(status(&theme, "status"), initial);
     }
 }
 

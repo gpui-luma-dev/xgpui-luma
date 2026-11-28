@@ -7,7 +7,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window, prelude::*};
 use xgpui_luma::controls::text::StyledTextFieldTheme;
 use xgpui_luma::controls::textfield::{
-    self, TextField, TextFieldEvent, TextFieldLook, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
+    self, TextField, TextFieldEvent, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
     TextFieldTemplateHandlers, ThemedTextFieldTemplate,
 };
 use xgpui_luma::style::lss::Theme;
@@ -70,21 +70,19 @@ pub(super) struct PinnedTextFieldTemplate {
 }
 
 impl TextFieldTemplate for PinnedTextFieldTemplate {
-    fn resolve_look_with_scale(
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.base.style()
+    }
+
+    fn resolve_style(
         &self,
         state: TextFieldState,
         enabled: bool,
-        scale_factor: f32,
-        cx: &mut App,
-    ) -> TextFieldLook {
+        overrides: &xgpui_luma::style::lss::Overrides,
+    ) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
         match &self.pinned {
-            Some(states) => self.base.resolve_look_with_scale(
-                pinned_state(state, states),
-                !states.has("disabled"),
-                scale_factor,
-                cx,
-            ),
-            None => self.base.resolve_look_with_scale(state, enabled, scale_factor, cx),
+            Some(states) => self.base.resolve_style(pinned_state(state, states), !states.has("disabled"), overrides),
+            None => self.base.resolve_style(state, enabled, overrides),
         }
     }
 
@@ -110,7 +108,7 @@ impl TextFieldTemplate for PinnedTextFieldTemplate {
             caret_visible: false,
             horizontal_scroll: model.horizontal_scroll,
             character_offsets: model.character_offsets.clone(),
-            look: model.look.clone(),
+            style: model.style.clone(),
         };
         self.base.render(&pinned, handlers, window, cx)
     }
@@ -183,7 +181,7 @@ impl SurfaceControl for TextFieldSurface {
         let template = template(theme.clone());
         let enabled = !states.has("disabled");
         let state = pinned_state(TextFieldState::default(), states);
-        let look = template.resolve_look_with_scale(state, enabled, 1.0, cx);
+        let style = template.resolve_style(state, enabled, &xgpui_luma::style::lss::Overrides::new());
         // The placeholder sizes the field; the sample text is drawn over it.
         let (placeholder, value) = (SharedString::from(SAMPLE), SharedString::from(SAMPLE));
         let model = TextFieldRenderModel {
@@ -198,7 +196,7 @@ impl SurfaceControl for TextFieldSurface {
             caret_visible: false,
             horizontal_scroll: 0.,
             character_offsets: Vec::new(),
-            look,
+            style,
         };
         template.render(&model, inert_handlers(), window, cx).into_any_element()
     }

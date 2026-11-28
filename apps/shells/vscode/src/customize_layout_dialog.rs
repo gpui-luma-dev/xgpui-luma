@@ -1,3 +1,5 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::overlay_window::OverlayWindowEventExt;
 use std::sync::Arc;
 
@@ -9,8 +11,7 @@ use xgpui_luma::controls::icon_button::IconButton;
 use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::overlay_window::{
-    OverlayWindow, OverlayWindowDismissPolicy, OverlayWindowEvent, OverlayWindowMode, OverlayWindowPosition,
-    OverlayWindowRenderModel,
+    OverlayWindow, OverlayWindowEvent, OverlayWindowMode, OverlayWindowPosition, OverlayWindowRenderModel,
 };
 use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel, ControlGroupItemVisualContext,
@@ -123,7 +124,7 @@ impl CustomizeLayoutDialog {
             .mode(OverlayWindowMode::Modeless)
             .position(OverlayWindowPosition::Center)
             .draggable(true)
-            .dismiss_policy(OverlayWindowDismissPolicy::KeepOpen)
+            .dismiss(PopupDismiss::ESCAPE)
             .width(DIALOG_W)
             .with_template_modifier(move |shell, _| {
                 let dialog_background = overlay_look

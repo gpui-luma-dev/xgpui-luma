@@ -210,7 +210,7 @@ fn noop_mouse_up(_: &MouseUpEvent, _: &mut Window, _: &mut App) {}
 pub fn pane_preview(look: &Look, fg: Hsla) -> AnyElement {
     use xgpui_luma::controls::floating_menu::{FloatingMenuHighlight, render_floating_menu_with_submenu_hovers_and_icons};
     use xgpui_luma::infra::state::MenuPath;
-    use xgpui_luma_look_radix::floating_menu_look;
+    use xgpui_luma_look_radix::{RadixSize, floating_menu_binding_for};
 
     let items = [
         MenuItem::new("copy-url").label("Copy palette URL").icon(LucideIcon::Share2),
@@ -226,7 +226,7 @@ pub fn pane_preview(look: &Look, fg: Hsla) -> AnyElement {
     let mut panels = div().w_full().flex().flex_wrap().gap(px(24.0));
     for def in &RADIX_VARIANTS {
         let id = SharedString::from(format!("guide-popup-pane-{}", def.id));
-        let palette = floating_menu_look(look, def.variant, def.tone);
+        let palette = floating_menu_binding_for(look, def.variant, def.tone, RadixSize::Two);
         let selected = MenuPath::Root(2);
         let panel = render_floating_menu_with_submenu_hovers_and_icons(
             &id,

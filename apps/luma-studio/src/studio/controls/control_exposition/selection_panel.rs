@@ -72,9 +72,12 @@ impl SelectionPanelControlExposition {
         let wide_panel_look = Arc::new({
             let active_look = look.clone();
             move || {
-                let mut panel_look = active_look.selection_panel_look(active_look.size());
-                panel_look.min_width = 280.0;
-                panel_look
+                use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+                active_look.selection_panel_style(active_look.size()).overrides(Overrides::new().set(
+                    PartId::ROOT,
+                    Prop::<f32>::new("min_width"),
+                    280.0,
+                ))
             }
         });
 
@@ -93,7 +96,7 @@ impl SelectionPanelControlExposition {
             .scrolling(true)
             .scrollbar_visibility(ScrollbarVisibility::AutoHide)
             .scrollbar_auto_hide_activate(ScrollbarAutoHideActivate::Move)
-            .look_provider(wide_panel_look)
+            .menu(wide_panel_look)
             .visible_row_limits(5, 5)
             .selected_source_index(Some(1))
             .active_visible_index(Some(1))

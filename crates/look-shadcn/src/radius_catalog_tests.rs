@@ -1,5 +1,7 @@
 //! The theme's CSS `--radius` must reach every SDK control Shadcn themes, now that
 //! the SDK has no radius vocabulary and its own defaults are fixed pixels.
+// Some radii are read from the compatibility Looks (#433).
+#![allow(deprecated)]
 
 use xgpui_luma::controls::overlay_window::OverlayWindowMode;
 use xgpui_luma::controls::toolbar::ToolbarVariant;
@@ -24,14 +26,30 @@ struct Radii {
 }
 
 fn radii(look: &ShadcnLook) -> Radii {
-    let menu = look.floating_menu_theme().resolve();
+    let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look(&look.floating_menu_theme().style());
     Radii {
         floating_menu: menu.radius,
         floating_menu_item: menu.item_radius,
-        selector_panel: look.selector_items_panel_look(ShadcnSize::Md).radius,
-        tooltip: crate::tooltip::tooltip_theme(look).resolve().radius,
+        selector_panel: {
+            use xgpui_luma::style::PartRead;
+            look.selector_items_panel_style(ShadcnSize::Md).resolve(&[], 1.0).root().number("radius")
+        },
+        tooltip: {
+            use xgpui_luma::style::PartRead;
+            xgpui_luma::controls::tooltip::resolve_tooltip(&crate::tooltip::tooltip_theme(look).style())
+                .root()
+                .number("radius")
+        },
         toolbar: look.toolbar_theme().resolve(true, ToolbarVariant::Outline).radius,
-        overlay_window: look.overlay_window_theme().resolve(OverlayWindowMode::Modal).radius,
+        overlay_window: {
+            use xgpui_luma::style::PartRead;
+            xgpui_luma::controls::overlay_window::resolve_overlay_window(
+                &look.overlay_window_theme().style(),
+                OverlayWindowMode::Modal,
+            )
+            .root()
+            .number("radius")
+        },
     }
 }
 

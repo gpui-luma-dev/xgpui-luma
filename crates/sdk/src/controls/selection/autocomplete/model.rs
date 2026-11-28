@@ -13,12 +13,8 @@ use super::template::{
     AutocompleteItemsTemplate, AutocompleteTemplate, default_autocomplete_items_template,
     default_autocomplete_template, modified_autocomplete_items_template, modified_autocomplete_template,
 };
-use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
 use crate::controls::scrollbar::{ScrollbarTemplate, default_scrollbar_template};
 use crate::controls::textfield::{TextFieldTemplate, default_textfield_template};
-use crate::theme::ThemeTokens;
-
-pub type AutocompletePopupLookProvider = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct AutocompleteModel {
@@ -42,7 +38,7 @@ pub struct AutocompleteModel {
     pub(crate) template: Arc<dyn AutocompleteTemplate>,
     pub(crate) items_template: Arc<dyn AutocompleteItemsTemplate>,
     pub(crate) autocomplete_theme: Arc<dyn AutocompleteTheme>,
-    pub(crate) popup_look_provider: AutocompletePopupLookProvider,
+    pub(crate) popup_menu: crate::controls::popup_menu::MenuSource,
 }
 
 pub struct AutocompleteBuilder {
@@ -183,7 +179,7 @@ impl AutocompleteBuilder {
                 template: default_autocomplete_template(),
                 items_template: default_autocomplete_items_template(),
                 autocomplete_theme: default_autocomplete_theme(),
-                popup_look_provider: Arc::new(|| default_selector_items_panel_look(&ThemeTokens::default())),
+                popup_menu: Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
             },
         }
     }
@@ -304,8 +300,9 @@ impl AutocompleteBuilder {
         self
     }
 
-    pub fn popup_look_provider(mut self, provider: AutocompletePopupLookProvider) -> Self {
-        self.model.popup_look_provider = provider;
+    /// Where the popup panel's style comes from: a `floating_menu` binding, read each time it is drawn (#433).
+    pub fn popup_menu(mut self, menu: crate::controls::popup_menu::MenuSource) -> Self {
+        self.model.popup_menu = menu;
         self
     }
 

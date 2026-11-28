@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::cell::Cell;
 use std::sync::Arc;
 
@@ -39,9 +40,10 @@ impl RadioGroupGeometry {
             vertical_gap: number("vertical_gap"),
             horizontal_gap: number("horizontal_gap"),
             item_gap: number("item_gap"),
-            content_disabled_opacity: crate::style::part_opacity(
-                binding.resolve(&[("disabled", true)], 1.0).part(xgpui_luma_style::PartId::new("content")),
-            ),
+            content_disabled_opacity: binding
+                .resolve(&[("disabled", true)], 1.0)
+                .part(xgpui_luma_style::PartId::new("content"))
+                .opacity(),
         }
     }
 

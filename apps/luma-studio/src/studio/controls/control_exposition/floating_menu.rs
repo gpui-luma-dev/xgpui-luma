@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{App, ClickEvent, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::floating_menu::{
-    FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuLook, render_floating_menu,
-};
+use xgpui_luma::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::infra::state::MenuPath;
 use xgpui_luma_look_shadcn::prelude::*;
@@ -35,7 +33,7 @@ impl FloatingMenuExpositionLeftPane {
 impl Render for FloatingMenuExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
         with_look(&self.look, || {
-            let menu_look = self.look.floating_menu_theme().resolve();
+            let menu_look = self.look.floating_menu_theme().style();
             let preview = div()
                 .w_full()
                 .flex()
@@ -103,13 +101,16 @@ impl Render for FloatingMenuControlExposition {
 
 fn render_menu_sample(
     label: &'static str,
-    look: &FloatingMenuLook,
+    style: &xgpui_luma::style::StyleBinding,
     items: &[MenuItem],
     active_path: Option<MenuPath>,
 ) -> gpui::AnyElement {
     let id = SharedString::from(format!("controls-doc-floating-menu-{}", sample_id(label)));
     let root_count = items.len();
-    let chrome = look.background;
+    let chrome = {
+        use xgpui_luma::style::PartRead;
+        xgpui_luma::controls::floating_menu::MenuStyle::resolve(style).panel().color("background")
+    };
 
     div()
         .flex()
@@ -121,7 +122,7 @@ fn render_menu_sample(
             items,
             None,
             active_path,
-            look.clone(),
+            style.clone(),
             noop_hovers(root_count),
             noop_clicks(root_count),
         ))

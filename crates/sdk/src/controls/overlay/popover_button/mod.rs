@@ -6,11 +6,15 @@ pub(crate) mod panel;
 
 pub use control::PopoverButton;
 pub use model::{
-    PopoverButtonBuilder, PopoverButtonEvent, PopoverContent, PopoverDismissPolicy, PopoverPlacement,
-    PopoverRenderModel, PopoverTrigger,
+    PopoverButtonBuilder, PopoverButtonEvent, PopoverContent, PopoverPlacement, PopoverRenderModel, PopoverTrigger,
 };
 
 mod callback;
 pub use callback::PopoverButtonEventExt;
 
-pub use panel::{PopoverMotion, PopoverPanelLook};
+#[allow(deprecated)]
+pub use panel::PopoverPanelLook;
+pub use panel::{
+    PopoverMotion, popover_panel_chrome_height, popover_panel_shown, resolve_popover_panel, show_popover_panel,
+    wrap_popover_panel,
+};

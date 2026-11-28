@@ -36,13 +36,16 @@ impl CommandEvent {
 /// presentations) can reuse this behavior and provide their own templates.
 pub struct CommandCore {
     interaction: ControlInteraction,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
 }
 
 impl CommandCore {
     /// Create a new command behavior core with explicit tab-stop participation.
     pub fn new_with_tab_stop<T>(enabled: bool, tab_stop: bool, cx: &mut Context<T>) -> Self {
-        Self { interaction: ControlInteraction::new_with_tab_stop(enabled, tab_stop, cx), emitted_focused: false }
+        Self {
+            interaction: ControlInteraction::new_with_tab_stop(enabled, tab_stop, cx),
+            focus_report: Default::default(),
+        }
     }
 
     /// Propagate enabled changes into interaction state.
@@ -64,8 +67,7 @@ impl CommandCore {
             cx.emit(CommandEvent::HoverChanged { hovered: self.interaction.hovered() });
         }
 
-        if !enabled && self.emitted_focused {
-            self.emitted_focused = false;
+        if !enabled && self.focus_report.change(false, false) {
             changed = true;
             cx.emit(CommandEvent::FocusChanged { focused: false });
         }
@@ -76,6 +78,11 @@ impl CommandCore {
     /// Compute render-time interaction state for templates/presenters.
     pub fn render_state(&self, enabled: bool, window: &Window) -> ButtonInteractionState {
         self.interaction.render_state(enabled, window)
+    }
+
+    /// The state attachments such as tooltips read: the real focus, not the focus ring.
+    pub fn attachment_state(&self, enabled: bool, window: &Window) -> ButtonInteractionState {
+        self.interaction.attachment_state(enabled, window)
     }
 
     /// Access the focus handle used by this command behavior core.
@@ -141,11 +148,10 @@ impl CommandCore {
         T: EventEmitter<CommandEvent>,
     {
         let focused = enabled && focused;
-        if self.emitted_focused == focused {
+        if !self.focus_report.change(focused, enabled) {
             return false;
         }
 
-        self.emitted_focused = focused;
         cx.emit(CommandEvent::FocusChanged { focused });
         true
     }

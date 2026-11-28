@@ -1,5 +1,7 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
+use crate::style::PartRead;
 use gpui::{AnyElement, App, Div, Stateful, Window, div, px, prelude::*};
 
 use super::model::TableRenderModel;
@@ -18,14 +20,24 @@ pub trait TableTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TableTemplate {
+    type Model<'a> = TableRenderModel<'a>;
+}
+
 /// Paints list shell from resolved [`TableRenderModel`] only (no theme lookup).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DefaultTableShellTemplate;
 
 impl DefaultTableShellTemplate {
     pub fn paint_shell(model: &TableRenderModel<'_>, header: Option<AnyElement>, body: AnyElement) -> Stateful<Div> {
-        let list = &model.look;
-        let inner_radius = list.inner_radius(list.border_width);
+        let (list, header_part) = (model.style.root(), model.style.part(xgpui_luma_style::PartId::new("header")));
+        // Every layer shares the frame's radius; the shell's clip and border handle the inset.
+        let radius = list.number("radius").max(0.0);
+        let inner_radius = radius;
+        let (border, border_width, background) =
+            (list.color("border"), list.number("border_width"), list.color("background"));
+        let (padding_x, padding_y) = (list.number("padding_x"), list.number("padding_y"));
+        let header_typography = header_part.typography(14.0, 20.0);
         let has_header = header.is_some();
 
         let mut root = div()
@@ -35,13 +47,13 @@ impl DefaultTableShellTemplate {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .rounded(px(list.radius))
-            .border(px(list.border_width))
-            .border_color(list.border)
+            .rounded(px(radius))
+            .border(px(border_width))
+            .border_color(border)
             .bg(if has_header {
-                list.header_background
+                header_part.color("background")
             } else {
-                list.background
+                background
             });
 
         if let Some(height) = model.shell_height {
@@ -56,23 +68,23 @@ impl DefaultTableShellTemplate {
             let header_content = div()
                 .w_full()
                 .flex_none()
-                .px(px(list.padding_x))
-                .pt(px(list.padding_y))
-                .pb(px(list.padding_y * list.header_padding_bottom_scale))
-                .border_b(px(list.header_divider_width))
-                .border_color(list.border)
-                .text_color(list.header_label_color)
-                .text_size(px(list.header_typography.size))
-                .line_height(px(list.header_typography.line_height))
-                .font_weight(list.header_typography.weight)
+                .px(px(padding_x))
+                .pt(px(padding_y))
+                .pb(px(padding_y * list.number("header_padding_bottom_scale")))
+                .border_b(px(list.number("header_divider_width")))
+                .border_color(border)
+                .text_color(header_part.color("foreground"))
+                .text_size(px(header_typography.size))
+                .line_height(px(header_typography.line_height))
+                .font_weight(header_typography.weight)
                 .child(header);
             column = column.child(div().w_full().flex_none().child(header_content));
         }
 
         let mut body_slot = if let Some(body_rows_height) = model.body_rows_height {
-            div().w_full().flex_none().h(px(body_rows_height)).overflow_hidden().bg(list.background)
+            div().w_full().flex_none().h(px(body_rows_height)).overflow_hidden().bg(background)
         } else {
-            div().w_full().flex_1().min_h(px(0.0)).overflow_hidden().bg(list.background)
+            div().w_full().flex_1().min_h(px(0.0)).overflow_hidden().bg(background)
         };
         if has_header {
             body_slot = body_slot.rounded_bl(px(inner_radius)).rounded_br(px(inner_radius));
@@ -103,30 +115,7 @@ impl TableTemplate for DefaultTableShellTemplate {
     }
 }
 
-struct ModifiedTableTemplate {
-    base: Arc<dyn TableTemplate>,
-    modifiers: Vec<TableTemplateModifier>,
-}
-
-impl ModifiedTableTemplate {
-    fn new(base: Arc<dyn TableTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TableTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TableRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-impl TableTemplate for ModifiedTableTemplate {
+impl TableTemplate for ModifiedTemplate<dyn TableTemplate> {
     fn render(
         &self,
         model: &TableRenderModel<'_>,
@@ -136,7 +125,7 @@ impl TableTemplate for ModifiedTableTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, header, body, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -155,11 +144,5 @@ pub(super) fn modified_table_template<F>(template: Arc<dyn TableTemplate>, modif
 where
     F: Fn(Stateful<Div>, &TableRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedTableTemplate::new(template).with_modifier(Box::new(modifier)).into()
-}
-
-impl ModifiedTableTemplate {
-    fn into(self) -> Arc<dyn TableTemplate> {
-        Arc::new(self)
-    }
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }

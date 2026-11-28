@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -7,6 +9,7 @@ use crate::theme::LumaTextStyle;
 
 use super::PagerStyle;
 
+#[deprecated(note = "the pager template draws from `PagerTheme::style()`; resolve it with `resolve_pager` (#433)")]
 #[derive(Clone, Debug)]
 pub struct PagerLook {
     /// Gap-jump glyph size in pixels.
@@ -46,9 +49,20 @@ pub struct PagerLook {
 }
 
 pub trait PagerTheme: Send + Sync {
-    fn resolve(&self, enabled: bool, style: PagerStyle) -> PagerLook;
+    /// The pager's style (#433): the binding the template resolves (see [`resolve_pager`](super::resolve_pager)) and
+    /// draws from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("pager")
+    }
 
-    fn button_template(&self, _pager_look: &PagerLook) -> Arc<dyn ButtonTemplate<()>> {
+    /// The pager's look, built from [`Self::style`] for code that still reads a [`PagerLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_pager` (#433)")]
+    fn resolve(&self, enabled: bool, style: PagerStyle) -> PagerLook {
+        PagerLook::from_resolved(&super::styled::resolve_pager(&self.style(), enabled, style))
+    }
+
+    /// The page buttons' template for a pager whose resolved root is `_pager`.
+    fn button_template(&self, _pager: xgpui_luma_style::PartView<'_>) -> Arc<dyn ButtonTemplate<()>> {
         default_button_template()
     }
 }

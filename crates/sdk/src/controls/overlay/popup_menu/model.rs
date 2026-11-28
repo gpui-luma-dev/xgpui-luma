@@ -85,6 +85,8 @@ pub struct PopupMenuModel {
     pub(crate) invalid: bool,
     pub(crate) tab_stop: bool,
     pub(crate) placement: PopupMenuPlacement,
+    pub(crate) dismiss: crate::infra::popup_dismiss::PopupDismiss,
+    pub(crate) open_on: crate::infra::trigger::TriggerOpenOn,
     pub(crate) trigger_style: PopupMenuTriggerStyle,
     /// Square icon-button chrome (no trailing end icon). Set by the icon face preset.
     pub(crate) icon_only: bool,
@@ -257,6 +259,8 @@ impl PopupMenuBuilder {
                 invalid: false,
                 tab_stop: true,
                 placement: PopupMenuPlacement::Smart,
+                dismiss: crate::infra::popup_dismiss::PopupDismiss::LIGHT,
+                open_on: crate::infra::trigger::TriggerOpenOn::Click,
                 trigger_style: PopupMenuTriggerStyle::default(),
                 icon_only: false,
                 icon: None,
@@ -347,6 +351,18 @@ impl PopupMenuBuilder {
 
     pub fn tab_stop(mut self, tab_stop: bool) -> Self {
         self.model.tab_stop = tab_stop;
+        self
+    }
+
+    /// What closes the popup: an outside click, focus loss or Escape by default.
+    pub fn dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
+        self
+    }
+
+    /// What on the trigger opens the menu: a click by default.
+    pub fn open_on(mut self, open_on: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.model.open_on = open_on;
         self
     }
 

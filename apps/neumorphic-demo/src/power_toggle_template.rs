@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, FontWeight, Stateful, Window, div, hsla, point, prelude::*, px};

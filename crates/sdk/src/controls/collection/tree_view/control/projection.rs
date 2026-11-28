@@ -50,8 +50,7 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
         self.cancel_position();
         let old_visible = self.visible_ids();
         let active_before = self.active_node_id.clone();
-        self.clear_hovered_node_id(cx);
-        self.pressed_node_id = None;
+        self.clear_row_pointer(cx);
         self.projection = super::super::projection::Projection::new(
             &self.model.items,
             self.model.filter.as_ref(),

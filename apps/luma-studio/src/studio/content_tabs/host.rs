@@ -1,10 +1,11 @@
 use gpui::Subscription;
 use xgpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::popover_button::PopoverButtonEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Bounds, Context, Entity, Focusable, Pixels, Render, Window, div, prelude::*, px};
-use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverPlacement};
 use xgpui_luma::controls::tabs::{Tabs, TabsContent, TabsEvent, TabsItem, TabsTemplate, TabsWidthMode};
 use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn as shadcn;
@@ -55,7 +56,7 @@ impl ContentPaneHost {
             .trigger(|_, _| div().w(px(0.0)).h(px(0.0)).into_any_element())
             .content(move |_, _, cx| picker_host.update(cx, |host, cx| host.render_catalog_picker(cx)))
             .placement(PopoverPlacement::BelowCenter)
-            .dismiss_policy(PopoverDismissPolicy::CloseOnClickAwayOrFocusLoss)
+            .dismiss(PopupDismiss::LIGHT)
             .offset_y(px(-36.0))
             .window_margin(px(8.0))
             .measure_trigger(false)
@@ -178,7 +179,9 @@ impl ContentPaneHost {
     }
 
     pub(super) fn render_catalog_picker(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let menu_look = self.board.look.with_size(ShadcnSize::Sm).floating_menu_theme().resolve();
+        let menu_look = xgpui_luma::controls::floating_menu::MenuStyle::resolve(
+            &self.board.look.with_size(ShadcnSize::Sm).floating_menu_theme().style(),
+        );
         let selected_entry_id = self.controls_panel.read(cx).selected_entry_id();
         render_control_catalog_picker(&menu_look, Some(selected_entry_id), true, cx, |host, exposition_id, _, cx| {
             host.controls_panel.update(cx, |panel, cx| panel.select_entry(exposition_id, cx));

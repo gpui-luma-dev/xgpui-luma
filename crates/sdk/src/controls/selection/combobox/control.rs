@@ -1,14 +1,17 @@
+use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
 
+use crate::style::PartRead;
 use gpui::App;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, MouseDownEvent, Pixels, Render,
     ScrollEvent, SharedString, Subscription, TextRun, Window, font, px,
 };
 
-use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::infra::popup_placement::PopupSpace;
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::controls::scrollbar::ScrollbarEvent;
 use crate::controls::textfield::TextFieldState;
 use crate::theme::observe_theme_revision;
@@ -46,6 +49,7 @@ pub struct ComboBoxControl {
     behavior: SelectionBehavior,
     trigger_bounds: Option<Bounds<Pixels>>,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     open_popup_on_next_focus: bool,
@@ -111,6 +115,7 @@ impl ComboBoxControl {
             behavior: SelectionBehavior::new(),
             trigger_bounds: None,
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             committed_selection: None,
             open_popup_on_next_focus: false,
@@ -139,10 +144,9 @@ impl ComboBoxControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 if self.open_popup_on_next_focus {
                     self.open_popup_on_next_focus = false;
@@ -151,12 +155,11 @@ impl ComboBoxControl {
                 cx.notify();
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.open_popup_on_next_focus = false;
                 self.apply_blur_selection_policy(cx);
                 self.behavior.apply(SelectionEvent::Blur, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, true, cx);
                 cx.notify();
             }
@@ -605,24 +608,18 @@ impl ComboBoxControl {
         }
         true
     }
-
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(ComboBoxEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
 }
 
 impl Render for ComboBoxControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let autocomplete_style = self.model.autocomplete_theme.style().resolve(&[], 1.0);
+        let autocomplete = autocomplete_style.root();
+        let (status_color, muted_text_color) = (autocomplete.color("status"), autocomplete.color("muted_text"));
         let geometry = self.model.geometry;
-        let look = (self.model.popup_look_provider)();
+        let menu = (self.model.popup_menu)();
+        let panel = crate::controls::selector_list::PanelGeometry::of(&menu);
         let selected_label = self
             .behavior
             .state
@@ -631,26 +628,33 @@ impl Render for ComboBoxControl {
             .unwrap_or_else(|| "none".to_string());
 
         let minimum_trigger_width = {
-            let textfield_look = self.model.textfield_template.resolve_look(TextFieldState::default(), true);
+            let textfield_style = self.model.textfield_template.resolve_style(
+                TextFieldState::default(),
+                true,
+                &crate::style::lss::Overrides::new(),
+            );
+            let textfield_look = textfield_style.root();
+            let textfield_typography = textfield_look.typography(14.0, 20.0);
             let mut text_font = font(".SystemUIFont");
-            text_font.weight = textfield_look.typography.weight;
+            text_font.weight = textfield_typography.weight;
             let placeholder_run = TextRun {
                 len: self.model.placeholder.len(),
                 font: text_font,
-                color: autocomplete_look.muted_text_color,
+                color: muted_text_color,
                 background_color: None,
                 underline: None,
                 strikethrough: None,
             };
             let placeholder_line = window.text_system().shape_line(
                 self.model.placeholder.clone(),
-                px(textfield_look.typography.size),
+                px(textfield_typography.size),
                 &[placeholder_run],
                 None,
             );
             let placeholder_width = placeholder_line.width().as_f32();
 
-            let textfield_side_padding = (textfield_look.padding_x * 2.0) + textfield_look.border_width;
+            let textfield_side_padding =
+                (textfield_look.number("padding_x") * 2.0) + textfield_look.number("border_width");
             let affordance_width =
                 reserved_affordance_width(&geometry, self.model.show_down_arrow, self.model.show_clear_button);
             px(textfield_side_padding + placeholder_width + affordance_width)
@@ -690,13 +694,20 @@ impl Render for ComboBoxControl {
 
         let popup_content = if self.model.enabled && self.presence.should_paint() && !visible_indices.is_empty() {
             let menu_id = SharedString::from("combobox-menu");
-            let row_height = px(look.item_height);
-            let content_top_padding = px(look.padding);
+            let row_height = px(panel.item_height);
+            let content_top_padding = px(panel.padding);
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
-            let visible_rows = item_count.clamp(min_visible_rows, max_visible_rows) as f32;
-            let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
+            let wanted_rows = item_count.clamp(min_visible_rows, max_visible_rows);
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(trigger, trigger.size.width, &panel, px(0.0), wanted_rows, PopupSpace::of(window, cx))
+            });
+            // Rows beyond the space on the opening side scroll.
+            let max_visible_rows = fit.map_or(max_visible_rows, |fit| max_visible_rows.min(fit.max_rows));
+            let popup_placement = fit.map(|fit| fit.placement);
+            let visible_rows = wanted_rows.min(max_visible_rows) as f32;
+            let viewport_height = px((panel.padding * 2.0) + (panel.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > max_visible_rows;
 
             self.popup_surface.set_scrolling_enabled(allow_scrolling);
@@ -714,7 +725,7 @@ impl Render for ComboBoxControl {
                     open: self.presence.should_paint(),
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
-                    look: look.clone(),
+                    menu: menu.clone(),
                 },
                 ComboBoxItemsTemplateHandlers { item_hovers, item_clicks },
                 cx,
@@ -731,7 +742,8 @@ impl Render for ComboBoxControl {
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
-                    popup_look: look.clone(),
+                    popup_placement,
+                    popup_menu: menu.clone(),
                     list_content: self.popup_surface.render_with_scroll_wheel(
                         list_content.into_any_element(),
                         cx.listener(Self::handle_popup_scroll_wheel),
@@ -757,9 +769,14 @@ impl Render for ComboBoxControl {
 
         // Disabled, the arrow and clear button take the field's disabled icon color, and don't brighten on hover.
         let (status_color, muted_text_color) = if self.model.enabled {
-            (autocomplete_look.status_color, autocomplete_look.muted_text_color)
+            (status_color, muted_text_color)
         } else {
-            let icon = self.model.textfield_template.resolve_look(TextFieldState::default(), false).icon;
+            let icon = self
+                .model
+                .textfield_template
+                .resolve_style(TextFieldState::default(), false, &crate::style::lss::Overrides::new())
+                .root()
+                .color("icon");
             (icon, icon)
         };
         let render_model = ComboBoxRenderModel {
@@ -776,7 +793,7 @@ impl Render for ComboBoxControl {
             status_color,
             muted_text_color,
             popup_bounds: self.trigger_bounds,
-            popup_look: look,
+            popup_menu: menu,
             popup_content,
             presence: self.presence.clone(),
         };
@@ -897,5 +914,21 @@ mod geometry_tests {
             ..baseline
         };
         assert_eq!(reserved_affordance_width(&zero, true, true), 0.0);
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for ComboBoxControl {
+    type FocusEvent = ComboBoxEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> ComboBoxEvent {
+        ComboBoxEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

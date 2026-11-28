@@ -15,8 +15,6 @@ use crate::controls::scrollbar::{ScrollbarTemplate, default_scrollbar_template};
 use crate::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarVisibility};
 
 use super::template::{SelectionPanelTemplate, default_selection_panel_template};
-use super::theme::{SelectionPanelLook, default_selection_panel_look};
-use crate::theme::ThemeTokens;
 
 pub trait SelectionPanelItemLike {
     fn id(&self) -> &SharedString;
@@ -111,8 +109,6 @@ impl SelectionPanelPath {
     }
 }
 
-pub type SelectionPanelLookProvider = Arc<dyn Fn() -> SelectionPanelLook + Send + Sync + 'static>;
-
 /// Role selects the default hover behavior, not wheel eligibility or focus ownership.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum SelectionPanelRole {
@@ -156,7 +152,7 @@ where
     pub(crate) item_template: Option<SelectionPanelItemTemplate<T>>,
     pub(crate) template: Arc<dyn SelectionPanelTemplate<T>>,
     pub(crate) scrollbar_template: Arc<dyn ScrollbarTemplate>,
-    pub(crate) look_provider: SelectionPanelLookProvider,
+    pub(crate) menu: crate::controls::popup_menu::MenuSource,
 }
 
 pub struct SelectionPanelBuilder<T = SelectionPanelItem>
@@ -458,8 +454,9 @@ where
         self
     }
 
-    pub fn look_provider(mut self, provider: SelectionPanelLookProvider) -> Self {
-        self.model.look_provider = provider;
+    /// Where the panel's style comes from: a `selection_panel` binding, read each time it is drawn (#433).
+    pub fn menu(mut self, menu: crate::controls::popup_menu::MenuSource) -> Self {
+        self.model.menu = menu;
         self
     }
 
@@ -512,7 +509,7 @@ where
         item_template: None,
         template: default_selection_panel_template(),
         scrollbar_template: default_scrollbar_template(),
-        look_provider: Arc::new(|| default_selection_panel_look(&ThemeTokens::default())),
+        menu: Arc::new(|| crate::style::StyleBinding::sdk("selection_panel")),
     }
 }
 

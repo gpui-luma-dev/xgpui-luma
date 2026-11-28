@@ -17,8 +17,8 @@
 //! - Resizing: [`dock_splitter_builder`], [`split_view_builder`].
 //! - Panels: [`resizable_panels_builder`], [`slide_panel_state`], [`render_slide_panel_overlay`], [`render_slide_panel_inset`].
 //! - Split actions: [`split_button_builder`], [`split_button_template`], [`split_button_theme`].
-//! - Shared chrome: [`floating_menu_look`], [`selector_items_panel_look`], [`scrollbar_template`].
-//! - Popup content: [`HoverCard`] (interactive hover details), with [`hover_card_look`].
+//! - Shared chrome: [`floating_menu_binding_for`], [`selector_items_panel_style`], [`scrollbar_template`].
+//! - Popup content: [`HoverCard`] (interactive hover details), with [`hover_card_style`].
 //! - Composition: [`segmented_radio_template`] and [`LookControlExt::overlay_window`].
 //!
 //! # Start with a control builder
@@ -157,7 +157,9 @@ mod typography;
 
 // Palette state, scales, and shared styling.
 pub use look::{PageBackground, Look};
-pub use hover_card::{HoverCard, HoverCardBuilder, HoverCardEvent, HoverCardEventExt, hover_card_look};
+#[allow(deprecated)]
+pub use hover_card::hover_card_look;
+pub use hover_card::{HoverCard, HoverCardBuilder, HoverCardEvent, HoverCardEventExt, hover_card_style};
 pub use listbox::{ListBoxBuilder, listbox_row, listbox_template, listbox_surface_template};
 pub use palette::{PaletteSlot, Accent, Gray, ThemePalettes, scale_pair};
 pub use scale::{CUSTOM_PALETTE, ColorScale, ModeScales, SCALE_LEN, ScaleFamily, ScalePair, ScaleStep};
@@ -186,7 +188,9 @@ pub use card::{Card, CardSize, CardStyle, CardVariant};
 pub use checkbox::{CheckboxSize, CheckboxVariant, checkbox_template, checkbox_template_for};
 pub use checkbox_builder::Checkbox;
 pub use checkbox_group::{CheckboxGroup, checkbox_group_template};
-pub use popup_menu::{PopupMenuVariant, floating_menu_look, floating_menu_look_for, popup_menu_template, popup_menu_theme};
+#[allow(deprecated)]
+pub use popup_menu::{floating_menu_look, floating_menu_look_for};
+pub use popup_menu::{PopupMenuVariant, floating_menu_binding_for, popup_menu_template, popup_menu_theme};
 pub use popup_menu_builder::PopupMenu;
 pub use progress::{
     ProgressSize, ProgressVariant, progress_template, progress_theme, progress_theme_with, resolve_progress_radius,
@@ -221,17 +225,22 @@ pub use ext::LookControlExt;
 pub use overlay_window::overlay_window_theme;
 pub use segmented::segmented_radio_template;
 pub use selector::{Selector, selector_template, selector_theme};
-pub use selector_list::{selector_items_panel_look, selector_items_panel_look_for};
+#[allow(deprecated)]
+pub use selector_list::{
+    selector_items_panel_look, selector_items_panel_look_for, selector_items_panel_style,
+    selector_items_panel_style_for,
+};
+#[allow(deprecated)]
 pub use selection::{
     autocomplete_builder, autocomplete_theme, combobox_builder, search_selector_builder, selection_panel_builder,
-    selection_panel_look,
+    selection_panel_look, selection_panel_style,
 };
 pub use scrollbar::{scrollbar_template, scrollbar_theme};
 
 pub use tooltip::tooltip_theme;
 
 pub use panels::{
-    resizable_panels_builder, resizable_panels_template, resizable_panels_theme, slide_panel_state, slide_panel_look,
+    resizable_panels_builder, resizable_panels_template, resizable_panels_theme, slide_panel_state, slide_panel_style,
     render_slide_panel_overlay, render_slide_panel_surface, render_slide_panel_inset,
 };
 pub use split_button::{split_button_builder, split_button_template, split_button_theme};

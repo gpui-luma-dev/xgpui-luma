@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use gpui::Subscription;
 use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
 use xgpui_luma::controls::switch::SwitchEventExt;

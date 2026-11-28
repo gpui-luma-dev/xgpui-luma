@@ -1,13 +1,17 @@
+use crate::infra::template::ElementModifiers;
+use crate::infra::template::RootModifiers;
+use crate::infra::template::ModifiedTemplate;
+use crate::infra::template::RenderModel;
+use crate::infra::template::ModifiedElementTemplate;
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
-    AnyElement, App, Bounds, ClickEvent, Hsla, KeyDownEvent, Pixels, ScrollEvent, SharedString, Stateful, Window,
-    anchored, deferred, div, point, prelude::*, px,
+    AnyElement, App, Bounds, ClickEvent, Hsla, KeyDownEvent, Pixels, ScrollEvent, SharedString, Stateful, Window, div,
+    prelude::*, px,
 };
 
-use crate::controls::selector_list::{
-    SelectorItem, SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler,
-};
+use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::theme::LumaTextStyle;
 
@@ -55,8 +59,10 @@ pub struct AutocompleteRenderModel {
     pub status_color: Hsla,
     pub status_typography: LumaTextStyle,
     pub muted_text_color: Hsla,
-    pub popup_bounds: Option<Bounds<Pixels>>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// Where the popup opens beside the field; without it the popup is not drawn.
+    pub popup_placement: Option<crate::infra::popup_placement::ResolvedPopupPlacement>,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub popup_content: Option<AnyElement>,
     pub presence: OverlayPresence,
 }
@@ -72,17 +78,12 @@ pub trait AutocompleteTemplate: Send + Sync {
 }
 
 pub struct DefaultAutocompleteTemplate {
-    modifiers: Vec<AutocompleteTemplateModifier>,
-}
-
-struct ModifiedAutocompleteTemplate {
-    base: Arc<dyn AutocompleteTemplate>,
-    modifiers: Vec<AutocompleteTemplateModifier>,
+    modifiers: ElementModifiers<Stateful<gpui::Div>>,
 }
 
 impl DefaultAutocompleteTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: ElementModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -92,36 +93,11 @@ impl DefaultAutocompleteTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(&self, mut root: Stateful<gpui::Div>, cx: &mut App) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, cx);
-        }
-        root
-    }
 }
 
 impl Default for DefaultAutocompleteTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl ModifiedAutocompleteTemplate {
-    fn new(base: Arc<dyn AutocompleteTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: AutocompleteTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<gpui::Div>, cx: &mut App) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, cx);
-        }
-        root
     }
 }
 
@@ -137,10 +113,10 @@ pub(super) fn modified_autocomplete_template<F>(
 where
     F: Fn(Stateful<gpui::Div>, &mut App) -> Stateful<gpui::Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedAutocompleteTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(modifier)))
 }
 
-impl AutocompleteTemplate for ModifiedAutocompleteTemplate {
+impl AutocompleteTemplate for ModifiedElementTemplate<dyn AutocompleteTemplate, Stateful<gpui::Div>> {
     fn render(
         &self,
         model: AutocompleteRenderModel,
@@ -149,7 +125,7 @@ impl AutocompleteTemplate for ModifiedAutocompleteTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, cx)
+        self.apply(root, cx)
     }
 }
 
@@ -232,41 +208,29 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
                     }),
             )
             .when_some(model.popup_content, |root, popup_content| {
-                root.when_some(model.popup_bounds, |root, bounds| {
-                    root.child(
-                        deferred(
-                            anchored()
-                                .snap_to_window_with_margin(px(model.popup_look.window_margin))
-                                .anchor(gpui::Anchor::TopLeft)
-                                .position(point(bounds.left(), bounds.bottom()))
-                                .offset(point(px(0.0), px(model.popup_look.popup_offset_y)))
-                                .child(
-                                    div()
-                                        .id("prototype-autocomplete-popup-shell")
-                                        .w(model.popup_width)
-                                        .bg(model.popup_look.background)
-                                        .border(px(model.popup_look.border_width))
-                                        .border_color(model.popup_look.border)
-                                        .rounded(px(model.popup_look.radius))
-                                        .shadow(model.popup_look.shadow)
-                                        .overflow_hidden()
-                                        .block_mouse_except_scroll()
-                                        .child(div().opacity(model.presence.opacity()).child(popup_content)),
-                                ),
-                        )
-                        .with_priority(1),
-                    )
+                root.when_some(model.popup_placement, |root, placement| {
+                    let style = crate::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+                    let window_margin =
+                        crate::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
+                    let shell = style
+                        .surface(div().id("prototype-autocomplete-popup-shell"))
+                        .w(model.popup_width)
+                        .overflow_hidden()
+                        .block_mouse_except_scroll()
+                        .child(div().opacity(model.presence.opacity()).child(popup_content));
+                    root.child(crate::infra::popup_placement::anchored_popup(&placement, px(window_margin), shell))
                 })
             });
 
-        self.apply_modifiers(root, cx)
+        self.modifiers.apply(root, cx)
     }
 }
 
 pub struct AutocompleteItemsRenderModel<'a> {
     pub id: &'a SharedString,
     pub items: &'a [SelectorItem],
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
     pub highlighted_index: Option<usize>,
 }
 
@@ -290,18 +254,17 @@ pub trait AutocompleteItemsTemplate: Send + Sync {
     ) -> Stateful<gpui::Div>;
 }
 
-pub struct DefaultAutocompleteItemsTemplate {
-    modifiers: Vec<AutocompleteItemsTemplateModifier>,
+impl RenderModel for dyn AutocompleteItemsTemplate {
+    type Model<'a> = AutocompleteItemsRenderModel<'a>;
 }
 
-struct ModifiedAutocompleteItemsTemplate {
-    base: Arc<dyn AutocompleteItemsTemplate>,
-    modifiers: Vec<AutocompleteItemsTemplateModifier>,
+pub struct DefaultAutocompleteItemsTemplate {
+    modifiers: RootModifiers<dyn AutocompleteItemsTemplate>,
 }
 
 impl DefaultAutocompleteItemsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -314,50 +277,11 @@ impl DefaultAutocompleteItemsTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &AutocompleteItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
 }
 
 impl Default for DefaultAutocompleteItemsTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl ModifiedAutocompleteItemsTemplate {
-    fn new(base: Arc<dyn AutocompleteItemsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(Stateful<gpui::Div>, &AutocompleteItemsRenderModel<'a>) -> Stateful<gpui::Div>
-            + Send
-            + Sync
-            + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &AutocompleteItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -373,70 +297,72 @@ impl AutocompleteItemsTemplate for DefaultAutocompleteItemsTemplate {
         handlers: AutocompleteItemsTemplateHandlers,
     ) -> Stateful<gpui::Div> {
         let AutocompleteItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let colors = style.row_colors();
+        let typography = style.item().typography(14.0, 20.0);
 
         let mut root = div()
             .id((model.id.clone(), 1usize))
             .relative()
             .flex()
             .flex_col()
-            .min_w(px(look.min_width))
-            .p(px(look.padding));
+            .min_w(px(style.panel().number("min_width")))
+            .p(px(style.panel().number("padding")));
         let mut clicks = item_clicks.into_iter();
 
         for (index, (item, hover)) in model.items.iter().zip(item_hovers).enumerate() {
             let enabled_item = item.is_enabled();
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let mut row = div()
                 .id(("row", index))
                 .flex()
                 .items_center()
-                .min_h(px(look.item_height))
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
+                .min_h(px(style.item().number("height")))
+                .px(px(style.item().number("padding_x")))
+                .rounded(px(style.item_radius()))
                 .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(div().flex_1().min_w(px(0.0)).truncate().child(item.label_text().clone()));
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let hover_background = colors.hover_background;
+                    let hover_foreground = colors.hover_foreground;
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if model.highlighted_index.is_some_and(|active| active == index) {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(click) = clicks.next() {
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             root = root.child(row);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl AutocompleteItemsTemplate for ModifiedAutocompleteItemsTemplate {
+impl AutocompleteItemsTemplate for ModifiedTemplate<dyn AutocompleteItemsTemplate> {
     fn render(
         &self,
         model: &AutocompleteItemsRenderModel<'_>,
         handlers: AutocompleteItemsTemplateHandlers,
     ) -> Stateful<gpui::Div> {
         let root = self.base.render(model, handlers);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -450,5 +376,5 @@ where
         + Sync
         + 'static,
 {
-    Arc::new(ModifiedAutocompleteItemsTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }

@@ -81,10 +81,14 @@ impl Render for ResizablePanels {
             });
         }
 
-        let look = self.model.theme.resolve(InteractionState { disabled: !self.model.enabled, ..Default::default() });
+        let resolved = super::super::resolve_resizable_panels(
+            &self.model.theme.style(),
+            InteractionState { disabled: !self.model.enabled, ..Default::default() },
+        );
+        let look = resolved.root();
         let model = self.render_model();
         let template = self.model.template.clone();
 
-        div().size_full().child(template.render(&model, &look, &self.handle_focuses, window, cx))
+        div().size_full().child(template.render(&model, look, &self.handle_focuses, window, cx))
     }
 }

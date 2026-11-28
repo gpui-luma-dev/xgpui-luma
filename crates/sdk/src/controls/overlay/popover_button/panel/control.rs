@@ -1,11 +1,13 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
-    anchored, deferred, point, Anchor, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable,
-    IntoElement, MouseButton, MouseDownEvent, Pixels, Point, Render, SharedString, Size, Subscription, Window, div,
-    prelude::*, px,
+    anchored, deferred, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
+    MouseButton, MouseDownEvent, Pixels, Render, SharedString, Size, Subscription, Window, div, prelude::*, px,
 };
 
-use super::model::{PopoverPanelBuilder, PopoverPanelDismissPolicy, PopoverPanelPlacement, PopoverPanelRenderModel};
+use super::model::{PopoverPanelBuilder, PopoverPanelPlacement, PopoverPanelRenderModel};
+use crate::infra::popup_dismiss::DismissReason;
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::focus::EscapeFocus;
 
@@ -21,7 +23,9 @@ pub struct PopoverPanel {
     model: super::model::PopoverPanelModel,
     focus_handle: FocusHandle,
     content_bounds: Option<Bounds<Pixels>>,
-    emitted_focused: bool,
+    /// The panel's unscrolled size: its content's natural size plus the panel chrome.
+    natural_size: Option<Size<Pixels>>,
+    focus_report: crate::infra::focus_report::FocusReport,
     focus_out_subscription: Option<Subscription>,
     pending_focus: bool,
     restore_focus: Option<FocusHandle>,
@@ -47,7 +51,8 @@ impl PopoverPanel {
             model: builder.model,
             focus_handle: cx.focus_handle().tab_stop(true),
             content_bounds: None,
-            emitted_focused: false,
+            natural_size: None,
+            focus_report: Default::default(),
             focus_out_subscription: None,
             restore_focus: None,
             pending_focus_restore: false,
@@ -158,12 +163,10 @@ impl PopoverPanel {
         cx.notify();
     }
 
-    /// Rebind the panel drawn around the content (a look's `popover.lss`).
-    pub fn set_look(&mut self, look: super::PopoverPanelLook, cx: &mut Context<Self>) {
-        if self.model.look != look {
-            self.model.look = look;
-            cx.notify();
-        }
+    /// Rebind the panel drawn around the content: a `popover` style (a look's `popover.lss`, #433).
+    pub fn set_style(&mut self, style: crate::style::StyleBinding, cx: &mut Context<Self>) {
+        self.model.style = style;
+        cx.notify();
     }
 
     pub fn set_window_margin(&mut self, window_margin: Pixels, cx: &mut Context<Self>) {
@@ -188,8 +191,7 @@ impl PopoverPanel {
             open: self.model.open,
             anchor_bounds: self.model.anchor_bounds,
             placement: self.model.placement,
-            dismiss_policy: self.model.dismiss_policy,
-            dismissible: self.model.dismissible,
+            dismiss: self.model.dismiss,
             focused: self.focus_handle.is_focused(window),
             content_bounds: self.content_bounds,
         }
@@ -223,27 +225,11 @@ impl PopoverPanel {
     }
 
     fn can_dismiss_on_click_away(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnClickAway | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
+        self.model.dismiss.allows(DismissReason::ClickOutside)
     }
 
     fn can_dismiss_on_focus_loss(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnFocusLoss | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
-    }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) {
-        if self.emitted_focused == focused {
-            return;
-        }
-        self.emitted_focused = focused;
-        cx.emit(PopoverPanelEvent::FocusChanged { focused });
+        self.model.dismiss.allows(DismissReason::FocusLoss)
     }
 
     fn handle_focus_out(&mut self, _: FocusOutEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -297,8 +283,20 @@ impl PopoverPanel {
         cx.notify();
     }
 
+    /// Record the content's unscrolled size, measured inside the scroll area,
+    /// so placement and flipping use the full height even while it scrolls.
+    fn handle_natural_content_bounds(&mut self, bounds: Bounds<Pixels>, cx: &mut Context<Self>) {
+        let chrome = px(super::popover_panel_chrome_height(&super::resolve_popover_panel(&self.model.style)));
+        let size = Size { width: bounds.size.width + chrome, height: bounds.size.height + chrome };
+        if bounds.size.width <= px(0.0) || self.natural_size == Some(size) {
+            return;
+        }
+        self.natural_size = Some(size);
+        cx.notify();
+    }
+
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.model.open && self.model.dismissible {
+        if self.model.open && self.model.dismiss.allows(DismissReason::Escape) {
             self.dismiss(cx);
         } else {
             cx.propagate();
@@ -338,6 +336,7 @@ impl Focusable for PopoverPanel {
 
 impl Render for PopoverPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let panel_style = super::resolve_popover_panel(&self.model.style);
         if self.focus_out_subscription.is_none() {
             let focus_handle = self.focus_handle.clone();
             self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
@@ -362,14 +361,15 @@ impl Render for PopoverPanel {
         };
 
         let panel = cx.entity();
+        let natural = panel.clone();
         let content = (self.model.content)(&model, window, cx);
-        let content_size = self.content_bounds.map(|bounds| bounds.size).or(self.model.initial_content_size);
+        let content_size = self.natural_size.or(self.model.initial_content_size);
         let placement = resolve_popover_panel_placement(
             anchor_bounds,
             content_size,
             self.model.placement,
             self.model.offset_y,
-            window.viewport_size(),
+            PopupSpace::of(window, cx),
             self.model.window_margin,
         );
         let scale_size = content_size.unwrap_or(Size { width: px(0.0), height: px(0.0) });
@@ -385,7 +385,23 @@ impl Render for PopoverPanel {
                 panel.update(cx, |panel, cx| panel.handle_content_bounds(bounds, cx));
             })
             .opacity(opacity)
-            .child(self.model.look.wrap(content))
+            .child(super::wrap_popover_panel(
+                &panel_style,
+                // Taller than the space on its side, the content scrolls inside the panel (#433).
+                div()
+                    .id("popover-panel-scroll")
+                    .max_h(
+                        (placement.max_size.height - px(super::popover_panel_chrome_height(&panel_style))).max(px(0.0)),
+                    )
+                    .overflow_y_scroll()
+                    .child(
+                        div()
+                            .on_prepaint(move |bounds, _, cx| {
+                                natural.update(cx, |panel, cx| panel.handle_natural_content_bounds(bounds, cx));
+                            })
+                            .child(content),
+                    ),
+            ))
             .into_any_element();
 
         let overlay = anchored()
@@ -409,56 +425,32 @@ impl Render for PopoverPanel {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ResolvedPopoverPanelPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
-}
-
 fn resolve_popover_panel_placement(
     anchor_bounds: Bounds<Pixels>,
     content_size: Option<Size<Pixels>>,
     placement: PopoverPanelPlacement,
     offset_y: Pixels,
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
     window_margin: Pixels,
-) -> ResolvedPopoverPanelPlacement {
-    let content_height = content_size.map_or(px(0.0), |size| size.height);
-    let resolved = match placement {
-        PopoverPanelPlacement::SmartStart => {
-            let viewport_bottom = viewport_size.height - window_margin;
-            if anchor_bounds.bottom() + offset_y + content_height <= viewport_bottom {
-                PopoverPanelPlacement::BelowStart
-            } else {
-                PopoverPanelPlacement::AboveStart
-            }
-        }
-        placement => placement,
+) -> ResolvedPopupPlacement {
+    let (side, align, flip) = match placement {
+        PopoverPanelPlacement::BelowStart => (PopupSide::Below, PopupAlign::Start, false),
+        PopoverPanelPlacement::BelowCenter => (PopupSide::Below, PopupAlign::Center, false),
+        PopoverPanelPlacement::AboveStart => (PopupSide::Above, PopupAlign::Start, false),
+        PopoverPanelPlacement::SmartStart => (PopupSide::Below, PopupAlign::Start, true),
     };
-
-    match resolved {
-        PopoverPanelPlacement::BelowStart | PopoverPanelPlacement::SmartStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        PopoverPanelPlacement::BelowCenter => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(anchor_bounds.center().x, anchor_bounds.bottom()),
-            offset: point(content_size.map_or(px(0.0), |size| -(size.width * 0.5)), offset_y),
-        },
-        PopoverPanelPlacement::AboveStart => ResolvedPopoverPanelPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(anchor_bounds.left(), anchor_bounds.top()),
-            offset: point(px(0.0), -offset_y),
-        },
-    }
+    PopupPlacementRequest::new(anchor_bounds, side, viewport_size)
+        .align(align)
+        .flip(flip)
+        .gap(offset_y)
+        .content_size(content_size)
+        .window_margin(window_margin)
+        .resolve()
 }
 
 #[cfg(test)]
 mod tests {
-    use gpui::{point, px, size, Bounds};
+    use gpui::{Anchor, point, px, size, Bounds};
 
     use super::*;
 
@@ -492,5 +484,52 @@ mod tests {
         assert_eq!(placement.anchor, Anchor::BottomLeft);
         assert_eq!(placement.position, point(px(20.0), px(450.0)));
         assert_eq!(placement.offset, point(px(0.0), px(-4.0)));
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod height_tests {
+    use gpui::{Bounds, Entity, IntoElement, Render, TestAppContext, div, point, px, size};
+
+    use super::*;
+
+    struct Host(Entity<PopoverPanel>);
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().size_full().child(self.0.clone())
+        }
+    }
+
+    /// Content far taller than the window scrolls inside a panel kept within the window margin.
+    #[gpui::test]
+    fn tall_content_is_limited_to_the_window(cx: &mut TestAppContext) {
+        let (_, cx) = cx.add_window_view(|_, cx| {
+            let panel = PopoverPanelBuilder::new("tall")
+                .content(|_, _, _| div().w(px(120.0)).h(px(5000.0)).into_any_element())
+                .anchor_bounds(Bounds::new(point(px(10.0), px(10.0)), size(px(40.0), px(20.0))))
+                .style(super::super::show_popover_panel(crate::style::StyleBinding::sdk("popover"), true))
+                .motion_enabled(false)
+                .open(true)
+                .spawn(cx);
+            Host(panel)
+        });
+        cx.run_until_parked();
+        let viewport = cx.update(|window, _| window.viewport_size());
+        let panel = cx.debug_bounds("popover-panel").expect("panel drawn");
+        assert!(panel.size.height < px(5000.0), "panel is limited: {panel:?}");
+        assert!(panel.bottom() <= viewport.height, "panel stays in the window: {panel:?} in {viewport:?}");
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for PopoverPanel {
+    type FocusEvent = PopoverPanelEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> PopoverPanelEvent {
+        PopoverPanelEvent::FocusChanged { focused }
     }
 }

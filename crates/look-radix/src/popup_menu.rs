@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+#[allow(deprecated)]
 use xgpui_luma::controls::floating_menu::FloatingMenuLook;
 use xgpui_luma::controls::popup_menu::{PopupMenuTemplate, PopupMenuTheme, StyledPopupMenuTheme, ThemedPopupMenuTemplate};
 
@@ -26,18 +27,21 @@ pub enum PopupMenuVariant {
 /// resolve again during render after changing the supplied Look, and notify the owner.
 /// Explicit and forked Looks are used directly; no ambient Look is consulted.
 /// Uses the existing Radix menu size (`"2"`) and its shared stylesheet overrides.
+#[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
+#[allow(deprecated)]
 pub fn floating_menu_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> FloatingMenuLook {
     floating_menu_look_for(look, variant, tone, crate::RadixSize::Two)
 }
 
 /// Size-aware shared menu chrome. Size keys are Radix `1`, `2`, and `3`.
 /// Like [`floating_menu_look`], this resolves a snapshot from the supplied Look.
-pub fn floating_menu_look_for(
+/// The size-aware Radix menu style (the `floating_menu` control): what menu templates resolve and draw from (#433).
+pub fn floating_menu_binding_for(
     look: &Look,
     variant: PopupMenuVariant,
     tone: Tone,
     size: crate::RadixSize,
-) -> FloatingMenuLook {
+) -> xgpui_luma::style::StyleBinding {
     let binding = xgpui_luma::style::StyleBinding::new("floating_menu", crate::textfield::live_source(look));
     let binding = match variant {
         PopupMenuVariant::Solid => binding,
@@ -53,7 +57,21 @@ pub fn floating_menu_look_for(
     } else {
         binding
     };
-    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&binding)
+    binding
+}
+
+/// Size-aware shared menu chrome as a look snapshot, from [`floating_menu_binding_for`].
+#[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
+#[allow(deprecated)]
+pub fn floating_menu_look_for(
+    look: &Look,
+    variant: PopupMenuVariant,
+    tone: Tone,
+    size: crate::RadixSize,
+) -> FloatingMenuLook {
+    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&floating_menu_binding_for(
+        look, variant, tone, size,
+    ))
 }
 
 pub fn popup_menu_theme(look: &Look, variant: PopupMenuVariant, tone: Tone) -> Arc<dyn PopupMenuTheme> {
@@ -73,7 +91,7 @@ fn styled_popup_menu_theme(
     Arc::new(
         StyledPopupMenuTheme::new(
             crate::textfield::live_source(look),
-            Arc::new(move || floating_menu_look_for(&menu_look, variant, tone, menu_size)),
+            Arc::new(move || floating_menu_binding_for(&menu_look, variant, tone, menu_size)),
         )
         .with(|binding| {
             let binding = if tone == Tone::Gray {
@@ -105,36 +123,41 @@ pub fn popup_menu_template_with_menu_size(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::control_group::assert_close;
     use crate::semantic::SemanticRole;
-    use xgpui_luma::controls::popup_menu::{PopupMenuPalette, PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+    use xgpui_luma::controls::popup_menu::{PopupMenuTriggerStyle, resolve_popup_menu_trigger};
+    use xgpui_luma::style::PartRead as _;
     use xgpui_luma::theme::InteractionState;
 
-    fn trigger_palette(look: &Look, tone: Tone) -> PopupMenuPalette {
-        popup_menu_theme(look, PopupMenuVariant::default(), tone).resolve(
+    fn trigger_background(look: &Look, tone: Tone) -> gpui::Hsla {
+        let theme = popup_menu_theme(look, PopupMenuVariant::default(), tone);
+        resolve_popup_menu_trigger(
+            &theme.style(),
             PopupMenuTriggerStyle::Primary,
-            PopupMenuTriggerMetrics::default(),
             InteractionState::default(),
+            false,
+            1.0,
         )
+        .root()
+        .color("background")
     }
 
     #[test]
     fn primary_trigger_uses_accent() {
         let look = Look::built_in();
-        let palette = trigger_palette(&look, Tone::Accent);
-
-        assert_close(palette.trigger_background, look.resolve_role(SemanticRole::Primary).hsla());
+        assert_close(trigger_background(&look, Tone::Accent), look.resolve_role(SemanticRole::Primary).hsla());
     }
 
     #[test]
     fn gray_tone_locks_the_trigger_to_the_neutral_scale() {
         let look = Look::built_in();
-        let gray = trigger_palette(&look, Tone::Gray);
+        let gray = trigger_background(&look, Tone::Gray);
 
-        assert_close(gray.trigger_background, Tone::Gray.step(&look, 9));
-        assert_ne!(gray.trigger_background, trigger_palette(&look, Tone::Accent).trigger_background);
+        assert_close(gray, Tone::Gray.step(&look, 9));
+        assert_ne!(gray, trigger_background(&look, Tone::Accent));
     }
 
     #[test]

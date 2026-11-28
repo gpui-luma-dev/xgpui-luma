@@ -1,20 +1,13 @@
 //! Tree-view rows read from `.lss` (issue #285): `tree_view.lss`. Looks keep their icons and drag shadow and
 //! delegate rows and layout to [`StyledTreeView`].
 
+use crate::style::StyleStates;
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
 
 use super::theme::{TreeViewPalette, TreeViewScale, TreeViewTheme};
 use crate::style::StyleBinding;
-use crate::theme::{InteractionState, LumaTextStyle, MetricTokens};
-
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
+use crate::theme::{InteractionState, MetricTokens};
 
 /// The tree view's `.lss` values for one binding (the `tree_view` control).
 #[derive(Clone)]
@@ -33,40 +26,30 @@ impl StyledTreeView {
     }
 
     fn resolve(&self, state: InteractionState, selected: bool) -> std::sync::Arc<xgpui_luma_style::Resolved> {
-        let states = [
-            ("selected", selected),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        self.binding.resolve(&states, 1.0)
+        let states = StyleStates::new(state).selected(selected);
+        self.binding.resolve_states(states, 1.0)
     }
 
     /// A row in `state`, selected or not.
     pub fn row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
         let resolved = self.resolve(state, selected);
         let root = resolved.root();
-        let background = color(root, "background");
-        let icon = color(root, "icon_color");
+        let background = root.color("background");
+        let icon = root.color("icon_color");
         TreeViewPalette {
             background: (background.a > 0.0).then_some(background),
-            foreground: color(root, "foreground"),
+            foreground: root.color("foreground"),
             icon_color: icon,
             chevron_color: icon,
-            typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(14.0),
-                line_height: root.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            font_family: root.font_family().unwrap_or("").to_string().into(),
-            opacity: crate::style::part_opacity(root),
+            typography: root.typography(14.0, 20.0),
+            font_family: root.font_family_name(),
+            opacity: root.opacity(),
         }
     }
 
     /// The row's inset outline in `state`, if any.
     pub fn outline(&self, state: InteractionState) -> Option<Hsla> {
-        Some(color(self.resolve(state, false).root(), "outline")).filter(|color| color.a > 0.0)
+        Some(self.resolve(state, false).root().color("outline")).filter(|color| color.a > 0.0)
     }
 
     /// The row layout at `scale_factor` device pixels per pixel.
@@ -74,19 +57,19 @@ impl StyledTreeView {
         let resolved = self.binding.resolve(&[], scale_factor);
         let root = resolved.root();
         TreeViewScale {
-            drag_marker_width: number(root, "drag_marker_width"),
-            drag_insert_width: number(root, "drag_insert_width"),
-            drag_opacity: number(root, "drag_opacity"),
-            scrollbar_width: number(root, "scrollbar_width"),
-            preview_padding_x: number(root, "preview_padding_x"),
-            preview_padding_y: number(root, "preview_padding_y"),
-            row_height: number(root, "height"),
-            base_padding_x: number(root, "padding_x"),
-            indentation_width: number(root, "indentation_width"),
-            inner_gap: number(root, "gap"),
-            radius: number(root, "radius"),
-            icon_size: number(root, "icon_size"),
-            chevron_size: number(root, "chevron_size"),
+            drag_marker_width: root.number("drag_marker_width"),
+            drag_insert_width: root.number("drag_insert_width"),
+            drag_opacity: root.number("drag_opacity"),
+            scrollbar_width: root.number("scrollbar_width"),
+            preview_padding_x: root.number("preview_padding_x"),
+            preview_padding_y: root.number("preview_padding_y"),
+            row_height: root.number("height"),
+            base_padding_x: root.number("padding_x"),
+            indentation_width: root.number("indentation_width"),
+            inner_gap: root.number("gap"),
+            radius: root.number("radius"),
+            icon_size: root.number("icon_size"),
+            chevron_size: root.number("chevron_size"),
         }
     }
 }

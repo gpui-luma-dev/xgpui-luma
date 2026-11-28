@@ -1,9 +1,14 @@
+#![allow(deprecated)] // TableLook, TableRowLook and TableRowPalette are this module's compatibility types.
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
 use crate::theme::{InteractionState, ListRowScale, LumaTextStyle, MetricTokens};
 
+/// The frame and header's values, copied out of the table's style (#433). A compatibility type: the template
+/// draws from the resolved style ([`StyledTable::resolve`](super::StyledTable::resolve)).
+#[deprecated(note = "read the resolved style from `TableTheme::style()` instead (#433)")]
 #[derive(Clone, Debug)]
 pub struct TableLook {
     /// Inter-row divider thickness in pixels.
@@ -44,6 +49,8 @@ impl TableLook {
     }
 }
 
+/// A row's colors, copied out of the table's style (#433). A compatibility type.
+#[deprecated(note = "read the resolved style from `TableTheme::style()` instead (#433)")]
 #[derive(Clone, Debug)]
 pub struct TableRowPalette {
     pub background: Hsla,
@@ -52,6 +59,10 @@ pub struct TableRowPalette {
     pub label_typography: LumaTextStyle,
 }
 
+/// A row's colors and layout, copied out of the table's style (#433). A compatibility type: rows draw from the
+/// resolved style ([`StyledTable::resolve_row`](super::StyledTable::resolve_row)) and a
+/// [`TableRowLayout`](super::TableRowLayout).
+#[deprecated(note = "read the resolved style from `TableTheme::style()` and a `TableRowLayout` instead (#433)")]
 #[derive(Clone, Copy, Debug)]
 pub struct TableRowLook {
     pub column_emphasis_weight: gpui::FontWeight,
@@ -88,6 +99,7 @@ pub struct TableGeometry {
     pub drag_marker_width: f32,
 }
 
+#[deprecated(note = "templates draw from the resolved style; use `TableTheme::drag_style` and `drag_geometry` (#433)")]
 #[derive(Clone, Debug)]
 pub struct TableDragLook {
     /// Preview and insertion feedback geometry, from `table.lss`.
@@ -100,26 +112,74 @@ pub struct TableDragLook {
 }
 
 pub trait TableTheme: Send + Sync {
-    /// Defaults to existing theme surfaces; themes can supply semantic accents.
-    fn resolve_drag(&self) -> TableDragLook {
-        let look = self.resolve_look(true, true);
-        let invalid = self.resolve_row(false, InteractionState { invalid: true, ..Default::default() });
-        TableDragLook {
-            geometry: super::styled::StyledTable::sdk().drag_geometry(),
-            background: look.header_background,
-            foreground: look.header_label_color,
-            valid_marker: look.border,
-            invalid_marker: invalid.label_color,
-            radius: look.radius,
-        }
+    /// The table's style (#433): the `table` binding the template resolves for the frame, header and rows.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("table")
     }
 
-    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook;
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette;
-    fn metrics(&self) -> MetricTokens;
+    /// The body rows' style: [`Self::style`] unless a theme draws its rows apart from its frame (a design surface
+    /// pinning states on the rows only).
+    fn row_style(&self) -> crate::style::StyleBinding {
+        self.style()
+    }
 
+    /// The row scale's metrics: row padding and height.
+    fn metrics(&self) -> MetricTokens {
+        MetricTokens::default()
+    }
+
+    /// The drag preview and insertion markers (#433): the SDK's `drag_preview` with the table's header colors, edge
+    /// and corner set over it; themes can supply semantic accents.
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        use crate::style::PartRead;
+        use xgpui_luma_style::PartId;
+        let styled = super::styled::StyledTable::new(self.style());
+        let frame = styled.resolve(true, true);
+        let invalid = super::styled::StyledTable::new(self.row_style())
+            .resolve_row(false, InteractionState { invalid: true, ..Default::default() });
+        let (root, header) = (frame.root(), frame.part(PartId::new("header")));
+        crate::infra::drag_drop::drag_preview_over(
+            header.color("background"),
+            header.color("foreground"),
+            root.color("border"),
+            invalid.part(PartId::new("row")).color("foreground"),
+            root.number("radius"),
+            header.typography(12.5, 18.0),
+            None,
+        )
+    }
+
+    /// The preview and insertion feedback geometry: offset, width, padding and strokes.
+    fn drag_geometry(&self) -> TableGeometry {
+        super::styled::StyledTable::sdk().drag_geometry()
+    }
+
+    /// The preview and markers, for code that still reads a [`TableDragLook`].
+    #[deprecated(note = "use `drag_style` and `drag_geometry` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_drag(&self) -> TableDragLook {
+        super::styled::table_drag_look(
+            crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style()),
+            self.drag_geometry(),
+        )
+    }
+
+    /// The frame and header built from [`Self::style`], for code that still reads a [`TableLook`].
+    #[deprecated(note = "read the resolved style from `style()` instead (#433)")]
+    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook {
+        super::styled::StyledTable::new(self.style()).look(enabled, focused)
+    }
+
+    /// A row's colors built from [`Self::style`], for code that still reads a [`TableRowPalette`].
+    #[deprecated(note = "read the resolved style from `style()` instead (#433)")]
+    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
+        super::styled::StyledTable::new(self.row_style()).row(selected, state)
+    }
+
+    /// A row built from [`Self::style`], for code that still reads a [`TableRowLook`].
+    #[deprecated(note = "read the resolved style from `style()` and a `TableRowLayout` instead (#433)")]
     fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        TableRowLook::from_palette(&self.resolve_row(selected, state), scale)
+        super::styled::StyledTable::new(self.row_style()).row_look(selected, state, scale)
     }
 }
 
@@ -131,6 +191,7 @@ pub fn default_table_theme() -> Arc<dyn TableTheme> {
 
 impl TableRowLook {
     /// Combines row colors with the SDK's `table.lss` row layout and label baseline.
+    #[deprecated(note = "rows draw from the resolved style (#433)")]
     pub fn from_palette(palette: &TableRowPalette, scale: &ListRowScale) -> Self {
         let sdk = super::styled::StyledTable::sdk().row_look(false, InteractionState::default(), scale);
         Self {

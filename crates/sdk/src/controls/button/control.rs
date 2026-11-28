@@ -20,8 +20,7 @@ pub struct Button<D = ()> {
     command: CommandCore,
     attachments: AttachmentHost,
     pub(super) callback_subscriptions: Vec<Subscription>,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
 }
 
 impl<D: 'static> EventEmitter<ButtonEvent> for Button<D> {}
@@ -50,8 +49,7 @@ impl<D: Clone + 'static> Button<D> {
             attachments: AttachmentHost::with_accessible_role(gpui::Role::Button),
             command: CommandCore::new_with_tab_stop(enabled, tab_stop, cx),
             callback_subscriptions: Vec::new(),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
         }
     }
 
@@ -171,21 +169,20 @@ impl<D: 'static> Focusable for Button<D> {
 
 impl<D: Clone + 'static> Render for Button<D> {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.command.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.command.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.command.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let model = self.render_model(window);
 
         div()
             .child(
                 self.attachments
-                    .render(self.model.template.render(&model, window, cx), model.state, cx)
+                    .render(
+                        self.model.template.render(&model, window, cx),
+                        self.command.attachment_state(self.model.enabled, window),
+                        cx,
+                    )
                     .track_focus(self.command.focus_handle())
                     .key_context(ControlKeyProfile::Command.context())
                     .on_action(cx.listener(Self::handle_activate_control))
@@ -229,3 +226,33 @@ mod callback_tests;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "perf_tests.rs"]
 mod perf_tests;
+#[cfg(all(test, feature = "test-support"))]
+mod focus_ring_tests {
+    use gpui::{MouseMoveEvent, TestAppContext, point, px};
+
+    use super::*;
+
+    /// One focus-ring rule (#433): focus after pointer input draws no ring, keyboard input draws one, and
+    /// attachments still see the real focus either way.
+    #[test]
+    fn the_ring_follows_keyboard_input_and_attachments_see_real_focus() {
+        let mut app = TestAppContext::single();
+        let (button, cx) = app.add_window_view(|window, cx| {
+            window.activate_window();
+            Button::from_builder(Button::new("ring"), cx)
+        });
+        cx.simulate_event(MouseMoveEvent { position: point(px(400.0), px(400.0)), ..Default::default() });
+        cx.update(|window, app| button.read(app).focus_handle(app).focus(window, app));
+        cx.run_until_parked();
+        cx.update(|window, app| {
+            let button = button.read(app);
+            assert!(!button.render_model(window).state.focused, "pointer focus draws no ring");
+            assert!(button.command.attachment_state(true, window).focused, "attachments see focus");
+        });
+
+        cx.simulate_keystrokes("right");
+        cx.update(|window, app| {
+            assert!(button.read(app).render_model(window).state.focused, "keyboard input draws the ring");
+        });
+    }
+}

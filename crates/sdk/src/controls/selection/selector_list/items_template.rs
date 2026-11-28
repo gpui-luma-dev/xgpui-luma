@@ -1,3 +1,5 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
 use gpui::{
@@ -8,8 +10,14 @@ use crate::infra::icon::{IconSource, render_icon_source};
 use super::item_template::{SelectorItemRenderModel, SelectorItemTemplate};
 use super::model::{SelectorItemLike, SelectorPath};
 use crate::infra::state::ControlFocusState;
+use crate::style::PartRead;
 use crate::theme::{LumaTextStyle, ThemeTokens};
 
+/// A selector popup panel's values, copied out of its `floating_menu` style (#433). A compatibility type: panel
+/// templates draw from the style itself (see [`SelectorItemsRenderModel::menu`]).
+#[deprecated(
+    note = "panel templates draw from the `floating_menu` style; resolve it and read its parts instead (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct SelectorItemsPanelLook {
     /// Positive completion/status adornments.
@@ -41,12 +49,16 @@ pub struct SelectorItemsPanelLook {
 }
 
 /// The SDK's selector items panel: the SDK's `.lss` floating menu with `tokens`' metrics and geometry.
+#[deprecated(note = "use `StyleBinding::sdk(\"floating_menu\")`; panel templates draw from the style (#433)")]
+#[allow(deprecated)]
 pub fn default_selector_items_panel_look(tokens: &ThemeTokens) -> SelectorItemsPanelLook {
     styled_selector_items_panel_look(&crate::style::StyleBinding::sdk("floating_menu"), &tokens.metrics)
 }
 
 /// A selector items panel from a `.lss` floating-menu binding (the `floating_menu` control, or one that
 /// extends it), placed by the same theme's `popover.lss` (#397).
+#[deprecated(note = "panel templates draw from the `floating_menu` binding itself (#433)")]
+#[allow(deprecated)]
 pub fn styled_selector_items_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
@@ -56,14 +68,69 @@ pub fn styled_selector_items_panel_look(
         .with_placement(crate::theme::stylesheet::PopoverGeometry::from_binding(&popover))
 }
 
-/// The panel a selector opens, read from `source`'s `floating_menu.lss` and `popover.lss` each time it is
-/// drawn, with the SDK's metrics (#397): the menu hook for selectors, so they open the host's menu, not the SDK's.
+/// The panel a selector opens: `source`'s `floating_menu.lss`, placed by its `popover.lss` (#397, #433). The menu
+/// hook for selectors, so they open the host's menu, not the SDK's.
 pub fn selector_items_panel_source(source: crate::style::ThemeSource) -> crate::controls::selector::ItemsPanelSource {
-    let binding = crate::style::StyleBinding::new("floating_menu", source);
-    Arc::new(move || styled_selector_items_panel_look(&binding, &crate::theme::MetricTokens::default()))
+    crate::controls::floating_menu::floating_menu_source(source)
 }
 
+/// Where a selector panel drawn in `menu` opens: its theme's `popover.lss` (#397).
+pub fn selector_panel_placement(menu: &crate::style::StyleBinding) -> crate::theme::stylesheet::PopoverGeometry {
+    let popover = crate::style::StyleBinding::new("popover", crate::style::ThemeSource::Fixed(menu.theme()));
+    crate::theme::stylesheet::PopoverGeometry::from_binding(&popover)
+}
+
+/// A selector panel's layout values, read from its `floating_menu` style and placement (#433): for placing and
+/// sizing the popup before it is drawn.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct PanelGeometry {
+    pub(crate) padding: f32,
+    pub(crate) border_width: f32,
+    pub(crate) item_height: f32,
+    pub(crate) item_padding_x: f32,
+    /// Row text, for measuring labels.
+    pub(crate) item_typography: LumaTextStyle,
+    pub(crate) min_width: f32,
+    pub(crate) popup_offset_y: f32,
+    pub(crate) window_margin: f32,
+}
+
+impl PanelGeometry {
+    pub(crate) fn of(menu: &crate::style::StyleBinding) -> Self {
+        use crate::style::PartRead;
+        let rest = menu.resolve(&[], 1.0);
+        let (root, item) = (rest.root(), rest.part(xgpui_luma_style::PartId::new("item")));
+        let placement = selector_panel_placement(menu);
+        Self {
+            padding: root.number("padding"),
+            border_width: root.number("border_width"),
+            item_height: item.number("height"),
+            item_padding_x: item.number("padding_x"),
+            item_typography: item.typography(14.0, 20.0),
+            min_width: root.number("min_width"),
+            popup_offset_y: placement.panel_offset_y,
+            window_margin: placement.window_margin,
+        }
+    }
+}
+
+#[allow(deprecated)]
 impl SelectorItemsPanelLook {
+    /// The panel `menu` (a `floating_menu` binding) describes, placed by its theme's `popover.lss`.
+    pub fn from_style(menu: &crate::style::StyleBinding) -> Self {
+        Self::from_menu(
+            crate::controls::floating_menu::styled_floating_menu_look(menu),
+            &crate::theme::MetricTokens::default(),
+        )
+        .with_placement(selector_panel_placement(menu))
+        .with_border_width(PanelGeometry::of(menu).border_width)
+    }
+
+    fn with_border_width(mut self, border_width: f32) -> Self {
+        self.border_width = border_width;
+        self
+    }
+
     /// Share menu chrome, metric border width and the SDK's popover panel placement (`popover.lss`).
     pub fn from_menu(
         menu: crate::controls::floating_menu::FloatingMenuLook,
@@ -145,7 +212,8 @@ where
     pub enabled: bool,
     pub focus: ControlFocusState,
     pub item_template: Option<&'a SelectorItemTemplate<T>>,
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
     pub max_height: Pixels,
     pub scrolling: bool,
     /// Custom panels should track this handle and disable native wheel movement when the handler is supplied.
@@ -166,6 +234,13 @@ where
     ) -> Stateful<Div>;
 }
 
+impl<T> RenderModel for dyn SelectorItemsTemplate<T>
+where
+    T: SelectorItemLike + 'static,
+{
+    type Model<'a> = SelectorItemsRenderModel<'a, T>;
+}
+
 pub type SelectorItemsTemplateModifier<T> =
     Box<dyn for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static>;
 
@@ -173,15 +248,7 @@ pub struct DefaultSelectorItemsTemplate<T>
 where
     T: SelectorItemLike + 'static,
 {
-    modifiers: Vec<SelectorItemsTemplateModifier<T>>,
-}
-
-struct ModifiedSelectorItemsTemplate<T>
-where
-    T: SelectorItemLike + 'static,
-{
-    base: Arc<dyn SelectorItemsTemplate<T>>,
-    modifiers: Vec<SelectorItemsTemplateModifier<T>>,
+    modifiers: RootModifiers<dyn SelectorItemsTemplate<T>>,
 }
 
 impl<T> DefaultSelectorItemsTemplate<T>
@@ -189,7 +256,7 @@ where
     T: SelectorItemLike + 'static,
 {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -199,13 +266,6 @@ where
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorItemsRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
 }
 
 impl<T> Default for DefaultSelectorItemsTemplate<T>
@@ -214,30 +274,6 @@ where
 {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<T> ModifiedSelectorItemsTemplate<T>
-where
-    T: SelectorItemLike + 'static,
-{
-    fn new(base: Arc<dyn SelectorItemsTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorItemsRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -253,14 +289,18 @@ where
     ) -> Stateful<Div> {
         let SelectorItemsTemplateHandlers { item_hovers, item_mouse_downs, item_clicks, scroll_wheel, popup_geometry } =
             handlers;
-        let look = &model.look;
-        let content_max_height = (model.max_height - px((look.padding + look.border_width) * 2.0)).max(px(0.0));
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let (panel, item_part) = (style.panel(), style.item());
+        let colors = style.row_colors();
+        let (padding, border_width) = (panel.number("padding"), panel.number("border_width"));
+        let item_gap = item_part.number("gap");
+        let content_max_height = (model.max_height - px((padding + border_width) * 2.0)).max(px(0.0));
         let mut rows = div().relative().flex().flex_col().w_full();
 
         if let Some(report) = popup_geometry {
             let alignment_index =
                 model.selected_index.or_else(|| model.items.iter().position(|item| item.is_enabled()));
-            let inset = px(look.padding + look.border_width);
+            let inset = px(padding + border_width);
             let scroll = model.scroll_handle.cloned();
             let item_count = model.items.len();
             rows = rows.on_children_prepainted(move |bounds, window, cx| {
@@ -308,9 +348,9 @@ where
             let click = clicks.next();
             let enabled_item = item.is_enabled();
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let selected = model.selected_index == Some(index);
             let active = model.active_path.is_some_and(|path| path.is_item(index));
@@ -329,36 +369,25 @@ where
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(look.item_gap))
+                    .gap(px(item_gap))
                     .child(div().flex_1().child(item.label().clone()))
                     .into_any_element()
             };
 
-            let mut row = div()
-                .id((item.id().clone(), 0usize))
-                .flex()
-                .items_center()
-                .gap(px(look.item_gap))
-                .min_h(px(look.item_height))
+            let mut row = style
+                .row(div().id((item.id().clone(), 0usize)), color)
                 .flex_shrink_0()
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
-                .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
                 .child(div().flex_1().child(content))
-                .child(render_selection_checkmark(selected, color, look.item_icon_size, model.selection_icon));
+                .child(render_selection_checkmark(selected, color, style.icon_size(), model.selection_icon));
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let (hover_background, hover_foreground) = (colors.hover_background, colors.hover_foreground);
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if active {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(mouse_down) = mouse_down {
@@ -372,7 +401,7 @@ where
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             rows = rows.child(row);
@@ -381,14 +410,14 @@ where
         let root = div()
             .id((model.menu_id.clone(), 0usize))
             .relative()
-            .min_w(px(look.min_width))
+            .min_w(px(panel.number("min_width")))
             .max_h(model.max_height)
-            .p(px(look.padding))
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow.clone())
+            .p(px(padding))
+            .bg(panel.color("background"))
+            .border(px(border_width))
+            .border_color(panel.color("border"))
+            .rounded(px(panel.number("radius")))
+            .shadow(panel.box_shadow())
             .overflow_hidden()
             .when(policy_routing, |root| root.block_mouse_except_scroll())
             .when(!policy_routing, |root| root.occlude())
@@ -398,11 +427,11 @@ where
             })
             .child(rows);
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl<T> SelectorItemsTemplate<T> for ModifiedSelectorItemsTemplate<T>
+impl<T> SelectorItemsTemplate<T> for ModifiedTemplate<dyn SelectorItemsTemplate<T>>
 where
     T: SelectorItemLike + 'static,
 {
@@ -413,7 +442,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -432,7 +461,7 @@ where
     T: SelectorItemLike + 'static,
     F: for<'a> Fn(Stateful<Div>, &SelectorItemsRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSelectorItemsTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 fn render_selection_checkmark(selected: bool, color: gpui::Hsla, size: f32, icon: &IconSource) -> AnyElement {
@@ -454,13 +483,84 @@ mod placement_tests {
     fn selector_popups_are_placed_by_their_themes_popover_lss() {
         let sdk = crate::theme::stylesheet::PopoverGeometry::sdk();
         let scaled = default_theme().with_length_scale(2.0).expect("scaled theme");
-        let panel = styled_selector_items_panel_look(
-            &StyleBinding::new("floating_menu", ThemeSource::Fixed(scaled.clone())),
-            &crate::theme::MetricTokens::default(),
-        );
+        let panel = PanelGeometry::of(&StyleBinding::new("floating_menu", ThemeSource::Fixed(scaled.clone())));
         assert!(sdk.panel_offset_y > 0.0 && sdk.window_margin > 0.0, "{sdk:?}");
         assert_eq!((panel.popup_offset_y, panel.window_margin), (sdk.panel_offset_y * 2.0, sdk.window_margin * 2.0));
-        let source = selector_items_panel_source(ThemeSource::Fixed(scaled))();
+        let source = PanelGeometry::of(&selector_items_panel_source(ThemeSource::Fixed(scaled))());
         assert_eq!(source.popup_offset_y, sdk.panel_offset_y * 2.0, "the source helper too");
+    }
+}
+
+/// The panel templates draw from the `floating_menu` style (#433): every value they read matches what the old
+/// panel look held, for the selector panel and the selection panel.
+#[cfg(test)]
+#[allow(deprecated)]
+mod parity_tests {
+    use super::*;
+    use crate::controls::floating_menu::MenuStyle;
+    use crate::style::StyleBinding;
+
+    fn assert_panel_matches(menu: &StyleBinding, look: &SelectorItemsPanelLook) {
+        let style = MenuStyle::resolve(menu);
+        let (panel, item, colors) = (style.panel(), style.item(), style.row_colors());
+        assert_eq!(
+            (panel.color("background"), panel.color("border"), panel.box_shadow()),
+            (look.background, look.border, look.shadow.clone())
+        );
+        assert_eq!(
+            (
+                panel.number("border_width"),
+                panel.number("radius"),
+                panel.number("padding"),
+                panel.number("min_width")
+            ),
+            (look.border_width, look.radius, look.padding, look.min_width)
+        );
+        assert_eq!(
+            (colors.foreground, colors.disabled_foreground, colors.hover_background, colors.hover_foreground),
+            (
+                look.foreground,
+                look.item_disabled_foreground,
+                look.item_hover_background,
+                look.item_hover_foreground
+            )
+        );
+        assert_eq!(
+            (item.number("height"), item.number("padding_x"), item.number("gap"), style.item_radius()),
+            (look.item_height, look.item_padding_x, look.item_gap, look.item_radius)
+        );
+        assert_eq!(item.typography(14.0, 20.0), look.item_typography);
+        assert_eq!(
+            (style.icon_size(), style.disabled_opacity(), panel.color("positive")),
+            (look.item_icon_size, look.item_disabled_opacity, look.positive)
+        );
+        let placement = selector_panel_placement(menu);
+        assert_eq!((placement.panel_offset_y, placement.window_margin), (look.popup_offset_y, look.window_margin));
+    }
+
+    #[test]
+    fn the_selector_panel_draws_what_the_look_held() {
+        let tokens = ThemeTokens::default();
+        assert_panel_matches(&StyleBinding::sdk("floating_menu"), &default_selector_items_panel_look(&tokens));
+    }
+
+    #[test]
+    fn the_selection_panel_draws_what_the_look_held() {
+        let tokens = ThemeTokens::default();
+        let look = crate::controls::selection_panel::default_selection_panel_look(&tokens);
+        let menu = StyleBinding::sdk("selection_panel");
+        let style = MenuStyle::resolve(&menu);
+        let (panel, colors) = (style.panel(), style.row_colors());
+        assert_eq!(
+            (
+                panel.color("background"),
+                panel.number("border_width"),
+                panel.number("padding"),
+                panel.number("min_width")
+            ),
+            (look.background, look.border_width, look.padding, look.min_width)
+        );
+        assert_eq!((colors.foreground, colors.hover_background), (look.foreground, look.item_hover_background));
+        assert_eq!((style.item().number("height"), style.icon_size()), (look.item_height, look.item_icon_size));
     }
 }

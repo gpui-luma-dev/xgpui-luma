@@ -1,3 +1,5 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -7,7 +9,7 @@ use gpui::{
 
 use super::{TextAreaDrag, TextAreaRenderModel};
 use crate::controls::textarea::{TextAreaTheme, default_textarea_theme};
-use crate::theme::StandardBoxScale;
+use super::values::AreaValues;
 
 const TEXTAREA_TRAILING_HITBOX_WIDTH: f32 = 4.0;
 const TEXTAREA_CARET_EDGE_OFFSET: f32 = 0.0;
@@ -32,9 +34,6 @@ pub struct TextAreaTemplateHandlers {
     pub drag_move: TextAreaDragMoveHandler,
 }
 
-pub type TextAreaTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait TextAreaTemplate: Send + Sync {
     fn theme(&self) -> Option<Arc<dyn TextAreaTheme>> {
         None
@@ -49,14 +48,18 @@ pub trait TextAreaTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TextAreaTemplate {
+    type Model<'a> = TextAreaRenderModel<'a>;
+}
+
 pub struct ThemedTextAreaTemplate {
     theme: Arc<dyn TextAreaTheme>,
-    modifiers: Vec<TextAreaTemplateModifier>,
+    modifiers: RootModifiers<dyn TextAreaTemplate>,
 }
 
 impl ThemedTextAreaTemplate {
     pub fn new(theme: Arc<dyn TextAreaTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -65,36 +68,6 @@ impl ThemedTextAreaTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextAreaRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-struct ModifiedTextAreaTemplate {
-    base: Arc<dyn TextAreaTemplate>,
-    modifiers: Vec<TextAreaTemplateModifier>,
-}
-
-impl ModifiedTextAreaTemplate {
-    fn new(base: Arc<dyn TextAreaTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TextAreaTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextAreaRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -108,10 +81,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn TextAreaTemplate>, mod
 where
     F: Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTextAreaTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl TextAreaTemplate for ModifiedTextAreaTemplate {
+impl TextAreaTemplate for ModifiedTemplate<dyn TextAreaTemplate> {
     fn theme(&self) -> Option<Arc<dyn TextAreaTheme>> {
         self.base.theme()
     }
@@ -124,7 +97,7 @@ impl TextAreaTemplate for ModifiedTextAreaTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -137,12 +110,10 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         &self,
         model: &TextAreaRenderModel<'_>,
         handlers: TextAreaTemplateHandlers,
-        window: &mut Window,
+        _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        let mut look = self.theme.resolve_look(model.state, model.enabled, &scale);
+        let mut look = AreaValues::read(&self.theme.resolve_style(model.state, model.enabled));
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let selection = model.state.selection_range();
         let cursor = model.state.cursor.min(model.value.chars().count());
@@ -284,7 +255,8 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
 
         root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
-        self.apply_modifiers(root, model)
+        self.modifiers
+            .apply(root, model)
             .on_hover(handlers.hover)
             .on_mouse_down(gpui::MouseButton::Left, handlers.mouse_down)
             .on_mouse_move(handlers.mouse_move)

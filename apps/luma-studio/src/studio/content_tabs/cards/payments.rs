@@ -320,6 +320,12 @@ mod tests {
         let (panel, cx) = app
             .add_window_view(|_, cx| PaymentsPanel::new(cx, Arc::new(ShadcnLook::built_in()), shadcn::ShadcnSize::Sm));
         cx.update(|window, _| window.activate_window());
+        // Rows slide into place after a drop on the real clock; settle them at once so the clicks below land
+        // on each row's final position, however fast the test runs.
+        cx.update(|_, app| {
+            let table = panel.read(app).table.clone();
+            table.update(app, |table, cx| table.set_motion_enabled(false, cx));
+        });
         cx.run_until_parked();
         for selector in ["payments-checkbox-1", "payments-checkbox-2"] {
             let checkbox = cx.debug_bounds(selector).unwrap();

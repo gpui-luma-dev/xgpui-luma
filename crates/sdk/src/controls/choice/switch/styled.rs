@@ -2,7 +2,9 @@
 //!
 //! Values come from `.lss` (`switch.lss`); an instance's model can still override the track and thumb
 //! size, the extra track length, the orientation and the radius.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
+use crate::style::PartRead;
 use gpui::{App, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, px};
 use xgpui_luma_style::{PartId, PartView, box_shadows};
 
@@ -194,7 +196,7 @@ impl ChoiceData for SwitchData {
         }
 
         let mut root_element = template.apply_modifiers(control, model);
-        root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+        root_element = crate::style::fade(root_element, root.opacity());
         if !model.state.disabled {
             root_element = root_element.cursor_pointer();
         }

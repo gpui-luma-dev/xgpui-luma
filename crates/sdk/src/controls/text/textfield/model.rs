@@ -1,3 +1,4 @@
+#![allow(deprecated)] // The look-closure bridge reads `TextFieldLook` until it is removed (#433).
 use std::sync::Arc;
 
 use gpui::{AppContext, Entity, SharedString};
@@ -42,7 +43,7 @@ pub struct TextFieldRenderModel<'a> {
     pub caret_visible: bool,
     pub horizontal_scroll: f32,
     pub character_offsets: Vec<f32>,
-    pub look: TextFieldLook,
+    pub style: std::sync::Arc<xgpui_luma_style::Resolved>,
 }
 
 pub struct TextFieldBuilder {
@@ -204,6 +205,7 @@ impl TextFieldBuilder {
         self
     }
 
+    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
     pub fn look_override<F>(mut self, look_override: F) -> Self
     where
         F: Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static,

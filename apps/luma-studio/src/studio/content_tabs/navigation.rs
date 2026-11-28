@@ -5,8 +5,10 @@ use xgpui_luma::infra::ElementExt;
 use xgpui_luma::controls::control_group::ControlGroupItemHandlerExt;
 use xgpui_luma::controls::tabs::{
     TabsIndicatorMotion, TabsRenderModel, TabsTemplate, TabsTemplateHandlers, TabsTheme, render_tab_button,
-    resolve_tabs_uniform_item_width,
+    resolve_tab, resolve_tabs_list, resolve_tabs_uniform_item_width,
 };
+use xgpui_luma::style::PartRead;
+use xgpui_luma::style::lss::PartId;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
@@ -32,14 +34,20 @@ impl TabsTemplate for LumaStudioTabsTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        let list_look = self.theme.resolve_list(model.enabled);
+        let list_style = resolve_tabs_list(&self.theme.style(), model.enabled);
+        let list = list_style.part(PartId::new("list"));
         let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), window);
 
         let active_item = model.items.iter().find(|item| item.active);
-        let active_look = active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state()));
         if let Some(motion) = model.indicator_motion {
-            let look = active_look.unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default()));
-            motion.set_metrics(look.padding_x, look.indicator_height, look.indicator);
+            let state = active_item.map_or_else(InteractionState::default, |item| item.state.interaction_state());
+            let active = resolve_tab(&self.theme.item_style(true, state), true, state);
+            let root = active.root();
+            motion.set_metrics(
+                active.part(PartId::new("item")).number("padding_x"),
+                root.number("indicator_height"),
+                root.painted("indicator"),
+            );
         }
 
         let mut root = div()
@@ -50,9 +58,9 @@ impl TabsTemplate for LumaStudioTabsTemplate {
             .flex_row()
             .items_center()
             .px(px(24.0))
-            .gap(px(list_look.gap))
-            .p(px(list_look.padding))
-            .rounded(px(list_look.radius))
+            .gap(px(list.number("gap")))
+            .p(px(list.number("padding")))
+            .rounded(px(list.number("radius")))
             .child(div().absolute().left(px(0.0)).right(px(0.0)).bottom(px(0.0)).h(px(1.0)).bg(self.full_bar_color));
 
         if let Some(motion) = model.indicator_motion.cloned() {
@@ -61,17 +69,18 @@ impl TabsTemplate for LumaStudioTabsTemplate {
             });
         }
 
-        if let Some(background) = list_look.background {
+        if let Some(background) = list.painted("background") {
             root = root.bg(background);
         }
 
-        if let Some(border) = list_look.border {
+        if let Some(border) = list.painted("border") {
             root = root.border_1().border_color(border);
         }
 
         for (item, item_handlers) in model.items.iter().zip(handlers.into_item_handlers()) {
-            let look = self.theme.resolve_item(item.active, item.state.interaction_state());
-            let mut tab = render_tab_button(model.id, item, look, self.theme.font_family(), window, cx)
+            let state = item.state.interaction_state();
+            let style = resolve_tab(&self.theme.item_style(item.active, state), item.active, state);
+            let mut tab = render_tab_button(model.id, item, style, self.theme.font_family(), window, cx)
                 .control_group_item_handlers(item_handlers);
 
             if let Some(width) = uniform_width {

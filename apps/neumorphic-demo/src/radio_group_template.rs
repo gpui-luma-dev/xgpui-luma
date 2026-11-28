@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
 

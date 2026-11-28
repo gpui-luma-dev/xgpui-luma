@@ -67,7 +67,7 @@ fn row_lookup_tracks_sort_filter_expansion_and_replacement() {
     });
     // A handler built before sorting must resolve the node's current position.
     cx.update(|window, app| (handlers.hover)(&true, window, app));
-    cx.update(|_, app| assert_eq!(tree.read(app).hovered_node_id.as_deref(), Some("c")));
+    cx.update(|_, app| assert_eq!(tree.read(app).rows_pointer.hovered().map(|id| id.as_ref()), Some("c")));
     click(cx, "c", Modifiers::default());
     selected(&tree, cx, &["c"]);
     tree.update(cx, |tree, cx| {

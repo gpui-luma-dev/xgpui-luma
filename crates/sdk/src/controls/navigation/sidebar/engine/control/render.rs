@@ -286,7 +286,10 @@ pub(super) fn render_nodes(
             selected: selected_id == Some(&node.id),
             hovered: hovered_node == Some(&node.id),
             pressed: pressed_node == Some(&node.id),
-            focused: focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
+            focused: crate::infra::state::focus_visible(
+                focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
+                window,
+            ),
             expanded: node.expanded,
             enabled: sidebar_enabled && node.enabled,
             disabled: !(sidebar_enabled && node.enabled),
@@ -376,7 +379,10 @@ pub(super) fn render_collapsed_rail_nodes(
             selected: selected_id == Some(&node.id),
             hovered: hovered_node == Some(&node.id),
             pressed: pressed_node == Some(&node.id),
-            focused: focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
+            focused: crate::infra::state::focus_visible(
+                focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
+                window,
+            ),
             expanded: node.expanded,
             enabled: sidebar_enabled && node.enabled,
             disabled: !(sidebar_enabled && node.enabled),

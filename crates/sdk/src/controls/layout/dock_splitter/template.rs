@@ -1,8 +1,12 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
 
-use super::{DockSplitterLook, DockSplitterDrag, DockSplitterRenderModel, SplitterOrientation};
+use crate::style::PartRead;
+use xgpui_luma_style::PartView;
+use super::{DockSplitterDrag, DockSplitterRenderModel, SplitterOrientation};
 
 pub type DockSplitterHoverHandler = Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
 pub type DockSplitterMouseDownHandler = Box<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
@@ -17,28 +21,29 @@ pub struct DockSplitterTemplateHandlers {
     pub key_down: DockSplitterKeyDownHandler,
 }
 
-pub type DockSplitterTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &DockSplitterRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait DockSplitterTemplate: Send + Sync {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn DockSplitterTemplate {
+    type Model<'a> = DockSplitterRenderModel<'a>;
+}
+
 pub struct ThemedDockSplitterTemplate {
     show_thumb: bool,
-    modifiers: Vec<DockSplitterTemplateModifier>,
+    modifiers: RootModifiers<dyn DockSplitterTemplate>,
 }
 
 impl ThemedDockSplitterTemplate {
     pub fn new(show_thumb: bool) -> Self {
-        Self { show_thumb, modifiers: Vec::new() }
+        Self { show_thumb, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -47,13 +52,6 @@ impl ThemedDockSplitterTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &DockSplitterRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -69,29 +67,6 @@ pub fn default_dock_splitter_template() -> Arc<dyn DockSplitterTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedDockSplitterTemplate::new(false))).clone()
 }
 
-struct ModifiedDockSplitterTemplate {
-    base: Arc<dyn DockSplitterTemplate>,
-    modifiers: Vec<DockSplitterTemplateModifier>,
-}
-
-impl ModifiedDockSplitterTemplate {
-    fn new(base: Arc<dyn DockSplitterTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: DockSplitterTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &DockSplitterRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn template_with_modifier<F>(
     template: Arc<dyn DockSplitterTemplate>,
     modifier: F,
@@ -99,20 +74,20 @@ pub(super) fn template_with_modifier<F>(
 where
     F: Fn(Stateful<Div>, &DockSplitterRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedDockSplitterTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl DockSplitterTemplate for ModifiedDockSplitterTemplate {
+impl DockSplitterTemplate for ModifiedTemplate<dyn DockSplitterTemplate> {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, look, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -120,35 +95,35 @@ impl DockSplitterTemplate for ThemedDockSplitterTemplate {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
         let root = render_splitter(model, look, handlers, self.show_thumb);
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
 fn render_splitter(
     model: &DockSplitterRenderModel<'_>,
-    look: &DockSplitterLook,
+    look: PartView<'_>,
     handlers: DockSplitterTemplateHandlers,
     show_thumb: bool,
 ) -> Stateful<Div> {
     let DockSplitterTemplateHandlers { hover, mouse_down, mouse_up, mouse_up_out, key_down } = handlers;
     let line_color = if model.dragging || model.hovered || model.focused {
-        look.hover_color
+        look.color("hover_line")
     } else {
-        look.line_color
+        look.color("line")
     };
-    let half_inset = ((look.hit_target_px - look.visible_line_px) * 0.5).max(0.0);
+    let half_inset = ((look.number("hit_target") - look.number("visible_line")) * 0.5).max(0.0);
 
     let mut root = div().id((model.id.clone(), 0usize)).relative().flex_shrink_0();
 
     root = match model.orientation {
-        SplitterOrientation::Vertical => root.w(px(look.visible_line_px)).h_full(),
-        SplitterOrientation::Horizontal => root.h(px(look.visible_line_px)).w_full(),
+        SplitterOrientation::Vertical => root.w(px(look.number("visible_line"))).h_full(),
+        SplitterOrientation::Horizontal => root.h(px(look.number("visible_line"))).w_full(),
     };
 
     let drag_payload = DockSplitterDrag { id: model.id.clone() };
@@ -159,7 +134,7 @@ fn render_splitter(
             .left(px(-half_inset))
             .top(px(0.0))
             .bottom(px(0.0))
-            .w(px(look.hit_target_px))
+            .w(px(look.number("hit_target")))
             .track_focus(model.focus_handle)
             .tab_index(if model.enabled { 0 } else { -1 })
             .on_hover(hover)
@@ -181,7 +156,7 @@ fn render_splitter(
                     .left(px(half_inset))
                     .top(px(0.0))
                     .bottom(px(0.0))
-                    .w(px(look.visible_line_px))
+                    .w(px(look.number("visible_line")))
                     .bg(line_color),
             ),
         SplitterOrientation::Horizontal => div()
@@ -190,7 +165,7 @@ fn render_splitter(
             .top(px(-half_inset))
             .left(px(0.0))
             .right(px(0.0))
-            .h(px(look.hit_target_px))
+            .h(px(look.number("hit_target")))
             .track_focus(model.focus_handle)
             .tab_index(if model.enabled { 0 } else { -1 })
             .on_hover(hover)
@@ -209,7 +184,7 @@ fn render_splitter(
                     .top(px(half_inset))
                     .left(px(0.0))
                     .right(px(0.0))
-                    .h(px(look.visible_line_px))
+                    .h(px(look.number("visible_line")))
                     .bg(line_color),
             ),
     };
@@ -218,14 +193,14 @@ fn render_splitter(
         hit_target = hit_target.child(
             div().absolute().inset_0().flex().justify_center().items_center().child(
                 div()
-                    .rounded(px(look.geometry.thumb_radius))
+                    .rounded(px(look.number("thumb_radius")))
                     .bg(if model.hovered || model.dragging || model.focused {
-                        look.thumb_color
+                        look.color("thumb")
                     } else {
-                        look.thumb_color.opacity(look.geometry.thumb_rest_opacity)
+                        look.color("thumb").opacity(look.number("thumb_rest_opacity"))
                     })
-                    .w(px(look.geometry.thumb_width))
-                    .h(px(look.geometry.thumb_height)),
+                    .w(px(look.number("thumb_width")))
+                    .h(px(look.number("thumb_height"))),
             ),
         );
     }

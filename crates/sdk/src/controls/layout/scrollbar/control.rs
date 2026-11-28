@@ -1,7 +1,7 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     App, Bounds, Context, DragMoveEvent, Empty, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,
-    MouseUpEvent, Pixels, Point, Render, ScrollDelta, ScrollEvent, SharedString, Subscription, Window, div, prelude::*,
-    px,
+    MouseUpEvent, Pixels, Point, Render, ScrollDelta, ScrollEvent, SharedString, Window, div, prelude::*, px,
 };
 
 use super::{
@@ -51,9 +51,8 @@ pub struct Scrollbar {
     thumb_length: Option<f32>,
     drag_anchor: Option<f32>,
     scroll_remainder: f32,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    emitted_focused: bool,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    focus_report: crate::infra::focus_report::FocusReport,
 }
 
 impl EventEmitter<ScrollbarEvent> for Scrollbar {}
@@ -75,9 +74,8 @@ impl Scrollbar {
             thumb_length: None,
             drag_anchor: None,
             scroll_remainder: 0.0,
-            focus_in_subscription: None,
-            focus_out_subscription: None,
-            emitted_focused: false,
+            focus_subscriptions: Default::default(),
+            focus_report: Default::default(),
         }
     }
 
@@ -497,16 +495,6 @@ impl Scrollbar {
         self.move_to_value(self.model.range.end, cx);
     }
 
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(ScrollbarEvent::FocusChanged { focused });
-        true
-    }
-
     fn emit_drag_start_if_needed(&mut self, was_pressed: bool, cx: &mut Context<Self>) {
         if was_pressed || !self.interaction.is_pressed() {
             return;
@@ -524,14 +512,9 @@ impl Focusable for Scrollbar {
 
 impl Render for Scrollbar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.interaction.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let model = self.render_model(window);
         let handlers = self.template_handlers(cx);
@@ -627,5 +610,21 @@ mod tests {
             -12.0
         );
         assert_eq!(scroll_value_delta(ScrollDelta::Lines(point(-3.0, 0.0)), ScrollbarOrientation::Horizontal), -60.0);
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for Scrollbar {
+    type FocusEvent = ScrollbarEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> ScrollbarEvent {
+        ScrollbarEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

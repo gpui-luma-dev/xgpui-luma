@@ -3,7 +3,6 @@ use gpui::{AnyElement, Hsla, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::MenuPath;
 use xgpui_luma::controls::floating_menu::render_floating_menu;
 use xgpui_luma::infra::menu_item::MenuItem;
-use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{ContextMenuVariant, Look, Tone, context_menu_theme};
 use lucide_svg_static::Icon;
 
@@ -25,7 +24,7 @@ pub fn preview(look: &Look, fg: Hsla) -> AnyElement {
         ("Soft · Gray", ContextMenuVariant::Soft, Tone::Gray),
     ] {
         let id = SharedString::from(format!("guide-context-preview-{name}"));
-        let palette = context_menu_theme(look, variant, tone).resolve(InteractionState::default()).floating_menu;
+        let palette = context_menu_theme(look, variant, tone).menu();
         let panel = render_floating_menu(
             &id,
             &items,

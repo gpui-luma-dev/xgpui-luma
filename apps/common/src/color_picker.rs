@@ -17,7 +17,8 @@ use xgpui_luma_color::color_slider::{
     AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value, sizing,
 };
 use xgpui_luma_color::composition::ColorCompositionSync;
-use xgpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, PopoverPlacement};
+use xgpui_luma::infra::popup_dismiss::PopupDismiss;
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverPlacement};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use xgpui_luma_look_shadcn as shadcn;
@@ -204,10 +205,10 @@ impl ColorPickerPopover {
                 (content_for_popover)(color, on_change, window, cx)
             })
             .placement(PopoverPlacement::Smart)
-            .dismiss_policy(PopoverDismissPolicy::CloseOnClickAway)
+            .dismiss(PopupDismiss::CLICK_OUTSIDE)
             .offset_y(px(0.0))
             .initial_content_size(size(px(260.0), px(254.0)))
-            .trigger_on_pointer_down(false)
+            .open_on(xgpui_luma::infra::trigger::TriggerOpenOn::Never)
             .on_open_changed(cx, |picker: &mut Self, open, cx| {
                 picker.button.update(cx, |button, cx| {
                     let mut data = button.data().clone();

@@ -16,10 +16,12 @@ pub use template::{
     ResizablePanelsTemplate, ResizablePanelsTemplateModifier, ThemedResizablePanelsTemplate,
     default_resizable_panels_template, render_resizable_panels_surface, render_resizable_panels_handle,
 };
-pub use theme::{ResizablePanelsLook, ResizablePanelsTheme, default_resizable_panels_theme};
+#[allow(deprecated)]
+pub use theme::ResizablePanelsLook;
+pub use theme::{ResizablePanelsTheme, default_resizable_panels_theme};
 
 mod callback;
 pub use callback::ResizablePanelsEventExt;
 
 pub use model::ResizablePanelsMotion;
-pub use super::styled::StyledResizablePanelsTheme;
+pub use super::styled::{StyledResizablePanelsTheme, resolve_resizable_panels};

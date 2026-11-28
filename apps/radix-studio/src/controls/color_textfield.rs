@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
@@ -8,7 +9,8 @@ use std::sync::Arc;
 
 use gpui::{Context, Entity, EventEmitter, IntoElement, Render, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
-use xgpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, PopoverPlacement};
+use xgpui_luma::infra::popup_dismiss::PopupDismiss;
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverPlacement};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
 use xgpui_luma::prelude::{TooltipEntityExt, HasPresenter};
@@ -106,10 +108,10 @@ impl ColorTextField {
                     .into_any_element()
             })
             .placement(PopoverPlacement::Smart)
-            .dismiss_policy(PopoverDismissPolicy::CloseOnClickAway)
+            .dismiss(PopupDismiss::CLICK_OUTSIDE)
             .offset_y(px(4.0))
             .initial_content_size(gpui::size(px(384.0), px(264.0)))
-            .trigger_on_pointer_down(false)
+            .open_on(xgpui_luma::infra::trigger::TriggerOpenOn::Never)
             .spawn(cx);
 
         let mut subscriptions = Vec::new();

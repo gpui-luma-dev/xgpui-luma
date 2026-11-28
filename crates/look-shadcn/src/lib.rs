@@ -45,13 +45,15 @@ pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
 pub use look_context::LookContext;
 pub use stylesheet::{StylesheetConfig, embedded_stylesheet};
-pub use elements::{Badge, BadgeLook, BadgeIconPlacement, BadgeVariant, badge_look};
+#[allow(deprecated)]
+pub use elements::{BadgeLook, badge_look};
+pub use elements::{Badge, BadgeIconPlacement, BadgeVariant, badge_style};
 pub use controls::{
     Frame, Accordion, Autocomplete, Button, ButtonRadiusPreset, Card, Checkbox, ComboBox, ContextMenu, IconGroup,
     Table, ListBoxBuilder, MenuChoiceGroup, Pager, PopupMenu, Progress, Radio, RadioGroup, Scrollbar, SearchSelector,
     SelectionPanel, Selector, ShadcnButtonStyle, ShadcnCard, Sidebar, Slider, SplitButton, Stepper, Switch, Tabs,
     TextArea, TextField, Toggle, ToggleLayout, Toolbar, TreeView, ShadcnTextFieldStyle, ShadcnToolbarItemExt,
-    ToolbarTextFieldItemBuilder, slide_panel_background, slide_panel_panels_look,
+    ToolbarTextFieldItemBuilder, slide_panel_background, slide_panel_panels_style,
 };
 pub use provenance::{ColorSource, LookResolver, ResolvedSourceColor, ResolvedColor};
 pub use usage::all_shadcn_theme_usages;

@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use std::rc::Rc;
 
 use gpui::{
@@ -331,7 +332,9 @@ impl SidebarPanelEngine {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.rail_submenu_lifecycle.dismiss_from_outside_click(event.position) {
+        if self.model.rail_dismiss.click_outside
+            && self.rail_submenu_lifecycle.dismiss_from_outside_click(event.position)
+        {
             self.close_rail_submenu(cx);
             cx.notify();
         }
@@ -340,7 +343,7 @@ impl SidebarPanelEngine {
     pub(super) fn handle_escape_focus(&mut self, _: &EscapeFocus, window: &mut Window, cx: &mut Context<Self>) {
         if cx.stop_active_drag(window) {
             cx.stop_propagation();
-        } else if self.open_rail_submenu.is_some() {
+        } else if self.open_rail_submenu.is_some() && self.model.rail_dismiss.escape {
             self.close_rail_submenu(cx);
             cx.notify();
         } else {
@@ -564,6 +567,13 @@ impl SidebarPanelEngine {
                     if !this.any_focus_target_focused(window) && this.emit_focus_changed(false, cx) {
                         cx.notify();
                     }
+                    if !this.any_focus_target_focused(window)
+                        && this.model.rail_dismiss.focus_loss
+                        && this.open_rail_submenu.is_some()
+                    {
+                        this.close_rail_submenu(cx);
+                        cx.notify();
+                    }
                 },
             ));
         }
@@ -571,16 +581,6 @@ impl SidebarPanelEngine {
 
     pub(super) fn any_focus_target_focused(&self, window: &Window) -> bool {
         self.focus_subscription_keys.iter().any(|(_, focus_handle)| focus_handle.is_focused(window))
-    }
-
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(SidebarPanelEngineEvent::FocusChanged { focused });
-        true
     }
 }
 

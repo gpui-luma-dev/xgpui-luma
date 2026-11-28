@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use xgpui_luma::controls::switch::SwitchEventExt;
 use std::sync::Arc;
 

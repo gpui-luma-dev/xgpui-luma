@@ -5,14 +5,14 @@ use xgpui_luma::controls::stepper::*;
 use crate::Look;
 
 /// The Radix drag preview, drawn from `.lss` (`style/drag_preview.lss`) at `size`.
-pub(crate) fn drag_look(look: &Look, size: crate::RadixSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+pub(crate) fn drag_style(look: &Look, size: crate::RadixSize) -> Arc<xgpui_luma::style::lss::Resolved> {
     let binding = xgpui_luma::style::StyleBinding::new("drag_preview", crate::textfield::live_source(look));
     let binding = if size != crate::RadixSize::Two {
         binding.attr("size", size.key())
     } else {
         binding
     };
-    xgpui_luma::infra::drag_drop::styled_drag_drop_look(&binding)
+    xgpui_luma::infra::drag_drop::resolve_drag_preview(&binding)
 }
 /// Live Radix step status and connector colors, with SDK per-size geometry.
 /// Drawn from `.lss` (`style/stepper.lss`) at the look's size.

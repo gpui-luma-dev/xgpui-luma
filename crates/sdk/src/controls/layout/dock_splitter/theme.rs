@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -13,6 +15,9 @@ pub struct DockSplitterGeometry {
     pub thumb_rest_opacity: f32,
 }
 
+#[deprecated(
+    note = "the dock splitter draws from `DockSplitterTheme::style()`; resolve it with `resolve_dock_splitter` (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct DockSplitterLook {
     /// Captured, resolved thumb geometry and resting opacity.
@@ -25,7 +30,17 @@ pub struct DockSplitterLook {
 }
 
 pub trait DockSplitterTheme: Send + Sync {
-    fn resolve(&self, enabled: bool) -> DockSplitterLook;
+    /// The splitter's style (#433): the binding the template resolves (see
+    /// [`resolve_dock_splitter`](super::resolve_dock_splitter)) and draws from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("dock_splitter")
+    }
+
+    /// The splitter's look, built from [`Self::style`] for code that still reads a [`DockSplitterLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_dock_splitter` (#433)")]
+    fn resolve(&self, enabled: bool) -> DockSplitterLook {
+        DockSplitterLook::from_resolved(&super::resolve_dock_splitter(&self.style(), enabled))
+    }
 }
 
 pub fn default_dock_splitter_theme() -> Arc<dyn DockSplitterTheme> {

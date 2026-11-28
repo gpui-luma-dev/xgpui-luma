@@ -1,6 +1,7 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
-use gpui::{App, Div, SharedString, Stateful, div, prelude::*, px};
+use gpui::{App, Div, SharedString, Stateful, div, prelude::*};
 
 pub use super::item_template::{
     SelectionPanelClickHandler, SelectionPanelHoverHandler, SelectionPanelMouseDownHandler,
@@ -11,7 +12,6 @@ use super::item_template::{
     render_selection_panel_item_row,
 };
 use super::model::SelectionPanelItemLike;
-use super::theme::SelectionPanelLook;
 use crate::infra::state::ControlFocusState;
 use crate::infra::icon::SelectionStatusIcons;
 
@@ -42,7 +42,9 @@ where
     pub enabled: bool,
     pub focus: ControlFocusState,
     pub item_template: Option<&'a SelectionPanelItemTemplate<T>>,
-    pub look: SelectionPanelLook,
+    /// The panel's style (a `selection_panel` binding, which extends `floating_menu`, #433): the template
+    /// resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
     pub show_selection_marker: bool,
     pub icons: &'a SelectionStatusIcons,
     pub show_panel_chrome: bool,
@@ -60,39 +62,14 @@ where
     ) -> Stateful<Div>;
 }
 
-struct ModifiedSelectionPanelTemplate<T>
+impl<T> RenderModel for dyn SelectionPanelTemplate<T>
 where
     T: SelectionPanelItemLike + 'static,
 {
-    base: Arc<dyn SelectionPanelTemplate<T>>,
-    modifiers: Vec<SelectionPanelModifier<T>>,
+    type Model<'a> = SelectionPanelRenderModel<'a, T>;
 }
 
-impl<T> ModifiedSelectionPanelTemplate<T>
-where
-    T: SelectionPanelItemLike + 'static,
-{
-    fn new(base: Arc<dyn SelectionPanelTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(Stateful<Div>, &SelectionPanelRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectionPanelRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
-impl<T> SelectionPanelTemplate<T> for ModifiedSelectionPanelTemplate<T>
+impl<T> SelectionPanelTemplate<T> for ModifiedTemplate<dyn SelectionPanelTemplate<T>>
 where
     T: SelectionPanelItemLike + 'static,
 {
@@ -103,7 +80,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -115,7 +92,7 @@ where
     T: SelectionPanelItemLike + 'static,
     F: for<'a> Fn(Stateful<Div>, &SelectionPanelRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSelectionPanelTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 pub struct DefaultSelectionPanelTemplate;
@@ -137,20 +114,12 @@ where
             item_mouse_up_outs,
             item_clicks,
         } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
 
         let mut root = div().id((model.panel_id.clone(), 0usize)).relative().flex().flex_col().w_full();
 
         if model.show_panel_chrome {
-            root = root
-                .min_w(px(look.min_width))
-                .p(px(look.padding))
-                .bg(look.background)
-                .border(px(look.border_width))
-                .border_color(look.border)
-                .rounded(px(look.radius))
-                .shadow(look.shadow.clone())
-                .occlude();
+            root = style.pane(root);
         }
 
         let mut mouse_downs = item_mouse_downs.into_iter();
@@ -186,7 +155,7 @@ where
                     enabled: row_enabled,
                     sibling_count: model.visible_indices.len(),
                     item_template: model.item_template,
-                    look,
+                    style: &style,
                     show_selection_marker: model.show_selection_marker,
                     icons: model.icons.clone(),
                 },

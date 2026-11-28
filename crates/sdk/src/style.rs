@@ -93,6 +93,7 @@ sdk_sources! {
         "controls/layout/dock_splitter/dock_splitter.lss",
         "controls/layout/resizable_panels/resizable_panels.lss",
         "controls/layout/split_view/split_view.lss",
+        "controls/layout/frame.lss",
         "controls/display/avatar.lss",
         "controls/display/badge.lss",
         "controls/display/card.lss",
@@ -115,13 +116,14 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// The fade a part draws at in its resolved state: its `opacity` (`:disabled { opacity = … }`), or 1 when
-/// unset. Templates apply this once instead of a separate disabled fade (#413).
-pub(crate) fn part_opacity(part: xgpui_luma_style::PartView<'_>) -> f32 {
-    part.get(xgpui_luma_style::props::OPACITY).map_or(1.0, |o| o.clamp(0.0, 1.0))
+/// `color` as an `.lss` color, for setting a computed color through [`Overrides`](xgpui_luma_style::Overrides)
+/// (#433).
+pub fn lss_color(color: gpui::Hsla) -> xgpui_luma_style::Color {
+    let rgba = gpui::Rgba::from(color);
+    xgpui_luma_style::Color::srgb(rgba.r, rgba.g, rgba.b, rgba.a)
 }
 
-/// Applies a resolved part opacity ([`part_opacity`]) to `element`, leaving it untouched when opaque. The one
+/// Applies a resolved part opacity ([`PartRead::opacity`]) to `element`, leaving it untouched when opaque. The one
 /// place templates apply a state fade.
 pub(crate) fn fade<E: gpui::Styled>(element: E, opacity: f32) -> E {
     if opacity < 1.0 {
@@ -156,7 +158,7 @@ pub fn disabled_fade_problems(theme: &Theme) -> Vec<String> {
             };
             let (resting, disabled) = (theme.resolve(&resting), theme.resolve(&disabled));
             for part in disabled.parts() {
-                if part_opacity(disabled.part(part)) < 1.0 && fill(disabled.part(part)) != fill(resting.part(part)) {
+                if disabled.part(part).opacity() < 1.0 && fill(disabled.part(part)) != fill(resting.part(part)) {
                     problems.push(format!("{control} {part:?} {disabled_states:?}: fades and changes its fill"));
                 }
             }
@@ -271,6 +273,120 @@ impl ThemeSource {
     }
 }
 
+/// Shared readers for one resolved part (#433): the reads every control's template and theme make, so no
+/// control keeps its own `color()` / `number()` helpers. A property the part does not set reads as its
+/// default (transparent, `0`, the given text size), never a panic.
+pub trait PartRead {
+    /// A color, transparent when unset.
+    fn color(&self, name: &str) -> gpui::Hsla {
+        self.color_opt(name).unwrap_or_else(gpui::transparent_black)
+    }
+    /// A color, if the part sets one.
+    fn color_opt(&self, name: &str) -> Option<gpui::Hsla>;
+    /// A color that paints: set and not fully transparent.
+    fn painted(&self, name: &str) -> Option<gpui::Hsla> {
+        self.color_opt(name).filter(|color| color.a > 0.0)
+    }
+    /// A number (a length, a width, a factor), `0` when unset.
+    fn number(&self, name: &str) -> f32 {
+        self.number_opt(name).unwrap_or(0.0)
+    }
+    /// A number, if the part sets one.
+    fn number_opt(&self, name: &str) -> Option<f32>;
+    /// `font_weight`, at least 100 (CSS's thinnest), so an unset weight still draws text.
+    fn font_weight(&self) -> gpui::FontWeight {
+        gpui::FontWeight(self.number("font_weight").max(100.0))
+    }
+    /// `font_size`, `line_height` and `font_weight`, with the control's default size and line height.
+    fn typography(&self, size: f32, line_height: f32) -> crate::theme::LumaTextStyle {
+        crate::theme::LumaTextStyle {
+            size: self.number_opt("font_size").unwrap_or(size),
+            line_height: self.number_opt("line_height").unwrap_or(line_height),
+            weight: self.font_weight(),
+        }
+    }
+    /// `font_family`, empty (the window's font) when unset.
+    fn font_family_name(&self) -> gpui::SharedString;
+    /// The fade the part draws at: its `opacity` (`:disabled { opacity = … }`), clamped to 0–1, or 1 when
+    /// unset. Templates apply it once with [`fade`].
+    fn opacity(&self) -> f32;
+    /// `shadow` as GPUI shadows, empty when unset.
+    fn box_shadow(&self) -> Vec<gpui::BoxShadow> {
+        self.box_shadow_opt().unwrap_or_default()
+    }
+    /// `shadow` as GPUI shadows, if the part sets at least one layer.
+    fn box_shadow_opt(&self) -> Option<Vec<gpui::BoxShadow>>;
+}
+
+impl PartRead for xgpui_luma_style::PartView<'_> {
+    fn color_opt(&self, name: &str) -> Option<gpui::Hsla> {
+        self.value(name).and_then(xgpui_luma_style::Value::as_color).map(gpui::Hsla::from)
+    }
+    fn number_opt(&self, name: &str) -> Option<f32> {
+        self.value(name).and_then(xgpui_luma_style::Value::as_number)
+    }
+    fn font_family_name(&self) -> gpui::SharedString {
+        self.font_family().unwrap_or("").to_string().into()
+    }
+    fn opacity(&self) -> f32 {
+        self.get(xgpui_luma_style::props::OPACITY).map_or(1.0, |o| o.clamp(0.0, 1.0))
+    }
+    fn box_shadow_opt(&self) -> Option<Vec<gpui::BoxShadow>> {
+        self.shadow().filter(|layers| !layers.is_empty()).map(xgpui_luma_style::box_shadows)
+    }
+}
+
+/// A control's style states (#433): its interaction state plus the extras a control may have. One function,
+/// [`Self::pairs`], names them for the style key, so no control writes its own `("hover", …)` list. A state a
+/// control's `.lss` does not style changes nothing, so every control passes the full set.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct StyleStates {
+    pub interaction: crate::theme::InteractionState,
+    /// Semantically selected or current: a selected row, the active tab, the current page.
+    pub selected: bool,
+    /// Checked or on.
+    pub checked: bool,
+    /// The control's popup or panel is open.
+    pub open: bool,
+}
+
+impl StyleStates {
+    pub fn new(interaction: crate::theme::InteractionState) -> Self {
+        Self { interaction, ..Self::default() }
+    }
+
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    pub fn checked(mut self, checked: bool) -> Self {
+        self.checked = checked;
+        self
+    }
+
+    pub fn open(mut self, open: bool) -> Self {
+        self.open = open;
+        self
+    }
+
+    /// The states by the names `.lss` uses.
+    pub fn pairs(&self) -> [(&'static str, bool); 8] {
+        let state = self.interaction;
+        [
+            ("hover", state.hovered),
+            ("pressed", state.pressed),
+            ("focused", state.focused),
+            ("disabled", state.disabled),
+            ("invalid", state.invalid),
+            ("selected", self.selected),
+            ("checked", self.checked),
+            ("open", self.open),
+        ]
+    }
+}
+
 /// One control's styles bound for rendering: the theme source, the control, and the attribute
 /// values and states every instance has (a look's variant, size or tone). A control's theme adapter
 /// adds its interaction states and resolves.
@@ -281,6 +397,12 @@ pub struct StyleBinding {
     attrs: Vec<(xgpui_luma_style::AttrId, xgpui_luma_style::AttrValue)>,
     states: Vec<xgpui_luma_style::StateId>,
     overrides: xgpui_luma_style::Overrides,
+}
+
+impl std::fmt::Debug for StyleBinding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StyleBinding").field("control", &self.control).finish_non_exhaustive()
+    }
 }
 
 impl StyleBinding {
@@ -328,15 +450,36 @@ impl StyleBinding {
         self
     }
 
-    /// Values set on this instance.
+    /// Values set on this instance, replacing any set before.
     pub fn overrides(mut self, overrides: xgpui_luma_style::Overrides) -> Self {
         self.overrides = overrides;
+        self
+    }
+
+    /// `overrides` set over any values set before (#433): for a theme that adjusts another theme's style.
+    pub fn with_overrides(mut self, overrides: &xgpui_luma_style::Overrides) -> Self {
+        self.overrides = self.overrides.merge(overrides);
         self
     }
 
     /// Resolve with these interaction states (by name) at `scale` device pixels per pixel.
     pub fn resolve(&self, states: &[(&str, bool)], scale: f32) -> Arc<xgpui_luma_style::Resolved> {
         self.resolve_for(&[], states, scale)
+    }
+
+    /// Resolve in `states` (the one state function, [`StyleStates`]) at `scale` device pixels per pixel.
+    pub fn resolve_states(&self, states: StyleStates, scale: f32) -> Arc<xgpui_luma_style::Resolved> {
+        self.resolve_for(&[], &states.pairs(), scale)
+    }
+
+    /// [`Self::resolve_states`] with extra attribute values for this call (see [`Self::resolve_for`]).
+    pub fn resolve_states_for(
+        &self,
+        attrs: &[(&str, &str)],
+        states: StyleStates,
+        scale: f32,
+    ) -> Arc<xgpui_luma_style::Resolved> {
+        self.resolve_for(attrs, &states.pairs(), scale)
     }
 
     /// Resolve with extra attribute values for this call (a trigger style picked per render), then the
@@ -372,6 +515,33 @@ mod tests {
     use xgpui_luma_style::Value;
 
     use super::*;
+
+    /// The one state function (#433) names only states the config declares, so none is silently dropped.
+    #[test]
+    fn style_states_are_declared_states() {
+        let config = config();
+        for (name, _) in StyleStates::default().pairs() {
+            assert!(config.state(name).is_some(), "{name} is not a declared state");
+        }
+    }
+
+    /// The shared readers (#433): an unset property reads as its default, and a set one as its value.
+    #[test]
+    fn part_readers_default_unset_properties() {
+        let resolved = StyleBinding::sdk("tooltip").resolve(&[], 1.0);
+        let missing = resolved.part(xgpui_luma_style::PartId::new("no_such_part"));
+        assert_eq!(missing.color("background"), gpui::transparent_black());
+        assert_eq!(missing.painted("background"), None);
+        assert_eq!(missing.number("radius"), 0.0);
+        assert_eq!(missing.font_weight(), gpui::FontWeight(100.0), "an unset weight still draws text");
+        assert_eq!(missing.typography(13.0, 18.0).size, 13.0);
+        assert_eq!(missing.opacity(), 1.0);
+        assert!(missing.box_shadow().is_empty());
+
+        let root = resolved.root();
+        assert!(root.painted("background").is_some(), "the SDK tooltip paints a background");
+        assert_eq!(root.number_opt("radius"), root.radius());
+    }
 
     #[test]
     fn sources_list_every_lss_file() {

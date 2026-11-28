@@ -1,5 +1,8 @@
 //! Radix ownership, state precedence, and shared geometry contracts.
+// These contracts read the compatibility Looks, which build from the resolved styles (#433).
+#![allow(deprecated)]
 use super::*;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};
 use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 
@@ -114,7 +117,13 @@ fn live_palette_edits_remain_local_to_forks() {
     let unchanged = sidebar_theme(&base).resolve_item(true, Default::default());
     assert_eq!(unchanged.foreground, before.foreground);
     assert_eq!(unchanged.height, before.height);
-    let drag = accordion_theme(&fork).resolve_drag();
-    crate::control_group::assert_close(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
-    crate::control_group::assert_close(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
+    let drag = accordion_theme(&fork).drag_style();
+    crate::control_group::assert_close(
+        drag.root().color("valid_marker"),
+        fork.resolve_role(SemanticRole::Focus).hsla(),
+    );
+    crate::control_group::assert_close(
+        drag.root().color("invalid_marker"),
+        fork.resolve_role(SemanticRole::Destructive).hsla(),
+    );
 }

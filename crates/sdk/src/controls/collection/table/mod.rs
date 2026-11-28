@@ -68,7 +68,9 @@
 //! table. Custom header templates own their interactions and get no handles.
 
 mod styled;
-pub use styled::{StyledTable, StyledTableTheme, table_drag_look};
+#[allow(deprecated)]
+pub use styled::table_drag_look;
+pub use styled::{StyledTable, StyledTableTheme, TableRowLayout};
 mod control;
 mod column_template;
 mod layout;
@@ -91,17 +93,21 @@ pub use layout::{
     visible_row_height,
 };
 pub use model::{
-    IntoTableColumnCellTemplate, TableScrollMode, TableSelectionMode, TableLookOverride, TableBuilder, TableColumn,
-    TableColumnCellLayout, TableColumnCellTemplate, TableColumnWidth, TableEnabledFn, TableHeaderTemplate,
-    TableGridColumnsBuilder, TableLabel, TableLabelFn, TableRenderModel, TableRowRenderModel, TableRowTemplate,
-    make_table_header_template, make_table_row_template,
+    IntoTableColumnCellTemplate, TableScrollMode, TableSelectionMode, TableBuilder, TableColumn, TableColumnCellLayout,
+    TableColumnCellTemplate, TableColumnWidth, TableEnabledFn, TableHeaderTemplate, TableGridColumnsBuilder,
+    TableLabel, TableLabelFn, TableRenderModel, TableRowRenderModel, TableRowTemplate, make_table_header_template,
+    make_table_row_template,
 };
 pub use row::render_table_row;
 
 pub use template::{
     DefaultTableShellTemplate, TableTemplate, TableTemplateModifier, default_table_template, table_template_with_theme,
 };
-pub use theme::{TableDragLook, TableLook, TableRowLook, TableRowPalette, TableTheme, default_table_theme};
+#[allow(deprecated)]
+pub use theme::TableDragLook;
+#[allow(deprecated)]
+pub use theme::{TableLook, TableRowLook, TableRowPalette};
+pub use theme::{TableGeometry, TableTheme, default_table_theme};
 
 use gpui::{Entity, SharedString};
 

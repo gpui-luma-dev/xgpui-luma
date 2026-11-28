@@ -17,7 +17,7 @@ use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
 use xgpui_luma::{flow, hstack, vstack};
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn as shadcn;
-use xgpui_luma_look_shadcn::{ShadcnLook, slide_panel_background, slide_panel_panels_look};
+use xgpui_luma_look_shadcn::{ShadcnLook, slide_panel_background, slide_panel_panels_style};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
@@ -562,7 +562,7 @@ impl Render for SlidePanelDemo {
             };
             let overlay = render_slide_panel_overlay(
                 slide_panel_background(&self.look),
-                &slide_panel_panels_look(&self.look),
+                &slide_panel_panels_style(&self.look),
                 &self.state,
                 viewport,
                 self.render_panel_content(edge, &self.look),

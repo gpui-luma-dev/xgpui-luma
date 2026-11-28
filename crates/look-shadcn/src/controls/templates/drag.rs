@@ -2,11 +2,12 @@
 
 use std::sync::Arc;
 
-use xgpui_luma::infra::drag_drop::{DragDropLook, styled_drag_drop_look};
+use xgpui_luma::infra::drag_drop::resolve_drag_preview;
+use xgpui_luma::style::lss::Resolved;
 
 use crate::look::ShadcnLook;
 
-pub(crate) fn drag_look(theme: &ShadcnLook) -> DragDropLook {
+pub(crate) fn drag_style(theme: &ShadcnLook) -> Arc<Resolved> {
     let size = theme.size();
     let style = theme.clone();
     let binding = xgpui_luma::style::StyleBinding::new(
@@ -18,5 +19,5 @@ pub(crate) fn drag_look(theme: &ShadcnLook) -> DragDropLook {
     } else {
         binding
     };
-    styled_drag_drop_look(&binding)
+    resolve_drag_preview(&binding)
 }

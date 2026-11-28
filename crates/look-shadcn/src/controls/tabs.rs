@@ -9,6 +9,7 @@
 //! | Disabled list bg  | `muted`                       |
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
 
     use xgpui_luma::theme::{InteractionState, ThemeMode};

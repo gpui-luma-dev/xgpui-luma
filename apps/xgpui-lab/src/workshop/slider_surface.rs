@@ -11,10 +11,9 @@ use std::sync::Arc;
 use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::controls::slider::{
-    self, Slider, SliderEvent, SliderInputStrategy, SliderLook, SliderRenderModel, SliderTemplate,
-    SliderTemplateHandlers, SliderThumbPolicy, SliderThumbRole, SliderThumbValue, StyledSliderTheme,
-    ThemedAngularDialTemplate, ThemedCircularRingTemplate, ThemedSliderTemplate, ThumbId, TrackPresentation,
-    build_track_segments,
+    self, Slider, SliderEvent, SliderInputStrategy, SliderRenderModel, SliderTemplate, SliderTemplateHandlers,
+    SliderThumbPolicy, SliderThumbRole, SliderThumbValue, StyledSliderTheme, ThemedAngularDialTemplate,
+    ThemedCircularRingTemplate, ThemedSliderTemplate, ThumbId, TrackPresentation, build_track_segments,
 };
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
@@ -165,10 +164,10 @@ struct PinnedSliderTemplate {
 }
 
 impl SliderTemplate for PinnedSliderTemplate {
-    fn resolve_look(&self, state: InteractionState) -> SliderLook {
+    fn resolve_style(&self, state: InteractionState) -> Arc<xgpui_luma::style::lss::Resolved> {
         match &self.pinned {
-            Some(states) => self.base.resolve_look(pinned_state(states)),
-            None => self.base.resolve_look(state),
+            Some(states) => self.base.resolve_style(pinned_state(states)),
+            None => self.base.resolve_style(state),
         }
     }
 
@@ -312,6 +311,7 @@ impl SurfaceControl for SliderSurface {
 }
 
 #[cfg(all(test, feature = "test-support"))]
+#[allow(deprecated)]
 mod tests {
     use gpui::{Focusable, TestAppContext};
 

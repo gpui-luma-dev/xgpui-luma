@@ -1,5 +1,6 @@
 use gpui::{Context, FocusHandle, Window};
 
+use crate::infra::state::focus_visible;
 use crate::theme::InteractionState;
 
 pub(crate) struct ControlInteraction {
@@ -48,11 +49,23 @@ impl ControlInteraction {
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled && tab_stop);
     }
 
+    /// The state the control draws. `focused` follows the focus-ring rule ([`focus_visible`]): a clicked
+    /// control draws no ring.
     pub fn render_state(&self, enabled: bool, window: &Window) -> InteractionState {
+        let state = self.attachment_state(enabled, window);
+        InteractionState { focused: focus_visible(state.focused, window), ..state }
+    }
+
+    /// The state attachments such as tooltips read: `focused` is the control's real focus, so a tooltip opened
+    /// from keyboard focus stays up when the pointer moves.
+    pub fn attachment_state(&self, enabled: bool, window: &Window) -> InteractionState {
         InteractionState { focused: enabled && self.focus_handle.is_focused(window), disabled: !enabled, ..self.state }
     }
 
+    /// Track the pointer entering or leaving. A disabled control never shows
+    /// hover (#433); it can still lose a hover it had.
     pub fn handle_hover(&mut self, hovered: bool) -> bool {
+        let hovered = hovered && !self.state.disabled;
         if self.state.hovered == hovered {
             return false;
         }
@@ -91,5 +104,35 @@ impl ControlInteraction {
 
     pub fn is_pressed(&self) -> bool {
         self.state.pressed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use gpui::{AppContext as _, TestAppContext};
+
+    use super::*;
+
+    struct Host(Option<ControlInteraction>);
+
+    #[test]
+    fn a_disabled_control_never_shows_hover_but_can_lose_it() {
+        let cx = TestAppContext::single();
+        let host = cx.update(|cx| cx.new(|cx| Host(Some(ControlInteraction::new(true, cx)))));
+        cx.update(|cx| {
+            host.update(cx, |host, _| {
+                let interaction = host.0.as_mut().unwrap();
+                assert!(interaction.handle_hover(true));
+                assert!(interaction.hovered());
+
+                interaction.set_enabled(false);
+                assert!(!interaction.hovered(), "disabling clears hover");
+                assert!(!interaction.handle_hover(true), "hover is ignored while disabled");
+                assert!(!interaction.hovered());
+
+                interaction.set_enabled(true);
+                assert!(interaction.handle_hover(true), "hover returns once enabled");
+            })
+        });
     }
 }

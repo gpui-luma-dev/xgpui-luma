@@ -1,11 +1,12 @@
 //! The callout read from `.lss` (issue #285): `callout.lss`. Looks render the element from [`CalloutLook`].
 
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
 
 use crate::style::StyleBinding;
 
 /// A callout's colors, frame and text size.
+#[deprecated(note = "the callout draws from `StyledCallout::resolve` (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CalloutLook {
     pub background: Hsla,
@@ -15,10 +16,6 @@ pub struct CalloutLook {
     pub gap: f32,
     pub icon_size: f32,
     pub font_size: f32,
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
 }
 
 /// The callout's `.lss` values for one binding (the `callout` control).
@@ -37,19 +34,23 @@ impl StyledCallout {
         Self::new(StyleBinding::sdk("callout"))
     }
 
+    /// The callout's style for the binding's attributes and states (#433): the callout draws from its parts.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
+    #[deprecated(note = "the callout draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> CalloutLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
-        let color = |name: &str| {
-            root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-        };
         CalloutLook {
-            background: color("background"),
-            foreground: color("foreground"),
-            radius: number(root, "radius"),
-            padding: number(root, "padding_x"),
-            gap: number(root, "gap"),
-            icon_size: number(root, "icon_size"),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            radius: root.number("radius"),
+            padding: root.number("padding_x"),
+            gap: root.number("gap"),
+            icon_size: root.number("icon_size"),
             font_size: root.font_size().unwrap_or(14.0),
         }
     }
@@ -87,24 +88,26 @@ impl gpui::IntoElement for Callout {
 
     fn into_element(self) -> gpui::Div {
         use gpui::{div, prelude::*, px};
-        let look = self.styled.look();
+        let look = self.styled.resolve();
         let icon = self.icon.map(|icon| match icon {
             crate::controls::button::ControlIcon::Lucide(icon) => {
-                crate::infra::icon::lucide_icon(icon, look.foreground, look.icon_size)
+                crate::infra::icon::lucide_icon(icon, look.root().color("foreground"), look.root().number("icon_size"))
             }
-            crate::controls::button::ControlIcon::SvgPath(path) => {
-                gpui::svg().path(path).size(px(look.icon_size)).text_color(look.foreground).into_any_element()
-            }
+            crate::controls::button::ControlIcon::SvgPath(path) => gpui::svg()
+                .path(path)
+                .size(px(look.root().number("icon_size")))
+                .text_color(look.root().color("foreground"))
+                .into_any_element(),
         });
         div()
             .flex()
             .items_start()
-            .gap(px(look.gap))
-            .p(px(look.padding))
-            .rounded(px(look.radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .text_size(px(look.font_size))
+            .gap(px(look.root().number("gap")))
+            .p(px(look.root().number("padding_x")))
+            .rounded(px(look.root().number("radius")))
+            .bg(look.root().color("background"))
+            .text_color(look.root().color("foreground"))
+            .text_size(px(look.root().typography(14.0, 20.0).size))
             .children(icon.map(|icon| div().flex_none().child(icon)))
             .child(div().debug_selector(|| "callout-text".into()).min_w(px(0.)).child(self.text))
     }
@@ -135,12 +138,15 @@ mod element_tests {
     /// The SDK callout paints its tinted strip, and an icon takes its size and gap ahead of the text (#397).
     #[test]
     fn paints_its_strip_and_leads_with_the_icon() {
-        let look = StyledCallout::sdk().look();
+        let look = StyledCallout::sdk().resolve();
         let mut app = TestAppContext::single();
         let (view, cx) = app.add_window_view(|_, _| Harness { icon: false });
         cx.run_until_parked();
         let painted = cx.update(|window, _| {
-            window.painted_quads().iter().any(|quad| quad.background == gpui::Background::from(look.background))
+            window
+                .painted_quads()
+                .iter()
+                .any(|quad| quad.background == gpui::Background::from(look.root().color("background")))
         });
         assert!(painted, "the strip is painted");
         let plain = cx.debug_bounds("callout").expect("the callout is drawn");
@@ -153,7 +159,9 @@ mod element_tests {
         let text = cx.debug_bounds("callout-text").expect("the text is drawn");
         assert_eq!(with_icon.size.width, plain.size.width, "the icon goes inside the strip");
         assert!(
-            text.left() >= with_icon.left() + px(look.padding + look.icon_size + look.gap),
+            text.left()
+                >= with_icon.left()
+                    + px(look.root().number("padding_x") + look.root().number("icon_size") + look.root().number("gap")),
             "the text starts after the icon: {text:?} in {with_icon:?}"
         );
     }

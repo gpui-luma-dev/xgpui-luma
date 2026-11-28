@@ -262,6 +262,7 @@ fn spawn_panel_engine(model: &SidebarControlModel, cx: &mut Context<SidebarContr
     let mut builder = SidebarPanelEngine::new(panel_id)
         .enabled(model.enabled)
         .motion_enabled(model.motion_enabled)
+        .rail_dismiss(model.rail_dismiss)
         .motion_defaults(model.motion.profile().clone())
         .disclosure_icons(model.resolved_disclosure_icons())
         .collapsed(model.presentation == SidebarPresentation::Icons)

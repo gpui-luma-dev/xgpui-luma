@@ -1,3 +1,6 @@
+use crate::style::PartRead;
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -40,13 +43,17 @@ pub trait SplitViewTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn SplitViewTemplate {
+    type Model<'a> = SplitViewRenderModel<'a>;
+}
+
 pub struct ThemedSplitViewTemplate {
-    modifiers: Vec<SplitViewTemplateModifier>,
+    modifiers: RootModifiers<dyn SplitViewTemplate>,
 }
 
 impl ThemedSplitViewTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -55,13 +62,6 @@ impl ThemedSplitViewTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SplitViewRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -77,29 +77,6 @@ pub fn default_split_view_template() -> Arc<dyn SplitViewTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedSplitViewTemplate::new())).clone()
 }
 
-struct ModifiedSplitViewTemplate {
-    base: Arc<dyn SplitViewTemplate>,
-    modifiers: Vec<SplitViewTemplateModifier>,
-}
-
-impl ModifiedSplitViewTemplate {
-    fn new(base: Arc<dyn SplitViewTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SplitViewTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SplitViewRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn modified_split_view_template<F>(
     template: Arc<dyn SplitViewTemplate>,
     modifier: F,
@@ -107,10 +84,10 @@ pub(super) fn modified_split_view_template<F>(
 where
     F: Fn(Stateful<Div>, &SplitViewRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSplitViewTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl SplitViewTemplate for ModifiedSplitViewTemplate {
+impl SplitViewTemplate for ModifiedTemplate<dyn SplitViewTemplate> {
     fn render(
         &self,
         model: &SplitViewRenderModel<'_>,
@@ -121,7 +98,7 @@ impl SplitViewTemplate for ModifiedSplitViewTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, sidebar, content, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -143,16 +120,18 @@ impl SplitViewTemplate for ThemedSplitViewTemplate {
             mouse_up_out,
             drag_move,
         } = handlers;
-        let look = model.theme.resolve(model.separator_hovered, model.enabled);
-        let separator_color = model.separator_color_override.unwrap_or(look.separator);
-        let separator_hover_color = model.separator_hover_color_override.unwrap_or(look.separator_hover);
+        let resolved = super::resolve_split_view(&model.theme.style(), model.enabled);
+        let look = resolved.root();
+        let geometry = crate::theme::stylesheet::SplitViewGeometry::from_resolved(&resolved);
+        let separator_color = model.separator_color_override.unwrap_or(look.color("separator"));
+        let separator_hover_color = model.separator_hover_color_override.unwrap_or(look.color("separator_hover"));
         let cue_color = match model.separator_visibility {
             SplitViewSeparatorVisibility::Always if model.separator_hovered => Some(separator_hover_color),
             SplitViewSeparatorVisibility::Always => Some(separator_color),
             SplitViewSeparatorVisibility::Hover if model.separator_hovered => Some(separator_hover_color),
             SplitViewSeparatorVisibility::Hover => None,
         };
-        let cue_width = separator_cue_width(model.separator_hovered, &look.geometry);
+        let cue_width = separator_cue_width(model.separator_hovered, &geometry);
         let resize_enabled = model.enabled && model.resizable && !model.collapsed;
 
         let mut row = div()
@@ -166,20 +145,20 @@ impl SplitViewTemplate for ThemedSplitViewTemplate {
                     .id("expand-separator")
                     .absolute()
                     .left(collapsed_expand_separator_left(model.effective_sidebar_width))
-                    .top(px(look.geometry.expand_inset_y))
-                    .bottom(px(look.geometry.expand_inset_y))
-                    .w(px(look.geometry.hitbox_width))
+                    .top(px(geometry.expand_inset_y))
+                    .bottom(px(geometry.expand_inset_y))
+                    .w(px(geometry.hitbox_width))
                     .on_hover(separator_hover)
                     .on_click(separator_click)
                     .cursor_e_resize()
-                    .child(render_separator_cue(look.geometry.expand_cue_left, cue_width, cue_color, &look.geometry)),
+                    .child(render_separator_cue(geometry.expand_cue_left, cue_width, cue_color, &geometry)),
             )
         } else {
             let mut separator = div()
                 .id("separator")
                 .relative()
                 .h_full()
-                .w(px(look.geometry.hitbox_width))
+                .w(px(geometry.hitbox_width))
                 .flex_none()
                 .on_hover(separator_hover)
                 .on_click(separator_click)
@@ -187,10 +166,10 @@ impl SplitViewTemplate for ThemedSplitViewTemplate {
                 .when(resize_enabled, |this| this.cursor_col_resize())
                 .when(!resize_enabled, |this| this.cursor_pointer())
                 .child(render_separator_cue(
-                    centered_separator_cue_left(cue_width, look.geometry.hitbox_width),
+                    centered_separator_cue_left(cue_width, geometry.hitbox_width),
                     cue_width,
                     cue_color,
-                    &look.geometry,
+                    &geometry,
                 ));
 
             if resize_enabled {
@@ -223,7 +202,7 @@ impl SplitViewTemplate for ThemedSplitViewTemplate {
             root = root.child(expand_separator);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

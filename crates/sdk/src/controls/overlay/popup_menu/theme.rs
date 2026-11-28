@@ -1,9 +1,11 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
 use super::PopupMenuTriggerStyle;
-use crate::controls::floating_menu::FloatingMenuLook;
+use crate::style::StyleBinding;
 use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 #[derive(Clone, Debug)]
@@ -15,10 +17,14 @@ pub struct PopupMenuPalette {
     pub trigger_border: Option<Hsla>,
     pub trigger_shadow: Option<Vec<BoxShadow>>,
     pub trigger_typography: LumaTextStyle,
-    pub floating_menu: FloatingMenuLook,
+    /// The menu's style (the `floating_menu` control).
+    pub floating_menu: StyleBinding,
 }
 
 /// Build one with a theme's `resolve_look` or [`compose_popup_menu_look`]; it may gain fields.
+#[deprecated(
+    note = "the popup menu draws from `PopupMenuTheme::style()`; resolve that binding and read its parts (#433)"
+)]
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct PopupMenuLook {
@@ -40,7 +46,8 @@ pub struct PopupMenuLook {
     pub menu_offset_y: f32,
     /// The trigger's fade in this state: the root part's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
     pub trigger_opacity: f32,
-    pub floating_menu: FloatingMenuLook,
+    /// The menu's style (the `floating_menu` control).
+    pub floating_menu: StyleBinding,
 }
 
 /// Build one from [`Default`]; it may gain fields.
@@ -55,15 +62,35 @@ pub struct PopupMenuTriggerMetrics {
 }
 
 pub trait PopupMenuTheme: Send + Sync {
+    /// The trigger's style (#433): the binding the template resolves in the trigger's style, state and `open`,
+    /// and draws from.
+    fn style(&self) -> StyleBinding {
+        StyleBinding::sdk("popup_menu")
+    }
+
+    /// The style of the menu the trigger opens (the `floating_menu` control).
+    fn menu(&self) -> StyleBinding {
+        StyleBinding::sdk("floating_menu")
+    }
+
+    /// The trigger's colors, built from [`Self::style`] for code that still reads a [`PopupMenuPalette`].
+    #[deprecated(note = "the template draws from `style()`; resolve that binding and read its parts instead (#433)")]
     fn resolve(
         &self,
         trigger_style: PopupMenuTriggerStyle,
         metrics: PopupMenuTriggerMetrics,
         state: InteractionState,
-    ) -> PopupMenuPalette;
+    ) -> PopupMenuPalette {
+        super::styled::palette(&self.style(), self.menu(), trigger_style, metrics, state)
+    }
 
-    fn metrics(&self) -> MetricTokens;
+    /// The trigger's border width and focus geometry at rest.
+    fn metrics(&self) -> MetricTokens {
+        super::styled::metrics(&self.style())
+    }
 
+    /// The trigger's look, built from [`Self::style`] for code that still reads a [`PopupMenuLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve that binding and read its parts instead (#433)")]
     fn resolve_look(
         &self,
         trigger_style: PopupMenuTriggerStyle,
@@ -72,12 +99,7 @@ pub trait PopupMenuTheme: Send + Sync {
         scale_factor: f32,
         _cx: &mut gpui::App,
     ) -> PopupMenuLook {
-        let scale = StandardBoxScale::compute(&self.metrics(), scale_factor);
-        let mut look = compose_popup_menu_look(&self.resolve(trigger_style, metrics, state), &scale);
-        if let Some(radius) = metrics.trigger_radius_override {
-            look.trigger_radius = radius;
-        }
-        look
+        super::styled::look(&self.style(), self.menu(), trigger_style, metrics, state, scale_factor)
     }
 }
 
@@ -87,6 +109,7 @@ pub fn default_popup_menu_theme() -> Arc<dyn PopupMenuTheme> {
     THEME.get_or_init(|| Arc::new(super::styled::StyledPopupMenuTheme::sdk())).clone()
 }
 
+#[deprecated(note = "templates draw from the theme's `style()` (#433)")]
 pub fn compose_popup_menu_look(palette: &PopupMenuPalette, scale: &StandardBoxScale) -> PopupMenuLook {
     PopupMenuLook {
         trigger_focus_border: palette.trigger_focus_border,

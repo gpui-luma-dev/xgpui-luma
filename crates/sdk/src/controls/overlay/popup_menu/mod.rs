@@ -1,7 +1,7 @@
 mod control;
 mod model;
-mod styled;
-pub use styled::{MenuSource, StyledPopupMenuTheme};
+pub(crate) mod styled;
+pub use styled::{MenuSource, StyledPopupMenuTheme, resolve_trigger as resolve_popup_menu_trigger};
 mod template;
 pub(crate) mod theme;
 
@@ -14,6 +14,7 @@ pub use template::{
     SplitFaceHandlers, PopupMenuTemplate, PopupMenuTemplateHandlers, PopupMenuTemplateModifier,
     ThemedPopupMenuTemplate, default_popup_menu_template,
 };
+#[allow(deprecated)]
 pub use theme::{
     PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, compose_popup_menu_look,
     default_popup_menu_theme,

@@ -5,7 +5,8 @@ use super::super::layout::{
 };
 use super::super::model::{render_grid_view_cells, TableRenderModel, TableRowRenderModel};
 use super::super::row::render_table_row;
-use super::super::theme::{TableLook, TableRowLook};
+use super::super::styled::{StyledTable, TableRowLayout};
+use crate::style::PartRead;
 use super::TableControl;
 use crate::infra::state::ControlFocusState;
 use crate::theme::{InteractionState, ListRowScale};
@@ -14,46 +15,49 @@ impl<T> TableControl<T>
 where
     T: 'static,
 {
-    pub(super) fn resolve_look(&self, window: &Window) -> TableLook {
-        let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
-        let mut look = self.model.theme.resolve_look(self.model.enabled, focus.focused);
-        if let Some(override_fn) = &self.model.look_override {
-            look = override_fn(look);
-        }
-        look
+    /// The frame's style with this table's overrides (#433).
+    pub(super) fn styled(&self) -> StyledTable {
+        self.with_overrides(self.model.theme.style())
     }
 
-    pub(super) fn resolve_row_look(&self, window: &Window, _cx: &mut Context<Self>) -> TableRowLook {
-        let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
-        let scale_factor = window.scale_factor();
-        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
-        self.model.theme.resolve_row_look(
-            false,
-            InteractionState { focused: focus.focused, ..Default::default() },
-            &scale,
-        )
+    /// The rows' style with this table's overrides.
+    pub(super) fn styled_rows(&self) -> StyledTable {
+        self.with_overrides(self.model.theme.row_style())
     }
 
-    pub(super) fn resolve_row_look_for_metrics(&self, scale_factor: f32) -> TableRowLook {
-        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
-        self.model.theme.resolve_row_look(false, InteractionState::default(), &scale)
+    fn with_overrides(&self, binding: crate::style::StyleBinding) -> StyledTable {
+        StyledTable::new(match &self.model.style_overrides {
+            Some(overrides) => binding.overrides(overrides.clone()),
+            None => binding,
+        })
+    }
+
+    /// A row's padding and height at `scale_factor`.
+    pub(super) fn row_layout(&self, scale_factor: f32) -> TableRowLayout {
+        TableRowLayout::new(&ListRowScale::compute(&self.model.theme.metrics(), scale_factor))
     }
 
     pub(super) fn render_model(&self, window: &Window, cx: &mut Context<Self>) -> TableRenderModel<'_> {
-        let look = self.resolve_look(window);
-        let row_look = self.resolve_row_look(window, cx);
+        let _ = cx;
+        let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
+        let style = self.styled().resolve(self.model.enabled, focus.focused);
+        let row_style = self
+            .styled_rows()
+            .resolve_row(false, InteractionState { focused: focus.focused, ..Default::default() });
+        let row_layout = self.row_layout(window.scale_factor());
         let has_header = self.model.grid_header || self.model.header_template.is_some();
         let visible_rows =
             effective_visible_rows(self.model.visible_rows, self.model.scroll_mode, self.model.fill_height);
-        let row_height = visible_row_height(&row_look, self.model.visible_row_height);
-        let body_rows_height =
-            visible_rows.map(|count| layout_body_rows_height(count, row_height, row_look.row_divider_width));
-        let shell_height = visible_rows.map(|count| compute_shell_height(count, row_height, &look, has_header));
+        let row_height = visible_row_height(&row_layout, self.model.visible_row_height);
+        let body_rows_height = visible_rows
+            .map(|count| layout_body_rows_height(count, row_height, row_style.root().number("row_divider_width")));
+        let shell_height = visible_rows.map(|count| compute_shell_height(count, row_height, &style, has_header));
 
         TableRenderModel {
             id: &self.model.id,
-            look,
-            row_look,
+            style,
+            row_style,
+            row_layout,
             row_count: self.model.items.len(),
             selection_mode: self.model.selection_mode,
             scroll_mode: self.model.scroll_mode,
@@ -85,8 +89,8 @@ where
         let enabled = self.model.enabled && self.model.row_is_enabled(item);
         let selected = self.model.selected_indices.binary_search(&index).is_ok();
         let active = self.model.active_index == Some(index);
-        let hovered = enabled && self.hovered_index == Some(index);
-        let pressed = enabled && self.pressed_index == Some(index);
+        let hovered = enabled && self.rows_pointer.is_hovered(&index);
+        let pressed = enabled && self.rows_pointer.is_pressed(&index);
         let keyboard_active = active && focus.focused;
         let state = crate::infra::state::CompositeItemState {
             hovered,
@@ -101,16 +105,15 @@ where
         let (hovered, pressed, selected) = (state.hovered, state.pressed, state.selected);
         let interaction =
             InteractionState { hovered, pressed, focused: state.active, disabled: state.disabled, invalid: false };
-        let scale_factor = window.scale_factor();
-        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
-        let mut look = self.model.theme.resolve_row_look(selected, interaction, &scale);
+        let style = self.styled_rows().resolve_row(selected, interaction);
+        let mut layout = self.row_layout(window.scale_factor());
         if let Some(fill_height) = self.fill_row_height {
-            look.min_height = fill_height;
+            layout.min_height = fill_height;
         }
         if !self.model.columns.is_empty() {
             // Grid column slots own their horizontal alignment and padding. Keep the
             // body grid on the same column geometry as the header grid.
-            look.padding_x = 0.0;
+            layout.padding_x = 0.0;
         }
 
         let row_model = TableRowRenderModel {
@@ -125,7 +128,8 @@ where
             focused: focus.focused,
             focus_visible: focus.focus_visible,
             enabled,
-            look,
+            style: style.clone(),
+            layout,
         };
 
         let cells = if !self.model.columns.is_empty() {
@@ -148,7 +152,8 @@ where
                 .map(|key| gpui::ElementId::from((gpui::ElementId::from(self.model.id.clone()), key.clone())))
                 .unwrap_or_else(|| gpui::ElementId::from((self.model.id.clone(), index))),
             content,
-            look,
+            &style,
+            layout,
             enabled,
             local_index > 0,
             is_custom,
@@ -192,14 +197,9 @@ where
         if !self.model.enabled && self.focus_handle.contains_focused(window, cx) {
             window.blur(cx);
         }
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let policy = self.model.scroll_interaction;
         if !self.model.enabled
@@ -209,7 +209,7 @@ where
         }
         let render_model = self.render_model(window, cx);
         let header = if self.model.grid_header {
-            Some(self.render_grid_header(&render_model.look, cx))
+            Some(self.render_grid_header(&render_model.style, cx))
         } else {
             self.model.header_template.as_ref().map(|template| template(&render_model, window, cx))
         };

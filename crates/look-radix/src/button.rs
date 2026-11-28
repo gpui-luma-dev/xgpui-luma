@@ -1,4 +1,5 @@
 //! Radix-owned button variants: `.lss` templates (`style/button.lss`) and the native palette behind [`button_look_for`].
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use std::sync::Arc;
 

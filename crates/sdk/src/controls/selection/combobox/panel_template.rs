@@ -1,8 +1,9 @@
+use crate::infra::template::ModifiedElementTemplate;
 use std::sync::{Arc, OnceLock};
 
-use gpui::{AnyElement, App, Bounds, Pixels, SharedString, anchored, deferred, div, point, prelude::*, px};
+use gpui::{AnyElement, App, Bounds, Pixels, SharedString, div, prelude::*, px};
 
-use crate::controls::selector_list::SelectorItemsPanelLook;
+use crate::infra::popup_placement::{ResolvedPopupPlacement, anchored_popup};
 
 use super::behavior::SelectionItem;
 use super::item_template::ComboBoxItemTemplate;
@@ -17,7 +18,10 @@ pub struct ComboBoxPanelRenderModel<'a> {
     pub enabled: bool,
     pub item_template: Option<&'a ComboBoxItemTemplate<SelectionItem>>,
     pub popup_bounds: Option<Bounds<Pixels>>,
-    pub popup_look: SelectorItemsPanelLook,
+    /// Where the popup opens; `None` draws the panel inline.
+    pub popup_placement: Option<ResolvedPopupPlacement>,
+    /// The popup panel's style (a `floating_menu` binding, #433).
+    pub popup_menu: crate::style::StyleBinding,
     pub list_content: AnyElement,
 }
 
@@ -34,32 +38,10 @@ pub fn default_combobox_panel_template() -> Arc<dyn ComboBoxPanelTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(DefaultComboBoxPanelTemplate)).clone()
 }
 
-struct ModifiedComboBoxPanelTemplate {
-    base: Arc<dyn ComboBoxPanelTemplate>,
-    modifiers: Vec<ComboBoxPanelTemplateModifier>,
-}
-
-impl ModifiedComboBoxPanelTemplate {
-    fn new(base: Arc<dyn ComboBoxPanelTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-}
-
-impl ComboBoxPanelTemplate for ModifiedComboBoxPanelTemplate {
+impl ComboBoxPanelTemplate for ModifiedElementTemplate<dyn ComboBoxPanelTemplate, AnyElement> {
     fn render(&self, model: ComboBoxPanelRenderModel<'_>, cx: &mut App) -> AnyElement {
-        let mut element = self.base.render(model, cx);
-        for modifier in &self.modifiers {
-            element = modifier(element, cx);
-        }
-        element
+        let element = self.base.render(model, cx);
+        self.apply(element, cx)
     }
 }
 
@@ -70,47 +52,26 @@ pub(super) fn panel_template_with_modifier<F>(
 where
     F: Fn(AnyElement, &mut App) -> AnyElement + Send + Sync + 'static,
 {
-    Arc::new(ModifiedComboBoxPanelTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(modifier)))
 }
 
 impl ComboBoxPanelTemplate for DefaultComboBoxPanelTemplate {
     fn render(&self, model: ComboBoxPanelRenderModel<'_>, _cx: &mut App) -> AnyElement {
-        if let Some(bounds) = model.popup_bounds {
-            let look = model.popup_look;
-
-            return deferred(
-                anchored()
-                    .snap_to_window_with_margin(px(look.window_margin))
-                    .anchor(gpui::Anchor::TopLeft)
-                    .position(point(bounds.left(), bounds.bottom()))
-                    .offset(point(px(0.0), px(look.popup_offset_y)))
-                    .child(
-                        div()
-                            .id((model.id.clone(), 1usize))
-                            .w(bounds.size.width)
-                            .bg(look.background)
-                            .border(px(look.border_width))
-                            .border_color(look.border)
-                            .rounded(px(look.radius))
-                            .shadow(look.shadow)
-                            .overflow_hidden()
-                            .block_mouse_except_scroll()
-                            .child(model.list_content),
-                    ),
-            )
-            .with_priority(1)
-            .into_any_element();
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.popup_menu);
+        let window_margin = crate::controls::selector_list::selector_panel_placement(&model.popup_menu).window_margin;
+        if let (Some(bounds), Some(placement)) = (model.popup_bounds, model.popup_placement) {
+            let panel = style
+                .surface(div().id((model.id.clone(), 1usize)))
+                .w(bounds.size.width)
+                .overflow_hidden()
+                .block_mouse_except_scroll()
+                .child(model.list_content);
+            return anchored_popup(&placement, px(window_margin), panel).into_any_element();
         }
 
-        let look = model.popup_look;
-        div()
-            .id((model.id.clone(), 0usize))
+        style
+            .surface(div().id((model.id.clone(), 0usize)))
             .w_full()
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
             .overflow_hidden()
             .block_mouse_except_scroll()
             .child(model.list_content)

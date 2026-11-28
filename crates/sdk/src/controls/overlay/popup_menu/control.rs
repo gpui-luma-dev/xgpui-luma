@@ -1,7 +1,9 @@
+use crate::infra::trigger::{TriggerToggle, toggle_on_click, toggle_on_press};
+use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use gpui::{
     App, Bounds, ClickEvent, Context, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,
-    MouseUpEvent, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
+    MouseUpEvent, Pixels, Render, SharedString, Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -47,10 +49,9 @@ pub struct PopupMenu {
     submenu_transition_index: Option<usize>,
     submenu_target_open: bool,
     interaction: ControlInteraction,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     split_state: crate::controls::split_button::SplitButtonState,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
 }
 
 impl EventEmitter<PopupMenuEvent> for PopupMenu {}
@@ -98,10 +99,9 @@ impl PopupMenu {
             submenu_transition_index: None,
             submenu_target_open: false,
             interaction: ControlInteraction::new_with_tab_stop(enabled, tab_stop, cx),
-            emitted_focused: false,
+            focus_report: Default::default(),
             split_state: Default::default(),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
         }
     }
 
@@ -162,8 +162,7 @@ impl PopupMenu {
         let changed = self.model.enabled != enabled;
         self.model.enabled = enabled;
         self.interaction.set_enabled(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.split_state = Default::default();
             self.close_menu(cx);
@@ -209,7 +208,7 @@ impl PopupMenu {
     }
 
     pub(crate) fn attachment_state(&self, window: &Window) -> crate::theme::InteractionState {
-        let mut state = self.interaction.render_state(self.model.enabled, window);
+        let mut state = self.interaction.attachment_state(self.model.enabled, window);
         state.disabled |= self.lifecycle.is_open();
         state
     }
@@ -217,8 +216,7 @@ impl PopupMenu {
     pub fn set_tab_stop(&mut self, tab_stop: bool, cx: &mut Context<Self>) {
         self.model.tab_stop = tab_stop;
         self.interaction.set_tab_stop(self.model.enabled, tab_stop);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         cx.notify();
     }
 
@@ -341,6 +339,8 @@ impl PopupMenu {
                 disclosure_down: Box::new(cx.listener(|this, _, _, cx| {
                     this.split_state.disclosure.pressed = this.model.enabled;
                     cx.notify();
+                    let toggle = toggle_on_press(this.model.open_on, this.model.enabled, this.lifecycle.is_open());
+                    this.apply_trigger_toggle(toggle, cx);
                 })),
             }),
             trigger_bounds: Box::new(cx.listener(Self::handle_trigger_bounds)),
@@ -434,15 +434,6 @@ impl PopupMenu {
         changed
     }
 
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-        self.emitted_focused = focused;
-        cx.emit(PopupMenuEvent::FocusChanged { focused });
-        true
-    }
-
     fn select_item_at_path(&mut self, path: &[usize], cx: &mut Context<Self>) -> bool {
         if !self.model.enabled {
             return false;
@@ -462,18 +453,21 @@ impl PopupMenu {
     }
 
     fn handle_trigger_click(&mut self, event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if event.is_keyboard() {
-            return;
-        }
+        let toggle = toggle_on_click(self.model.open_on, event, self.model.enabled, self.lifecycle.is_open());
+        self.apply_trigger_toggle(toggle, cx);
+    }
 
-        if self.model.enabled {
-            if self.lifecycle.is_open() {
-                self.dismiss_menu(cx);
-            } else {
+    fn apply_trigger_toggle(&mut self, toggle: Option<TriggerToggle>, cx: &mut Context<Self>) {
+        match toggle {
+            Some(TriggerToggle::Open) => {
                 self.open_menu_with(None, cx);
             }
-            cx.notify();
+            Some(TriggerToggle::Close) => {
+                self.dismiss_menu(cx);
+            }
+            None => return,
         }
+        cx.notify();
     }
 
     fn handle_action_click(&mut self, event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -524,6 +518,11 @@ impl PopupMenu {
         if self.interaction.handle_mouse_down(self.model.enabled, window, cx) {
             cx.notify();
         }
+        // A split trigger opens from its disclosure face alone (its own handler).
+        if !self.model.split {
+            let toggle = toggle_on_press(self.model.open_on, self.model.enabled, self.lifecycle.is_open());
+            self.apply_trigger_toggle(toggle, cx);
+        }
     }
 
     fn handle_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -535,7 +534,10 @@ impl PopupMenu {
     }
 
     fn handle_mouse_down_out(&mut self, event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.lifecycle.is_open() && !self.lifecycle.is_inside_trigger(event.position) {
+        if self.lifecycle.is_open()
+            && self.model.dismiss.click_outside
+            && !self.lifecycle.is_inside_trigger(event.position)
+        {
             self.dismiss_menu(cx);
             cx.notify();
         }
@@ -693,7 +695,7 @@ impl PopupMenu {
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.lifecycle.is_open() {
+        if self.lifecycle.is_open() && self.model.dismiss.escape {
             self.dismiss_menu(cx);
             cx.notify();
         } else {
@@ -711,7 +713,7 @@ impl PopupMenu {
         self.split_state = Default::default();
         self.interaction.handle_mouse_up();
         let focused = self.emit_focus_changed(false, cx);
-        let closed = self.dismiss_menu(cx);
+        let closed = self.model.dismiss.focus_loss && self.dismiss_menu(cx);
         if focused || closed {
             cx.notify();
         }
@@ -727,14 +729,9 @@ impl Focusable for PopupMenu {
 impl Render for PopupMenu {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sync_submenu_transition_target();
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.interaction.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         if self.lifecycle.sync() {
             self.lifecycle.schedule_frame(window, cx);
@@ -752,7 +749,7 @@ impl Render for PopupMenu {
             self.highlight_transition.schedule_frame(window, cx);
         }
 
-        let mut tip_state = self.interaction.render_state(self.model.enabled, window);
+        let mut tip_state = self.interaction.attachment_state(self.model.enabled, window);
         tip_state.disabled |= self.lifecycle.is_open();
         let model = self.render_model(window);
         let handlers = self.template_handlers(cx);
@@ -785,5 +782,83 @@ impl AttachmentTarget for PopupMenu {
     }
     fn attachment_anchor(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
         self.lifecycle.trigger_bounds().unwrap_or(bounds)
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod dismiss_tests {
+    use gpui::{Entity, TestAppContext};
+
+    use super::*;
+    use crate::infra::menu_item::MenuItem;
+    use crate::infra::popup_dismiss::PopupDismiss;
+
+    fn open_menu_with_policy(
+        cx: &mut TestAppContext,
+        dismiss: PopupDismiss,
+    ) -> (Entity<PopupMenu>, &mut gpui::VisualTestContext) {
+        let (menu, cx) = cx.add_window_view(|_, cx| {
+            PopupMenu::from_builder(PopupMenu::new("menu").items([MenuItem::new("one")]).dismiss(dismiss), cx)
+        });
+        menu.update(cx, |menu, cx| {
+            menu.open_menu_with(None, cx);
+        });
+        (menu, cx)
+    }
+
+    #[gpui::test]
+    fn escape_and_focus_loss_follow_the_policy(cx: &mut TestAppContext) {
+        let (menu, cx) = open_menu_with_policy(cx, PopupDismiss::NEVER);
+        menu.update_in(cx, |menu, window, cx| {
+            menu.handle_escape_focus(&EscapeFocus, window, cx);
+            menu.handle_focus_out(FocusOutEvent { blurred: cx.focus_handle().downgrade() }, window, cx);
+            assert!(menu.lifecycle.is_open(), "NEVER keeps the menu open");
+        });
+
+        menu.update_in(cx, |menu, window, cx| {
+            menu.model.dismiss = PopupDismiss::LIGHT;
+            menu.handle_escape_focus(&EscapeFocus, window, cx);
+            assert!(!menu.lifecycle.is_open(), "Escape closes under LIGHT");
+        });
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for PopupMenu {
+    type FocusEvent = PopupMenuEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> PopupMenuEvent {
+        PopupMenuEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod trigger_tests {
+    use gpui::{ClickEvent, MouseClickEvent, MouseDownEvent, TestAppContext};
+
+    use super::*;
+    use crate::infra::menu_item::MenuItem;
+    use crate::infra::trigger::TriggerOpenOn;
+
+    #[gpui::test]
+    fn open_on_chooses_press_or_click(cx: &mut TestAppContext) {
+        for (open_on, opens_on_press) in [(TriggerOpenOn::Press, true), (TriggerOpenOn::Click, false)] {
+            let (menu, cx) = cx.add_window_view(|_, cx| {
+                PopupMenu::from_builder(PopupMenu::new("menu").items([MenuItem::new("one")]).open_on(open_on), cx)
+            });
+            menu.update_in(cx, |menu, window, cx| {
+                menu.handle_mouse_down(&MouseDownEvent::default(), window, cx);
+                assert_eq!(menu.lifecycle.is_open(), opens_on_press, "{open_on:?}: press");
+                menu.handle_trigger_click(&ClickEvent::Mouse(MouseClickEvent::default()), window, cx);
+                assert!(menu.lifecycle.is_open(), "{open_on:?}: the click does not undo the press, or opens");
+            });
+        }
     }
 }

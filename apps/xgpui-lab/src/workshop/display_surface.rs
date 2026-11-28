@@ -12,7 +12,7 @@ use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::controls::avatar::{Avatar, StyledAvatar};
 use xgpui_luma::controls::callout::{Callout, StyledCallout};
 use xgpui_luma::controls::card::{Card, StyledCard};
-use xgpui_luma::controls::tooltip::{TooltipRenderModel, bubble, styled_tooltip_look};
+use xgpui_luma::controls::tooltip::{TooltipRenderModel, bubble, resolve_tooltip};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
@@ -65,24 +65,11 @@ fn callout(theme: &Theme) -> AnyElement {
 
 /// A tooltip bubble drawn open by the SDK's own renderer, with a shortcut after its text.
 fn tooltip(theme: &Theme) -> AnyElement {
-    let look = styled_tooltip_look(&binding("tooltip", theme));
-    bubble(&TooltipRenderModel {
-        placement: look.placement,
-        shortcut_gap: look.shortcut_gap,
-        shortcut_font_size: look.shortcut_font_size,
-        shortcut_opacity: look.shortcut_opacity,
-        text: "Copy styling".into(),
-        shortcut: Some("Ctrl+Shift+C".into()),
-        background: look.background,
-        foreground: look.foreground,
-        padding: look.padding,
-        padding_y: look.padding_y,
-        radius: look.radius,
-        max_width: look.max_width,
-        text_size: look.text_size,
-        line_height: look.line_height,
-        shadow: look.shadow,
-    })
+    bubble(&TooltipRenderModel::from_resolved(
+        &resolve_tooltip(&binding("tooltip", theme)),
+        "Copy styling".into(),
+        Some("Ctrl+Shift+C".into()),
+    ))
 }
 
 /// Draws a passive decoration from the theme last bound; decorations are elements, so the page needs a view.
@@ -206,7 +193,10 @@ mod tests {
         let mut app = TestAppContext::single();
         let (_, cx) = open_surface(&mut app, "avatar");
         let row = cx.debug_bounds("workshop-sdk-avatar").expect("the avatars are drawn");
-        let diameter = StyledAvatar::sdk().look().diameter;
+        let diameter = {
+            use xgpui_luma::style::PartRead;
+            StyledAvatar::sdk().resolve().root().number("height")
+        };
         assert_eq!(row.size.height, px(diameter), "a row of SDK avatars, one diameter tall");
 
         let mut app = TestAppContext::single();

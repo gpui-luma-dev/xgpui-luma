@@ -1,3 +1,7 @@
+use crate::style::PartRead;
+use xgpui_luma_style::PartView;
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, Context, Div, FocusHandle, Hsla, Pixels, Stateful, Window, div, prelude::*, px};
@@ -9,7 +13,6 @@ use super::{
         PanelSize, ResizeHandleMetrics, ResizeHandleVisibility, ResizablePanelSpec, ResizablePanelsOrientation,
         ResizablePanelsRenderModel,
     },
-    theme::ResizablePanelsLook,
 };
 
 pub type ResizablePanelsTemplateModifier =
@@ -19,20 +22,24 @@ pub trait ResizablePanelsTemplate: Send + Sync {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn ResizablePanelsTemplate {
+    type Model<'a> = ResizablePanelsRenderModel<'a>;
+}
+
 pub struct ThemedResizablePanelsTemplate {
-    modifiers: Vec<ResizablePanelsTemplateModifier>,
+    modifiers: RootModifiers<dyn ResizablePanelsTemplate>,
 }
 
 impl ThemedResizablePanelsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -41,13 +48,6 @@ impl ThemedResizablePanelsTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ResizablePanelsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -63,29 +63,6 @@ pub fn default_resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedResizablePanelsTemplate::new())).clone()
 }
 
-struct ModifiedResizablePanelsTemplate {
-    base: Arc<dyn ResizablePanelsTemplate>,
-    modifiers: Vec<ResizablePanelsTemplateModifier>,
-}
-
-impl ModifiedResizablePanelsTemplate {
-    fn new(base: Arc<dyn ResizablePanelsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ResizablePanelsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ResizablePanelsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn modified_resizable_panels_template<F>(
     template: Arc<dyn ResizablePanelsTemplate>,
     modifier: F,
@@ -93,20 +70,20 @@ pub(super) fn modified_resizable_panels_template<F>(
 where
     F: Fn(Stateful<Div>, &ResizablePanelsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedResizablePanelsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl ResizablePanelsTemplate for ModifiedResizablePanelsTemplate {
+impl ResizablePanelsTemplate for ModifiedTemplate<dyn ResizablePanelsTemplate> {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
     ) -> Stateful<Div> {
         let root = self.base.render(model, look, handle_focuses, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -114,7 +91,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
@@ -161,7 +138,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
             .on_drag_move(cx.listener(ResizablePanels::handle_drag_move))
             .on_mouse_up(gpui::MouseButton::Left, cx.listener(ResizablePanels::finish_drag))
             .on_mouse_up_out(gpui::MouseButton::Left, cx.listener(ResizablePanels::finish_drag));
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
@@ -169,7 +146,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
 /// This presentation helper does not bind control events or measure the owner.
 pub fn render_resizable_panels_surface(
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     handles: impl IntoIterator<Item = AnyElement>,
 ) -> Stateful<Div> {
     paint_surface(div(), model, look, handles)
@@ -178,7 +155,7 @@ pub fn render_resizable_panels_surface(
 fn paint_surface(
     root: Div,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     handles: impl IntoIterator<Item = AnyElement>,
 ) -> Stateful<Div> {
     let provisional_weight_layout = provisional_weight_layout(model);
@@ -191,7 +168,7 @@ fn paint_surface(
     };
 
     if model.show_border {
-        root = root.border(px(look.border_width)).border_color(look.border);
+        root = root.border(px(look.number("border_width"))).border_color(look.color("border"));
     }
 
     let mut track = div().relative().flex_1().min_h_0().min_w_0().w_full();
@@ -262,14 +239,14 @@ fn render_panel(
 fn render_overlay_handle(
     index: usize,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     focus: &FocusHandle,
     handle_metrics: &ResizeHandleMetrics,
     split_px: f32,
     window: &mut Window,
     cx: &mut Context<ResizablePanels>,
 ) -> AnyElement {
-    let focused = focus.is_focused(window);
+    let focused = crate::infra::state::focus_visible(focus.is_focused(window), window);
     let (_, lane_px) = overlay_handle_lane(index, model, focused);
     let (origin_px, _, _) = handle_overlay_geometry(split_px, lane_px);
     let interaction_layer = render_handle_interaction_layer(
@@ -317,7 +294,7 @@ fn overlay_handle_lane(index: usize, model: &ResizablePanelsRenderModel<'_>, foc
 pub fn render_resizable_panels_handle(
     index: usize,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     split_px: f32,
     focused: bool,
 ) -> Stateful<Div> {
@@ -330,7 +307,7 @@ pub fn render_resizable_panels_handle(
     let mut handle = div()
         .id(handle_id)
         .absolute()
-        .map(|this| crate::style::fade(this, look.opacity))
+        .map(|this| crate::style::fade(this, look.opacity()))
         .when(enabled && orientation == ResizablePanelsOrientation::Horizontal, |this| this.cursor_col_resize());
 
     handle = match orientation {
@@ -346,9 +323,9 @@ pub fn render_resizable_panels_handle(
     };
 
     let grip_color = if model.handle_grip {
-        look.grip_emphasis
+        look.color("grip_emphasis")
     } else {
-        look.grip
+        look.color("grip")
     };
 
     let divider = match orientation {
@@ -357,15 +334,15 @@ pub fn render_resizable_panels_handle(
             .left(px(divider_local_px))
             .top(px(0.0))
             .bottom(px(0.0))
-            .w(px(look.divider_width))
-            .bg(look.divider),
+            .w(px(look.number("divider_width")))
+            .bg(look.color("divider")),
         ResizablePanelsOrientation::Vertical => div()
             .absolute()
             .top(px(divider_local_px))
             .left(px(0.0))
             .right(px(0.0))
-            .h(px(look.divider_width))
-            .bg(look.divider),
+            .h(px(look.number("divider_width")))
+            .bg(look.color("divider")),
     };
 
     handle = handle.child(divider);

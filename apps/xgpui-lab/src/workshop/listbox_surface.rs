@@ -11,10 +11,11 @@ use gpui::{
 };
 use xgpui_luma::controls::listbox::{
     ListBoxBuilder, ListBoxControl, ListBoxDragLook, ListBoxFlow, ListBoxInput, ListBoxItemState, ListBoxMotion,
-    ListBoxRenderModel, ListBoxRowLook, ListBoxRowRenderModel, ListBoxSnapshot, ListBoxState, ListBoxTemplate,
-    SelectionMode, StyledListBox, ThemedListBoxTemplate,
+    ListBoxRenderModel, ListBoxRowRenderModel, ListBoxSnapshot, ListBoxState, ListBoxTemplate, SelectionMode,
+    StyledListBox, ThemedListBoxTemplate,
 };
-use xgpui_luma::style::lss::Theme;
+use xgpui_luma::style::PartRead;
+use xgpui_luma::style::lss::{PartId, Resolved, Theme};
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
@@ -42,26 +43,29 @@ fn item_id(key: &&'static str) -> ElementId {
     (*key).into()
 }
 
-/// A row's chrome in fixed states: the pinned first row and the matrix cells' rows.
-fn fixed_row(look: ListBoxRowLook, id: impl Into<ElementId>) -> Stateful<Div> {
+/// A row's chrome in fixed states, from its resolved style's `row` part: the pinned first row and the matrix
+/// cells' rows.
+fn fixed_row(resolved: Arc<Resolved>, id: impl Into<ElementId>) -> Stateful<Div> {
+    let row = resolved.part(PartId::new("row"));
+    let font_family = row.font_family_name();
     div()
         .id(id)
-        .bg(look.background)
-        .text_color(look.foreground)
-        .text_size(px(look.font_size))
-        .line_height(px(look.line_height))
-        .font_weight(look.font_weight)
-        .border(px(look.border_width))
-        .border_color(look.border)
-        .rounded(px(look.radius))
-        .px(px(look.padding_x))
-        .when(!look.font_family.is_empty(), |row| row.font_family(look.font_family.clone()))
+        .bg(row.color("background"))
+        .text_color(row.color("foreground"))
+        .text_size(px(row.font_size().unwrap_or(14.0)))
+        .line_height(px(row.line_height().unwrap_or(20.0)))
+        .font_weight(row.font_weight())
+        .border(px(row.number("border_width")))
+        .border_color(row.color("border"))
+        .rounded(px(row.number("radius")))
+        .px(px(row.number("padding_x")))
+        .when(!font_family.is_empty(), |row| row.font_family(font_family))
 }
 
-/// A row's look in picked states.
-fn picked_row(styled: &StyledListBox, states: &StateSet) -> ListBoxRowLook {
+/// A row's resolved style in picked states.
+fn picked_row(styled: &StyledListBox, states: &StateSet) -> Arc<Resolved> {
     let state = ListBoxItemState { selected: states.has("selected"), active: true, enabled: !states.has("disabled") };
-    styled.row(state, states.has("focused"), states.has("hover"), states.has("pressed"))
+    styled.resolve_row(state, states.has("focused"), states.has("hover"), states.has("pressed"))
 }
 
 /// The SDK's listbox chrome (`ThemedListBoxTemplate`, from `listbox.lss`); in Design mode the picked states draw on
@@ -77,8 +81,9 @@ impl ListBoxTemplate for PageTemplate {
         let Some(states) = &self.pinned else {
             return surface;
         };
-        let picked = self.themed.styled().surface(!states.has("disabled"), states.has("focused"));
-        surface.bg(picked.background).border_color(picked.border)
+        let picked = self.themed.styled().resolve_surface(!states.has("disabled"), states.has("focused"));
+        let picked = picked.root();
+        surface.bg(picked.color("background")).border_color(picked.color("border"))
     }
 
     fn render_row(&self, model: &ListBoxRowRenderModel, cx: &mut App) -> Stateful<Div> {
@@ -204,8 +209,10 @@ impl SurfaceControl for ListBoxSurface {
     /// A short list: the first row in the cell's states, the second at rest.
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, _: &mut Window, _: &mut App) -> AnyElement {
         let styled = styled(theme);
-        let surface = styled.surface(!states.has("disabled"), states.has("focused"));
-        let rest = styled.row(ListBoxItemState { selected: false, active: false, enabled: true }, false, false, false);
+        let surface = styled.resolve_surface(!states.has("disabled"), states.has("focused"));
+        let surface = surface.root();
+        let rest =
+            styled.resolve_row(ListBoxItemState { selected: false, active: false, enabled: true }, false, false, false);
         let row = |look, key: &str, label: &'static str| {
             fixed_row(look, ElementId::Name(format!("{id}-{key}").into()))
                 .h(px(ROW_HEIGHT))
@@ -219,10 +226,10 @@ impl SurfaceControl for ListBoxSurface {
             .flex_col()
             .gap(px(ROW_GAP))
             .p_1()
-            .bg(surface.background)
-            .border(px(surface.border_width))
-            .border_color(surface.border)
-            .rounded(px(surface.radius))
+            .bg(surface.color("background"))
+            .border(px(surface.number("border_width")))
+            .border_color(surface.color("border"))
+            .rounded(px(surface.number("radius")))
             .child(row(picked_row(&styled, states), "first", ITEMS[0].1))
             .child(row(rest, "second", ITEMS[1].1))
             .into_any_element()

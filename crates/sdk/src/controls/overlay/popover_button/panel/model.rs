@@ -7,6 +7,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, AppContext, Bounds, Context, Entity, IntoElement, Pixels, SharedString, Size, Window};
 
 use super::control::PopoverPanel;
+use crate::infra::popup_dismiss::PopupDismiss;
 
 pub type PopoverPanelContent = Arc<dyn Fn(&PopoverPanelRenderModel<'_>, &mut Window, &mut App) -> AnyElement>;
 
@@ -19,15 +20,6 @@ pub enum PopoverPanelPlacement {
     SmartStart,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum PopoverPanelDismissPolicy {
-    #[default]
-    KeepOpen,
-    CloseOnClickAway,
-    CloseOnFocusLoss,
-    CloseOnClickAwayOrFocusLoss,
-}
-
 #[derive(Clone)]
 pub struct PopoverPanelModel {
     pub(crate) motion: crate::motion::MotionConfig<PopoverMotion>,
@@ -37,14 +29,14 @@ pub struct PopoverPanelModel {
     pub(crate) motion_enabled: bool,
     pub(crate) anchor_bounds: Option<Bounds<Pixels>>,
     pub(crate) placement: PopoverPanelPlacement,
-    pub(crate) dismiss_policy: PopoverPanelDismissPolicy,
-    pub(crate) dismissible: bool,
+    pub(crate) dismiss: PopupDismiss,
     pub(crate) offset_y: Pixels,
     pub(crate) window_margin: Pixels,
     pub(crate) focus_on_open: bool,
     pub(crate) initial_content_size: Option<Size<Pixels>>,
     /// The panel drawn around the content (`popover.lss`'s `panel` part).
-    pub(crate) look: super::PopoverPanelLook,
+    /// The panel's style: a `popover` control (#433).
+    pub(crate) style: crate::style::StyleBinding,
 }
 
 pub struct PopoverPanelRenderModel<'a> {
@@ -52,8 +44,7 @@ pub struct PopoverPanelRenderModel<'a> {
     pub open: bool,
     pub anchor_bounds: Option<Bounds<Pixels>>,
     pub placement: PopoverPanelPlacement,
-    pub dismiss_policy: PopoverPanelDismissPolicy,
-    pub dismissible: bool,
+    pub dismiss: PopupDismiss,
     pub focused: bool,
     pub content_bounds: Option<Bounds<Pixels>>,
 }
@@ -84,13 +75,12 @@ impl PopoverPanelBuilder {
                 motion_enabled: true,
                 anchor_bounds: None,
                 placement: PopoverPanelPlacement::BelowStart,
-                dismiss_policy: PopoverPanelDismissPolicy::KeepOpen,
-                dismissible: true,
+                dismiss: PopupDismiss::ESCAPE,
                 offset_y: gpui::px(geometry.panel_offset_y),
                 window_margin: gpui::px(geometry.window_margin),
                 focus_on_open: true,
                 initial_content_size: None,
-                look: super::PopoverPanelLook::sdk(),
+                style: crate::style::StyleBinding::sdk("popover"),
             },
         }
     }
@@ -123,13 +113,9 @@ impl PopoverPanelBuilder {
         self
     }
 
-    pub fn dismiss_policy(mut self, dismiss_policy: PopoverPanelDismissPolicy) -> Self {
-        self.model.dismiss_policy = dismiss_policy;
-        self
-    }
-
-    pub fn dismissible(mut self, dismissible: bool) -> Self {
-        self.model.dismissible = dismissible;
+    /// What closes the panel; only Escape by default.
+    pub fn dismiss(mut self, dismiss: PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
         self
     }
 
@@ -155,9 +141,9 @@ impl PopoverPanelBuilder {
         self
     }
 
-    /// The panel drawn around the content; the SDK's (off) by default.
-    pub fn look(mut self, look: super::PopoverPanelLook) -> Self {
-        self.model.look = look;
+    /// The panel drawn around the content: a `popover` style (#433); the SDK's (off) by default.
+    pub fn style(mut self, style: crate::style::StyleBinding) -> Self {
+        self.model.style = style;
         self
     }
 

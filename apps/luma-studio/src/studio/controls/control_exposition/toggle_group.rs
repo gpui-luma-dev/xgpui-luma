@@ -1,5 +1,6 @@
 //! Toggle group control exposition — gallery-aligned icon placement groups.
 
+use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::control_group::ControlGroupEventExt;
 use std::sync::Arc;
 
@@ -233,7 +234,8 @@ fn icon_group(
         .animated_selection(!matches!(style, ShadcnButtonStyle::Ghost))
         .item_template(theme_aware_toggle_item_template(look.clone(), style))
         .with_item_layout(move |mut items, _, _, _| {
-            let group_look = look.control_group_theme().resolve_list(true);
+            let group_style = look.control_group_theme().resolve_list_style(true);
+            let group_look = group_style.root();
             xgpui_luma::hstack![
                 gap = 6 align = center;
                 items.take("top"),
@@ -244,9 +246,9 @@ fn icon_group(
             .relative()
             .overflow_hidden()
             .rounded_full()
-            .bg(group_look.background)
+            .bg(group_look.color("background"))
             .border_1()
-            .border_color(group_look.border)
+            .border_color(group_look.color("border"))
             .px(px(6.0))
             .py(px(4.0))
         });

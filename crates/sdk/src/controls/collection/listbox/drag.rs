@@ -1,7 +1,9 @@
 //! Persistent ListBox drag/drop configuration and host-owned transactions.
 use std::{hash::Hash, rc::Rc};
 use gpui::{App, Context, Div, EntityId, SharedString, Stateful, WeakEntity, Window, div, prelude::*, px};
-use crate::controls::tooltip::TooltipLook;
+use std::sync::Arc;
+use crate::style::PartRead;
+use xgpui_luma_style::Resolved;
 use crate::infra::drag_drop::{DragDropEvent, DropProposal, KeyedDrag, bind_drag_source};
 use super::{ListBoxAxis, ListBoxEvent, ListBoxScrollHandle};
 
@@ -164,7 +166,7 @@ fn deliver_batch<K: Clone + 'static>(events: Vec<DragDropEvent<WeakEntity<ListBo
 pub struct ListBoxDragDropBinding<M: 'static, K: 'static> {
     pub(super) source: WeakEntity<ListBoxEventSource<K>>,
     pub(super) config: ListBoxDragDrop<M, K>,
-    pub(super) preview_style: Option<Rc<TooltipLook>>,
+    pub(super) preview_style: Option<Arc<Resolved>>,
 }
 impl<M: 'static, K: 'static> Clone for ListBoxDragDropBinding<M, K> {
     fn clone(&self) -> Self {
@@ -172,11 +174,11 @@ impl<M: 'static, K: 'static> Clone for ListBoxDragDropBinding<M, K> {
     }
 }
 impl<M: 'static, K: Clone + Eq + Hash + 'static> ListBoxDragDropBinding<M, K> {
-    /// Paint the floating drag label with a look's tooltip chrome (background,
+    /// Paint the floating drag label with a look's tooltip chrome (the tooltip's resolved style: background,
     /// foreground, padding, radius, typography, shadow). Without a style the
     /// preview is a bare label that inherits nothing and may be unreadable.
-    pub fn preview_style(mut self, style: TooltipLook) -> Self {
-        self.preview_style = Some(Rc::new(style));
+    pub fn preview_style(mut self, style: Arc<Resolved>) -> Self {
+        self.preview_style = Some(style);
         self
     }
 
@@ -244,7 +246,7 @@ impl<M: 'static, K: Clone + Eq + Hash + 'static> ListBoxDragDropBinding<M, K> {
 
 struct Preview {
     label: SharedString,
-    style: Option<Rc<TooltipLook>>,
+    style: Option<Arc<Resolved>>,
 }
 impl gpui::Render for Preview {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
@@ -252,15 +254,17 @@ impl gpui::Render for Preview {
         let Some(style) = &self.style else {
             return preview;
         };
+        let root = style.root();
+        let typography = root.typography(14.0, 20.0);
         preview
-            .max_w(px(style.max_width))
-            .px(px(style.padding))
-            .py(px(style.padding_y))
-            .rounded(px(style.radius))
-            .shadow(style.shadow.clone())
-            .bg(style.background)
-            .text_color(style.foreground)
-            .text_size(px(style.text_size))
-            .line_height(px(style.line_height))
+            .max_w(px(root.number("max_width")))
+            .px(px(root.number("padding_x")))
+            .py(px(root.number("padding_y")))
+            .rounded(px(root.number("radius")))
+            .shadow(root.box_shadow())
+            .bg(root.color("background"))
+            .text_color(root.color("foreground"))
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
     }
 }

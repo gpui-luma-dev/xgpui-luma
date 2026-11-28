@@ -191,6 +191,16 @@ impl SplitButtonBuilder {
     pub fn tab_stop(self, tab_stop: bool) -> Self {
         self.map_popup(|popup| popup.tab_stop(tab_stop))
     }
+    /// What closes the menu: an outside click, focus loss or Escape by default.
+    pub fn dismiss(self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.map_popup(|popup| popup.dismiss(dismiss))
+    }
+
+    /// What on the disclosure face opens the menu: a click by default.
+    pub fn open_on(self, open_on: crate::infra::trigger::TriggerOpenOn) -> Self {
+        self.map_popup(|popup| popup.open_on(open_on))
+    }
+
     pub fn placement(self, placement: PopupMenuPlacement) -> Self {
         self.map_popup(|popup| popup.placement(placement))
     }

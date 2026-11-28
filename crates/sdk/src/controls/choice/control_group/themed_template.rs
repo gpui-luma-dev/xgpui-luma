@@ -1,3 +1,5 @@
+use crate::style::PartRead;
+use xgpui_luma_style::PartId;
 use std::sync::Arc;
 
 use gpui::{App, Div, Stateful, Window, div, prelude::*, px};
@@ -35,26 +37,28 @@ impl ThemedControlGroupTemplate {
         T: ControlGroupItemLike + 'static,
     {
         let chrome = ControlGroupChromeModel::from(model);
-        let list = self.inner.theme.resolve_list(model.enabled);
+        let style = self.inner.theme.resolve_list_style(model.enabled);
+        let list = style.root();
+        let item_disabled_opacity = self.inner.theme.resolve_list_style(false).part(PartId::new("item")).opacity();
 
         let mut root = div()
             .id(model.id.clone())
             .relative()
             .flex()
             .overflow_hidden()
-            .rounded(px(list.radius))
-            .bg(list.background)
-            .border(px(list.border_width))
-            .border_color(list.border)
-            .px(px(list.padding_x))
-            .py(px(list.padding_y));
+            .rounded(px(list.number("radius")))
+            .bg(list.color("background"))
+            .border(px(list.number("border_width")))
+            .border_color(list.color("border"))
+            .px(px(list.number("padding_x")))
+            .py(px(list.number("padding_y")));
 
         root = match chrome.layout {
-            ControlGroupLayout::Horizontal => root.items_center().gap(px(list.gap)),
-            ControlGroupLayout::Vertical => root.flex_col().items_start().gap(px(list.vertical_gap)),
+            ControlGroupLayout::Horizontal => root.items_center().gap(px(list.number("gap"))),
+            ControlGroupLayout::Vertical => root.flex_col().items_start().gap(px(list.number("vertical_gap"))),
         };
 
-        root = root.children(render_control_group_items(model, handlers, window, cx, list.item_disabled_opacity));
+        root = root.children(render_control_group_items(model, handlers, window, cx, item_disabled_opacity));
         self.inner.apply_modifiers(root, &chrome)
     }
 }

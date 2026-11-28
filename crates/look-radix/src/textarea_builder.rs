@@ -1,4 +1,5 @@
 //! Look-owned text-area builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textarea::TextArea`].
+#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
 
 use std::sync::Arc;
 

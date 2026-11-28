@@ -94,18 +94,13 @@ fn disabled_rows_preserve_click_targets_after_filtering() {
     }
 }
 
-/// A selector theme that counts the trigger looks it resolves, around the SDK's.
+/// A selector theme that counts the trigger styles it supplies, around the SDK's.
 struct RecordingSelectorTheme(std::sync::Arc<std::sync::atomic::AtomicUsize>);
 
 impl crate::controls::selector::SelectorTheme for RecordingSelectorTheme {
-    fn resolve(
-        &self,
-        trigger_style: crate::controls::selector::SelectorTriggerStyle,
-        state: crate::theme::InteractionState,
-        without_elevation: bool,
-    ) -> crate::controls::selector::SelectorPalette {
+    fn style(&self) -> crate::style::StyleBinding {
         self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        crate::controls::selector::default_selector_theme().resolve(trigger_style, state, without_elevation)
+        crate::controls::selector::default_selector_theme().style()
     }
 
     fn metrics(&self) -> crate::theme::MetricTokens {
@@ -172,13 +167,21 @@ fn the_trigger_draws_a_focus_ring_when_focused() {
         SearchSelectorControl::from_builder(builder, cx)
     });
     cx.run_until_parked();
-    let ring = crate::controls::selector::default_selector_theme()
-        .resolve(
+    let ring = {
+        use crate::style::PartRead as _;
+        let visual = crate::controls::selector::SelectorVisualState {
+            interaction: crate::theme::InteractionState { focused: true, ..Default::default() },
+            ..Default::default()
+        };
+        crate::controls::selector::resolve_selector_trigger(
+            &crate::controls::selector::default_selector_theme().style(),
             crate::controls::selector::SelectorTriggerStyle::default(),
-            crate::theme::InteractionState { focused: true, ..Default::default() },
-            false,
+            visual,
+            1.0,
         )
-        .trigger_focus_border;
+        .root()
+        .color("focus_border")
+    };
     assert!(ring.a > 0.0, "the SDK selector theme has a focus ring color");
     let ring_painted = |cx: &mut gpui::VisualTestContext| {
         cx.update(|window, _| window.painted_quads().iter().any(|quad| quad.border_color == ring))
@@ -186,5 +189,9 @@ fn the_trigger_draws_a_focus_ring_when_focused() {
     assert!(!ring_painted(cx), "no ring before focus");
     cx.update(|window, app| selector.read(app).focus_handle(app).focus(window, app));
     cx.run_until_parked();
-    assert!(ring_painted(cx), "a ring once focused");
+    // One focus-ring rule (#433): focus after pointer input draws none, keyboard input draws it.
+    assert!(!ring_painted(cx), "no ring for pointer focus");
+    cx.simulate_keystrokes("shift");
+    cx.run_until_parked();
+    assert!(ring_painted(cx), "a ring once focused from the keyboard");
 }

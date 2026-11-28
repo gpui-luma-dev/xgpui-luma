@@ -1,3 +1,4 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::collections::HashMap;
 use std::sync::{
     Arc,
@@ -14,6 +15,7 @@ use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, Theme
 
 use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
+#[allow(deprecated)]
 use crate::controls::{selection_panel::selection_panel_look, selector_items_panel_look, templates};
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{StylesheetConfig};
@@ -797,6 +799,18 @@ impl ShadcnLook {
         templates::autocomplete_theme(self.clone())
     }
 
+    /// The selector and combobox dropdown panel's style at `size` (#433).
+    pub fn selector_items_panel_style(&self, size: ShadcnSize) -> xgpui_luma::style::StyleBinding {
+        crate::controls::selector_items_panel::selector_items_panel_style(self.mode_tokens().as_ref(), size)
+    }
+
+    /// The selection panel's style at `size` (#433).
+    pub fn selection_panel_style(&self, size: ShadcnSize) -> xgpui_luma::style::StyleBinding {
+        crate::controls::selection_panel::selection_panel_style(self.mode_tokens().as_ref(), size)
+    }
+
+    #[deprecated(note = "use `selector_items_panel_style`; the SDK's panel templates draw from the style (#433)")]
+    #[allow(deprecated)]
     pub fn selector_items_panel_look(
         &self,
         size: ShadcnSize,
@@ -805,15 +819,15 @@ impl ShadcnLook {
         selector_items_panel_look(tokens.as_ref(), self.mode(), size)
     }
 
+    #[deprecated(note = "use `selection_panel_style`; the SDK's template draws from the style (#433)")]
+    #[allow(deprecated)]
     pub fn selection_panel_look(&self, size: ShadcnSize) -> xgpui_luma::controls::selection_panel::SelectionPanelLook {
         let tokens = self.mode_tokens();
         selection_panel_look(tokens.as_ref(), self.mode(), size)
     }
 
-    pub(crate) fn selection_panel_look_provider(
-        &self,
-    ) -> xgpui_luma::controls::selection_panel::SelectionPanelLookProvider {
-        templates::selection_panel_look_provider(self.clone())
+    pub(crate) fn selection_panel_menu(&self) -> xgpui_luma::controls::popup_menu::MenuSource {
+        templates::selection_panel_menu(self.clone())
     }
 
     pub fn tabs_template(&self) -> Arc<dyn xgpui_luma::controls::tabs::TabsTemplate> {

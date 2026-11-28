@@ -51,7 +51,8 @@ fn inert_handlers() -> OverlayWindowTemplateHandlers {
 /// The window open in its frame, drawn from `theme` in `mode`: Modal fills the frame with the backdrop.
 fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut Window, cx: &mut App) -> AnyElement {
     let template = template(theme.clone());
-    let look = template.resolve_look(mode);
+    let resolved = template.resolve_style(mode);
+    let look = resolved.root();
     let content: OverlayWindowElementRenderer = Arc::new(|_, _, _| {
         div()
             .flex()
@@ -65,7 +66,7 @@ fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut
         id: &id,
         mode,
         position: OverlayWindowPosition::Center,
-        dismissible: true,
+        dismiss: xgpui_luma::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
         draggable: false,
         width: None,
         focused: false,
@@ -73,7 +74,10 @@ fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut
     };
     let parts = OverlayWindowTemplateParts { header_drag_handle: None, handlers: inert_handlers() };
     let backdrop = match mode {
-        OverlayWindowMode::Modal => look.backdrop_background,
+        OverlayWindowMode::Modal => {
+            use xgpui_luma::style::PartRead;
+            look.color("backdrop")
+        }
         OverlayWindowMode::Modeless => gpui::transparent_black(),
     };
     div()
@@ -83,7 +87,7 @@ fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut
         .items_center()
         .justify_center()
         .bg(backdrop)
-        .child(template.render(&model, &look, parts, window, cx))
+        .child(template.render(&model, look, parts, window, cx))
         .into_any_element()
 }
 

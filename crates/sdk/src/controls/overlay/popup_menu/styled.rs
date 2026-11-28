@@ -1,27 +1,19 @@
 //! The popup-menu trigger read from `.lss` (issue #285): `popup_menu.lss`, which extends the button. The
 //! menu is supplied separately (a floating menu, which has its own `.lss`).
+// Builds the compatibility `PopupMenuLook` (#433).
+#![allow(deprecated)]
 
+use crate::style::StyleStates;
+use crate::style::PartRead;
 use std::sync::Arc;
-
-use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value, box_shadows};
 
 use super::PopupMenuTriggerStyle;
 use super::theme::{PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics};
-use crate::controls::floating_menu::FloatingMenuLook;
 use crate::style::{StyleBinding, ThemeSource};
-use crate::theme::{FocusMetricTokens, InteractionState, LumaTextStyle, MetricTokens};
+use crate::theme::{FocusMetricTokens, InteractionState, MetricTokens};
 
-/// Supplies a popup's menu look.
-pub type MenuSource = Arc<dyn Fn() -> FloatingMenuLook + Send + Sync>;
-
-fn color(root: PartView<'_>, name: &str) -> Option<Hsla> {
-    root.value(name).and_then(Value::as_color).map(Hsla::from)
-}
-
-fn number(root: PartView<'_>, name: &str) -> f32 {
-    root.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
+/// Supplies a popup's menu style (the `floating_menu` control, #433); menu templates resolve it and draw from it.
+pub type MenuSource = Arc<dyn Fn() -> StyleBinding + Send + Sync>;
 
 /// A popup-menu theme whose trigger is read from `.lss`.
 #[derive(Clone)]
@@ -40,7 +32,7 @@ impl StyledPopupMenuTheme {
     pub fn sdk() -> Self {
         Self {
             binding: StyleBinding::sdk("popup_menu"),
-            menu: Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve()),
+            menu: Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
         }
     }
 
@@ -48,104 +40,105 @@ impl StyledPopupMenuTheme {
     pub fn with(self, f: impl FnOnce(StyleBinding) -> StyleBinding) -> Self {
         Self { binding: f(self.binding), ..self }
     }
-
-    fn resolve_root(
-        &self,
-        style: PopupMenuTriggerStyle,
-        state: InteractionState,
-        open: bool,
-        scale: f32,
-    ) -> Arc<xgpui_luma_style::Resolved> {
-        let variant: &[(&str, &str)] = match style {
-            PopupMenuTriggerStyle::Primary => &[],
-            PopupMenuTriggerStyle::Secondary => &[("variant", "secondary")],
-            PopupMenuTriggerStyle::Outline => &[("variant", "outline")],
-            PopupMenuTriggerStyle::Ghost => &[("variant", "ghost")],
-        };
-        let states = [
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-            ("invalid", state.invalid),
-            ("open", open),
-        ];
-        self.binding.resolve_for(variant, &states, scale)
-    }
 }
 
 impl PopupMenuTheme for StyledPopupMenuTheme {
-    fn resolve(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-    ) -> PopupMenuPalette {
-        let resolved = self.resolve_root(style, state, metrics.open, 1.0);
-        let root = resolved.root();
-        let transparent = gpui::transparent_black();
-        PopupMenuPalette {
-            trigger_focus_border: color(root, "focus_border").unwrap_or(transparent),
-            trigger_background: color(root, "background").unwrap_or(transparent),
-            trigger_foreground: color(root, "foreground").unwrap_or(transparent),
-            trigger_border: color(root, "border"),
-            trigger_shadow: if metrics.without_elevation {
-                None
-            } else {
-                root.shadow().filter(|layers| !layers.is_empty()).map(|layers| box_shadows(&layers))
-            },
-            trigger_typography: LumaTextStyle {
-                size: root.font_size().unwrap_or(14.0),
-                line_height: root.line_height().unwrap_or(20.0),
-                weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
-            },
-            floating_menu: (self.menu)(),
-        }
+    fn style(&self) -> StyleBinding {
+        self.binding.clone()
     }
 
-    /// The focus geometry and border width, for templates that read them from the theme's metrics.
-    fn metrics(&self) -> MetricTokens {
-        let resolved = self.resolve_root(PopupMenuTriggerStyle::Outline, InteractionState::default(), false, 1.0);
-        let root = resolved.root();
-        MetricTokens {
-            border_width: number(root, "border_width"),
-            focus: FocusMetricTokens {
-                gap: number(root, "focus_gap"),
-                width: number(root, "focus_width"),
-                offset: number(root, "focus_offset"),
-            },
-            ..MetricTokens::default()
-        }
+    fn menu(&self) -> StyleBinding {
+        (self.menu)()
     }
+}
 
-    fn resolve_look(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-        scale_factor: f32,
-        _cx: &mut gpui::App,
-    ) -> PopupMenuLook {
-        let palette = self.resolve(style, metrics, state);
-        let resolved = self.resolve_root(style, state, metrics.open, scale_factor);
-        let root = resolved.root();
-        PopupMenuLook {
-            trigger_focus_border: palette.trigger_focus_border,
-            trigger_background: palette.trigger_background,
-            trigger_foreground: palette.trigger_foreground,
-            trigger_icon: color(root, "icon").unwrap_or(palette.trigger_foreground),
-            trigger_border: palette.trigger_border,
-            trigger_shadow: palette.trigger_shadow,
-            trigger_typography: palette.trigger_typography,
-            trigger_radius: metrics.trigger_radius_override.unwrap_or_else(|| root.radius().unwrap_or(0.0)),
-            trigger_padding_x: number(root, "padding_x"),
-            trigger_padding_y: number(root, "padding_y"),
-            trigger_gap: root.gap().unwrap_or(0.0),
-            trigger_height: root.height().unwrap_or(0.0),
-            trigger_icon_size: number(root, "icon_size"),
-            menu_offset_y: number(root, "menu_offset_y"),
-            trigger_opacity: crate::style::part_opacity(root),
-            floating_menu: palette.floating_menu,
-        }
+/// The trigger's resolved style in `trigger_style` and `state`, open or not (#433): what the template draws from.
+/// Read its parts for the trigger's values (`background`, `foreground`, `icon`, `icon_size`, …).
+pub fn resolve_trigger(
+    binding: &StyleBinding,
+    trigger_style: PopupMenuTriggerStyle,
+    state: InteractionState,
+    open: bool,
+    scale: f32,
+) -> Arc<xgpui_luma_style::Resolved> {
+    let variant: &[(&str, &str)] = match trigger_style {
+        PopupMenuTriggerStyle::Primary => &[],
+        PopupMenuTriggerStyle::Secondary => &[("variant", "secondary")],
+        PopupMenuTriggerStyle::Outline => &[("variant", "outline")],
+        PopupMenuTriggerStyle::Ghost => &[("variant", "ghost")],
+    };
+    binding.resolve_states_for(variant, StyleStates::new(state).open(open), scale)
+}
+
+/// The palette `binding` gives, for code that still reads a [`PopupMenuPalette`].
+pub(crate) fn palette(
+    binding: &StyleBinding,
+    menu: StyleBinding,
+    trigger_style: PopupMenuTriggerStyle,
+    metrics: PopupMenuTriggerMetrics,
+    state: InteractionState,
+) -> PopupMenuPalette {
+    let resolved = resolve_trigger(binding, trigger_style, state, metrics.open, 1.0);
+    let root = resolved.root();
+    let transparent = gpui::transparent_black();
+    PopupMenuPalette {
+        trigger_focus_border: root.color_opt("focus_border").unwrap_or(transparent),
+        trigger_background: root.color_opt("background").unwrap_or(transparent),
+        trigger_foreground: root.color_opt("foreground").unwrap_or(transparent),
+        trigger_border: root.color_opt("border"),
+        trigger_shadow: if metrics.without_elevation {
+            None
+        } else {
+            root.box_shadow_opt()
+        },
+        trigger_typography: root.typography(14.0, 20.0),
+        floating_menu: menu,
+    }
+}
+
+/// The focus geometry and border width at rest.
+pub(crate) fn metrics(binding: &StyleBinding) -> MetricTokens {
+    let resolved = resolve_trigger(binding, PopupMenuTriggerStyle::Outline, InteractionState::default(), false, 1.0);
+    let root = resolved.root();
+    MetricTokens {
+        border_width: root.number("border_width"),
+        focus: FocusMetricTokens {
+            gap: root.number("focus_gap"),
+            width: root.number("focus_width"),
+            offset: root.number("focus_offset"),
+        },
+        ..MetricTokens::default()
+    }
+}
+
+/// The look `binding` gives, for code that still reads a [`PopupMenuLook`].
+pub(crate) fn look(
+    binding: &StyleBinding,
+    menu: StyleBinding,
+    trigger_style: PopupMenuTriggerStyle,
+    metrics: PopupMenuTriggerMetrics,
+    state: InteractionState,
+    scale_factor: f32,
+) -> PopupMenuLook {
+    let palette = palette(binding, menu, trigger_style, metrics, state);
+    let resolved = resolve_trigger(binding, trigger_style, state, metrics.open, scale_factor);
+    let root = resolved.root();
+    PopupMenuLook {
+        trigger_focus_border: palette.trigger_focus_border,
+        trigger_background: palette.trigger_background,
+        trigger_foreground: palette.trigger_foreground,
+        trigger_icon: root.color_opt("icon").unwrap_or(palette.trigger_foreground),
+        trigger_border: palette.trigger_border,
+        trigger_shadow: palette.trigger_shadow,
+        trigger_typography: palette.trigger_typography,
+        trigger_radius: metrics.trigger_radius_override.unwrap_or_else(|| root.number("radius")),
+        trigger_padding_x: root.number("padding_x"),
+        trigger_padding_y: root.number("padding_y"),
+        trigger_gap: root.number("gap"),
+        trigger_height: root.number("height"),
+        trigger_icon_size: root.number("icon_size"),
+        menu_offset_y: root.number("menu_offset_y"),
+        trigger_opacity: root.opacity(),
+        floating_menu: palette.floating_menu,
     }
 }

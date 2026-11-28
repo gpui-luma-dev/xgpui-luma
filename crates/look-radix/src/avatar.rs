@@ -162,7 +162,7 @@ impl Avatar {
     }
 
     /// The `.lss` avatar (`style/avatar.lss`) for this variant, tone, contrast, size and radius.
-    fn styled(&self) -> xgpui_luma::controls::avatar::AvatarLook {
+    fn styled(&self) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
         let binding = xgpui_luma::style::StyleBinding::new("avatar", crate::textfield::live_source(&self.look));
         let binding = match self.variant {
             AvatarVariant::Soft => binding,
@@ -185,33 +185,35 @@ impl Avatar {
             binding
         };
         let binding = binding.state("high_contrast", self.high_contrast);
-        xgpui_luma::controls::avatar::StyledAvatar::new(binding).look()
+        xgpui_luma::controls::avatar::StyledAvatar::new(binding).resolve()
     }
 
     /// Resolve the `.lss` avatar, then apply the local override.
     pub fn resolve_style(&self) -> AvatarStyle {
-        let avatar = self.styled();
+        use xgpui_luma::style::PartRead;
+        let resolved = self.styled();
+        let avatar = resolved.root();
         let two_letters = matches!(&self.fallback, Fallback::Text(text) if text.chars().count() > 1);
         let font_size = if two_letters {
-            avatar.two_letter_font_size
+            avatar.number("two_letter_font_size")
         } else {
-            avatar.font_size
+            avatar.typography(16.0, 16.0).size
         };
         let mut style = AvatarStyle {
-            diameter: avatar.diameter,
+            diameter: avatar.number("height"),
             // A full radius is a circle whatever the size.
             radius: if self.radius == Radius::Full {
-                avatar.diameter / 2.0
+                avatar.number("height") / 2.0
             } else {
-                avatar.radius
+                avatar.number("radius")
             },
-            icon_size: avatar.icon_size,
+            icon_size: avatar.number("icon_size"),
             font_size,
             line_height: font_size,
-            font_weight: avatar.font_weight,
-            font_family: avatar.font_family,
-            background: avatar.background,
-            foreground: avatar.foreground,
+            font_weight: avatar.font_weight(),
+            font_family: avatar.font_family_name(),
+            background: avatar.color("background"),
+            foreground: avatar.color("foreground"),
         };
         if let Some(customize) = &self.style_override {
             customize(&mut style);

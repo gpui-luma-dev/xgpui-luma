@@ -1,10 +1,9 @@
+use crate::style::PartRead;
 use gpui::{
     AnyElement, App, Div, DragMoveEvent, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Window, div, prelude::*, px,
 };
 
-use crate::controls::resizable_panels::{
-    ResizablePanelsLook, ResizablePanelsOrientation, ResizeHandleMetrics, handle_hit_target_main_axis_px,
-};
+use crate::controls::resizable_panels::{ResizablePanelsOrientation, ResizeHandleMetrics, handle_hit_target_main_axis_px};
 
 use super::resize::SlidePanelResizeDrag;
 use super::super::model::SlidePanelEdge;
@@ -29,7 +28,7 @@ pub struct SlidePanelResizeHitHandlers {
 
 pub fn render_slide_panel_resize_handle(
     edge: SlidePanelEdge,
-    look: &ResizablePanelsLook,
+    look: &xgpui_luma_style::Resolved,
     handle_metrics: &ResizeHandleMetrics,
     split_px: f32,
     handle_active: bool,
@@ -67,19 +66,19 @@ pub fn render_slide_panel_resize_handle(
             .left(px(divider_local_px))
             .top(px(0.0))
             .bottom(px(0.0))
-            .w(px(look.divider_width))
-            .bg(look.divider),
+            .w(px(look.root().number("divider_width")))
+            .bg(look.root().color("divider")),
         ResizablePanelsOrientation::Vertical => div()
             .absolute()
             .top(px(divider_local_px))
             .left(px(0.0))
             .right(px(0.0))
-            .h(px(look.divider_width))
-            .bg(look.divider),
+            .h(px(look.root().number("divider_width")))
+            .bg(look.root().color("divider")),
     };
 
     if handle_active {
-        handle = handle.child(render_handle_grip(orientation, look.grip_emphasis, handle_metrics));
+        handle = handle.child(render_handle_grip(orientation, look.root().color("grip_emphasis"), handle_metrics));
     }
 
     let handle_hit_px = px(handle_hit_target_main_axis_px(handle_metrics));
@@ -90,7 +89,7 @@ pub fn render_slide_panel_resize_handle(
 
 pub fn render_slide_panel_inner_resize_handle(
     edge: SlidePanelEdge,
-    look: &ResizablePanelsLook,
+    look: &xgpui_luma_style::Resolved,
     handle_metrics: &ResizeHandleMetrics,
     handle_active: bool,
     handlers: SlidePanelResizeHitHandlers,
@@ -127,7 +126,7 @@ pub fn render_slide_panel_inner_resize_handle(
             .when(orientation == ResizablePanelsOrientation::Vertical, |this| {
                 this.flex().flex_col().justify_center().items_center()
             })
-            .child(render_handle_grip(orientation, look.grip_emphasis, handle_metrics));
+            .child(render_handle_grip(orientation, look.root().color("grip_emphasis"), handle_metrics));
     }
 
     let SlidePanelResizeHitHandlers { mouse_down, hover } = handlers;

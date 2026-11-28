@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 mod motion;
 mod pointer;
@@ -6,10 +7,7 @@ mod values;
 
 use std::sync::Arc;
 
-use gpui::{
-    App, Bounds, Context, Empty, EventEmitter, Focusable, IntoElement, Pixels, Render, SharedString, Subscription,
-    Window,
-};
+use gpui::{App, Bounds, Context, Empty, EventEmitter, Focusable, IntoElement, Pixels, Render, SharedString, Window};
 
 use super::constraints::normalize_intervals;
 use super::domain::DomainTrackRenderer;
@@ -63,9 +61,8 @@ pub struct SliderControl {
     active_thumb_id: Option<ThumbId>,
     angular_drag_angle_offset: Option<f32>,
     angular_drag_pointer_angle: Option<f32>,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    emitted_focused: bool,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    focus_report: crate::infra::focus_report::FocusReport,
     motion_enabled: bool,
     thumb_transitions: Vec<VisualTransition>,
     display_thumbs: Vec<SliderThumbValue>,
@@ -107,9 +104,8 @@ impl SliderControl {
             active_thumb_id,
             angular_drag_angle_offset: None,
             angular_drag_pointer_angle: None,
-            focus_in_subscription: None,
-            focus_out_subscription: None,
-            emitted_focused: false,
+            focus_subscriptions: Default::default(),
+            focus_report: Default::default(),
             motion_enabled,
             thumb_transitions,
             display_thumbs,
@@ -402,5 +398,21 @@ mod attachment_tests {
                 assert_eq!(half.size.height, bounds.size.height);
             });
         });
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for SliderControl {
+    type FocusEvent = SliderEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SliderEvent {
+        SliderEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

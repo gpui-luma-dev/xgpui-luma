@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, Pixels, Stateful, Window, div, px, prelude::*};
@@ -30,8 +31,8 @@ pub fn default_slider_template() -> Arc<dyn SliderTemplate> {
 }
 
 impl SliderTemplate for ThemedSliderTemplate {
-    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::super::SliderLook {
-        self.theme.resolve(state)
+    fn resolve_style(&self, state: crate::theme::InteractionState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        super::super::resolve_slider(&self.theme.style(), state)
     }
 
     fn render(
@@ -42,17 +43,19 @@ impl SliderTemplate for ThemedSliderTemplate {
         window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.state);
-        let long_axis = look.width;
-        let short_axis = look.height;
-        let cross_axis = look.track_height;
+        let look = super::super::resolve_slider(&self.theme.style(), model.state);
+        let long_axis = look.root().number("width");
+        let short_axis = look.root().number("height");
+        let cross_axis = look.root().number("track_height");
         let root_height = match model.orientation {
             SliderOrientation::Horizontal => short_axis,
             SliderOrientation::Vertical => long_axis,
         };
         let root_width = short_axis;
-        let track_radius =
-            model.corner_radius.map(|radius| radius.to_pixels(window.rem_size())).unwrap_or(px(look.radius));
+        let track_radius = model
+            .corner_radius
+            .map(|radius| radius.to_pixels(window.rem_size()))
+            .unwrap_or(px(look.root().number("radius")));
         let thumb_radius = effective_thumb_radius(model, &look, window.rem_size());
 
         let SliderTemplateHandlers {
@@ -83,15 +86,15 @@ impl SliderTemplate for ThemedSliderTemplate {
             .items_center()
             .justify_center()
             .when(model.orientation == SliderOrientation::Horizontal, |this| {
-                this.w_full().min_w(px(0.0)).h(px(root_height)).px(px(look.thumb_size * 0.5))
+                this.w_full().min_w(px(0.0)).h(px(root_height)).px(px(look.root().number("thumb_size") * 0.5))
             })
             .when(model.orientation == SliderOrientation::Vertical, |this| this.w(px(root_width)).h(px(root_height)));
 
         let root = match model.orientation {
             SliderOrientation::Horizontal => {
                 let track_top = (short_axis - cross_axis) * 0.5;
-                let thumb_top = (short_axis - look.thumb_size) * 0.5;
-                let thumb_center_offset = -(look.thumb_size * 0.5);
+                let thumb_top = (short_axis - look.root().number("thumb_size")) * 0.5;
+                let thumb_center_offset = -(look.root().number("thumb_size") * 0.5);
 
                 let track = render_horizontal_track(model, &look, track_top, cross_axis, track_radius, track_bounds);
                 let outline = track_outline(&look, track_radius)
@@ -120,7 +123,7 @@ impl SliderTemplate for ThemedSliderTemplate {
             }
             SliderOrientation::Vertical => {
                 let track_left = (short_axis - cross_axis) * 0.5;
-                let thumb_left = (short_axis - look.thumb_size) * 0.5;
+                let thumb_left = (short_axis - look.root().number("thumb_size")) * 0.5;
 
                 let track =
                     render_vertical_track(model, &look, track_left, long_axis, cross_axis, track_radius, track_bounds);
@@ -132,7 +135,8 @@ impl SliderTemplate for ThemedSliderTemplate {
 
                 let thumbs = ordered_thumbs(model).into_iter().map(|thumb| {
                     let display_percentage = display_position(thumb.position.clamp(0.0, 1.0), model.reversed);
-                    let thumb_top = (long_axis - look.thumb_size).max(0.0) * (1.0 - display_percentage);
+                    let thumb_top =
+                        (long_axis - look.root().number("thumb_size")).max(0.0) * (1.0 - display_percentage);
                     let node = render_linear_thumb(
                         model,
                         &look,
@@ -157,10 +161,15 @@ impl SliderTemplate for ThemedSliderTemplate {
 
 /// An outline the track's shape (place it like the track), over the track's segments and under the thumbs;
 /// empty when the look's track border width is zero.
-fn track_outline(look: &crate::controls::slider::SliderLook, radius: Pixels) -> Div {
-    div().absolute().rounded(radius).when(look.track_border_width > 0.0, |outline| {
-        outline.border(px(look.track_border_width)).border_color(look.track_border)
-    })
+fn track_outline(look: &xgpui_luma_style::Resolved, radius: Pixels) -> Div {
+    div().absolute().rounded(radius).when(
+        look.part(xgpui_luma_style::PartId::new("track")).number("border_width") > 0.0,
+        |outline| {
+            outline
+                .border(px(look.part(xgpui_luma_style::PartId::new("track")).number("border_width")))
+                .border_color(look.part(xgpui_luma_style::PartId::new("track")).color("border"))
+        },
+    )
 }
 
 /// Inactive thumbs first; active thumb last so it paints on top while dragging.
@@ -172,7 +181,7 @@ fn ordered_thumbs<'a>(model: &'a SliderRenderModel<'_>) -> Vec<&'a super::super:
 
 fn render_horizontal_track(
     model: &SliderRenderModel<'_>,
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     track_top: f32,
     cross_axis: f32,
     track_radius: Pixels,
@@ -191,7 +200,7 @@ fn render_horizontal_track(
         .overflow_hidden()
         .when(model.domain_track.is_none() && !uses_sibling_segments, |this| {
             this.bg(track_surface_background(model, look))
-                .map(|track| crate::style::fade(track, look.track_opacity))
+                .map(|track| crate::style::fade(track, look.part(xgpui_luma_style::PartId::new("track")).opacity()))
         });
 
     if let Some(layer) = render_domain_track_layer(model, track_radius) {
@@ -215,7 +224,7 @@ fn render_horizontal_track(
 
 fn render_vertical_track(
     model: &SliderRenderModel<'_>,
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     track_left: f32,
     long_axis: f32,
     cross_axis: f32,
@@ -235,7 +244,7 @@ fn render_vertical_track(
         .overflow_hidden()
         .when(model.domain_track.is_none() && !uses_sibling_segments, |this| {
             this.bg(track_surface_background(model, look))
-                .map(|track| crate::style::fade(track, look.track_opacity))
+                .map(|track| crate::style::fade(track, look.part(xgpui_luma_style::PartId::new("track")).opacity()))
         });
 
     if let Some(layer) = render_domain_track_layer(model, track_radius) {
@@ -263,7 +272,7 @@ fn render_fill_segment(
     segment: &super::super::model::TrackSegment,
     orientation: SliderOrientation,
     reversed: bool,
-    look: &crate::controls::slider::SliderLook,
+    look: &xgpui_luma_style::Resolved,
     track_radius: Pixels,
     horizontal: bool,
 ) -> Div {
@@ -298,17 +307,25 @@ fn render_fill_segment(
 }
 
 /// A segment fades with the part whose color it draws (`:disabled { opacity }` on `fill` or `track`).
-fn segment_opacity(kind: TrackSegmentKind, look: &crate::controls::slider::SliderLook) -> f32 {
+fn segment_opacity(kind: TrackSegmentKind, look: &xgpui_luma_style::Resolved) -> f32 {
     match kind {
-        TrackSegmentKind::Active | TrackSegmentKind::Domain => look.fill_opacity,
-        TrackSegmentKind::Inactive | TrackSegmentKind::Blocked => look.track_opacity,
+        TrackSegmentKind::Active | TrackSegmentKind::Domain => {
+            look.part(xgpui_luma_style::PartId::new("fill")).opacity()
+        }
+        TrackSegmentKind::Inactive | TrackSegmentKind::Blocked => {
+            look.part(xgpui_luma_style::PartId::new("track")).opacity()
+        }
     }
 }
 
-fn segment_background(kind: TrackSegmentKind, look: &crate::controls::slider::SliderLook) -> gpui::Hsla {
+fn segment_background(kind: TrackSegmentKind, look: &xgpui_luma_style::Resolved) -> gpui::Hsla {
     match kind {
-        TrackSegmentKind::Active | TrackSegmentKind::Domain => look.fill_background,
-        TrackSegmentKind::Inactive | TrackSegmentKind::Blocked => look.track_background,
+        TrackSegmentKind::Active | TrackSegmentKind::Domain => {
+            look.part(xgpui_luma_style::PartId::new("fill")).color("background")
+        }
+        TrackSegmentKind::Inactive | TrackSegmentKind::Blocked => {
+            look.part(xgpui_luma_style::PartId::new("track")).color("background")
+        }
     }
 }
 

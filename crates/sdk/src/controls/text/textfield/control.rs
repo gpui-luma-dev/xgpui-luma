@@ -1,3 +1,4 @@
+#![allow(deprecated)] // The look-closure bridge reads `TextFieldLook` until it is removed (#433).
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use crate::theme::InteractionState;
 use std::sync::Arc;
@@ -16,7 +17,9 @@ use super::{
 use crate::controls::text::{
     EditableTextPolicy, FocusNavigation, cap_clipboard_paste, handle_key_down, select_all, word_cluster_range,
 };
+use crate::style::lss::{Overrides, Prop};
 use crate::theme::observe_theme_revision;
+use xgpui_luma_style::{PartId, Resolved};
 
 #[derive(Clone)]
 struct TextFieldLayoutCache {
@@ -33,7 +36,8 @@ const TEXTFIELD_SCROLL_REVEAL_PADDING: f32 = 24.0;
 #[derive(Clone)]
 struct TextFieldLayoutPreview {
     character_offsets: Vec<f32>,
-    look: TextFieldLook,
+    style: Arc<Resolved>,
+    values: super::template::FieldValues,
 }
 
 #[derive(Clone, Debug)]
@@ -312,26 +316,29 @@ impl TextFieldControl {
         cx.notify();
     }
 
-    fn resolved_look(&self, window: &Window, cx: &mut Context<Self>) -> TextFieldLook {
-        let mut look =
-            self.model
-                .template
-                .resolve_look_with_scale(self.state, self.model.enabled, window.scale_factor(), cx);
+    /// The field's resolved style: the template's, with the compact size and any look closure applied as overrides.
+    fn resolved_style(&self) -> Arc<Resolved> {
+        let template = &self.model.template;
+        let mut overrides = Overrides::new();
         if self.model.compact {
-            let geometry = &look.helper_geometry;
-            look.padding_y = geometry.compact_textfield_padding_y;
-            look.min_height = geometry.compact_textfield_height;
+            let geometry = crate::theme::stylesheet::SharedGeometry::sdk();
+            overrides = overrides
+                .set(PartId::ROOT, Prop::<f32>::new("padding_y"), geometry.compact_textfield_padding_y)
+                .set(PartId::ROOT, Prop::<f32>::new("height"), geometry.compact_textfield_height);
         }
         if let Some(override_fn) = &self.model.look_override {
-            look = override_fn(look);
+            let before =
+                TextFieldLook::from_resolved(&template.resolve_style(self.state, self.model.enabled, &overrides));
+            let after = override_fn(before.clone());
+            overrides = overrides.merge(&TextFieldLook::overrides_between(&before, &after));
         }
-        look
+        template.resolve_style(self.state, self.model.enabled, &overrides)
     }
 
     fn render_model_with_offsets<'a>(
         &'a self,
         character_offsets: Vec<f32>,
-        look: TextFieldLook,
+        style: Arc<Resolved>,
     ) -> TextFieldRenderModel<'a> {
         TextFieldRenderModel {
             id: &self.model.id,
@@ -345,12 +352,13 @@ impl TextFieldControl {
             horizontal_scroll: self.horizontal_scroll.as_f32(),
             character_offsets,
             marked_range: self.marked_range.clone(),
-            look,
+            style,
         }
     }
 
-    fn layout_preview(&self, window: &mut Window, cx: &mut Context<Self>) -> TextFieldLayoutPreview {
-        let look = self.resolved_look(window, cx);
+    fn layout_preview(&self, window: &mut Window) -> TextFieldLayoutPreview {
+        let style = self.resolved_style();
+        let look = super::template::FieldValues::read(&style);
         let run = TextRun {
             len: self.model.value.len(),
             font: {
@@ -371,7 +379,7 @@ impl TextFieldControl {
             character_offsets.push(line.x_for_index(byte_offset).as_f32());
         }
 
-        TextFieldLayoutPreview { character_offsets, look }
+        TextFieldLayoutPreview { character_offsets, style, values: look }
     }
 
     fn template_handlers(&self, cx: &mut Context<Self>) -> TextFieldTemplateHandlers {
@@ -685,17 +693,17 @@ impl Render for TextFieldControl {
         }
 
         self.sync_focus(window, cx);
-        let layout_preview = self.layout_preview(window, cx);
+        let layout_preview = self.layout_preview(window);
         let entity = cx.entity();
         let input_focus_handle = self.focus_handle.clone();
         let value = self.model.value.clone();
-        let look = layout_preview.look.clone();
-        let canvas_look = look.clone();
+        let style = layout_preview.style.clone();
+        let canvas_look = layout_preview.values.clone();
         let has_prefix_icon = self.model.prefix_icon.is_some();
         let horizontal_scroll = self.horizontal_scroll;
 
         let input_root = self.model.template.render(
-            &self.render_model_with_offsets(layout_preview.character_offsets.clone(), look),
+            &self.render_model_with_offsets(layout_preview.character_offsets.clone(), style),
             self.template_handlers(cx),
             window,
             cx,

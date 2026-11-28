@@ -1,7 +1,11 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
+use crate::style::PartRead;
 use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
 
+use xgpui_luma_style::PartId;
 use super::model::{ToolbarItem, ToolbarItemKind, ToolbarItemRenderModel, ToolbarRenderModel, fallback_item};
 use super::theme::{ToolbarTheme, ToolbarVariant, default_toolbar_theme};
 use crate::controls::control_group::{ControlGroupItemLike, ControlGroupRenderModel, ControlGroupTemplate};
@@ -19,6 +23,10 @@ pub trait ToolbarTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn ToolbarTemplate {
+    type Model<'a> = ToolbarRenderModel<'a>;
+}
+
 pub struct ToolbarRenderedItem {
     pub kind: ToolbarItemKind,
     pub element: gpui::AnyElement,
@@ -26,12 +34,12 @@ pub struct ToolbarRenderedItem {
 
 pub struct ThemedToolbarTemplate {
     theme: Arc<dyn ToolbarTheme>,
-    modifiers: Vec<ToolbarTemplateModifier>,
+    modifiers: RootModifiers<dyn ToolbarTemplate>,
 }
 
 impl ThemedToolbarTemplate {
     pub fn new(theme: Arc<dyn ToolbarTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -40,36 +48,6 @@ impl ThemedToolbarTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ToolbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-struct ModifiedToolbarTemplate {
-    base: Arc<dyn ToolbarTemplate>,
-    modifiers: Vec<ToolbarTemplateModifier>,
-}
-
-impl ModifiedToolbarTemplate {
-    fn new(base: Arc<dyn ToolbarTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ToolbarTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ToolbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -81,40 +59,41 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.variant);
+        let style = self.theme.resolve_style(model.enabled, model.variant);
+        let look = style.root();
         let mut root = div()
             .id(model.id.clone())
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(look.gap))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background);
+            .gap(px(look.number("gap")))
+            .px(px(look.number("padding_x")))
+            .py(px(look.number("padding_y")))
+            .rounded(px(look.number("radius")))
+            .bg(look.color("background"));
 
         if model.variant == ToolbarVariant::Outline {
-            root = root.border(px(look.border_width)).border_color(look.border);
+            root = root.border(px(look.number("border_width"))).border_color(look.color("border"));
         }
 
         for item in items {
             let child = match item.kind {
                 ToolbarItemKind::Separator => div()
-                    .w(px(look.separator_width))
-                    .h(px(look.separator_height))
+                    .w(px(look.number("separator_width")))
+                    .h(px(look.number("separator_height")))
                     .flex_none()
-                    .bg(look.separator)
+                    .bg(style.part(PartId::new("separator")).color("background"))
                     .into_any_element(),
                 ToolbarItemKind::Hosted => item.element,
             };
             root = root.child(child);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl ToolbarTemplate for ModifiedToolbarTemplate {
+impl ToolbarTemplate for ModifiedTemplate<dyn ToolbarTemplate> {
     fn render(
         &self,
         model: &ToolbarRenderModel<'_>,
@@ -123,7 +102,7 @@ impl ToolbarTemplate for ModifiedToolbarTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, items, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -140,7 +119,7 @@ pub(super) fn modified_toolbar_template<F>(template: Arc<dyn ToolbarTemplate>, m
 where
     F: Fn(Stateful<Div>, &ToolbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedToolbarTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 pub(crate) fn render_fallback_toolbar_item(model: &ToolbarItemRenderModel) -> gpui::AnyElement {

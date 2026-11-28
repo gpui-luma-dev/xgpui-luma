@@ -53,6 +53,14 @@ impl Overrides {
         self.with(part.name(), prop.name(), OverrideValue::Token(token.into()))
     }
 
+    /// These values with `other`'s set over them: `other` wins where both set a property.
+    pub fn merge(self, other: &Overrides) -> Self {
+        other
+            .entries
+            .iter()
+            .fold(self, |merged, (part, prop, value)| merged.with(part, prop, value.clone()))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

@@ -22,6 +22,7 @@ pub struct ContextMenuModel {
     pub(crate) target_content: Option<ContextMenuTargetContent>,
     pub(crate) items: Vec<MenuItem>,
     pub(crate) enabled: bool,
+    pub(crate) dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(crate) template: Arc<dyn ContextMenuTemplate>,
 }
 
@@ -155,6 +156,7 @@ impl ContextMenuBuilder {
                 target_content: None,
                 items: Vec::new(),
                 enabled: true,
+                dismiss: crate::infra::popup_dismiss::PopupDismiss::LIGHT,
                 template: default_context_menu_template(),
             },
         }
@@ -181,6 +183,12 @@ impl ContextMenuBuilder {
 
     pub fn items(mut self, items: impl IntoIterator<Item = MenuItem>) -> Self {
         self.model.items = items.into_iter().collect();
+        self
+    }
+
+    /// What closes the menu: an outside click, focus loss or Escape by default.
+    pub fn dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
         self
     }
 

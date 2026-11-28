@@ -1,3 +1,5 @@
+use crate::infra::template::ElementModifiers;
+use crate::infra::template::ModifiedElementTemplate;
 use std::{
     rc::Rc,
     sync::{Arc, OnceLock},
@@ -10,13 +12,16 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{NavNodeKind, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{InteractionState, LumaTextStyle, LumaTypography};
-use crate::controls::floating_menu::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
+use crate::controls::floating_menu::{FloatingMenuTheme, default_floating_menu_theme};
 use crate::infra::icon::{DisclosureIcons, render_disclosure_icon, render_icon_source};
 use crate::infra::ElementExt;
 use super::{SidebarTheme, default_sidebar_theme};
+use crate::style::PartRead;
+use xgpui_luma_style::PartId;
 
 const CHILD_DEPTH_INDENT_MULTIPLIER: f32 = 1.0;
 const SCROLL_REGION_MIN_HEIGHT: f32 = 0.0;
@@ -69,57 +74,27 @@ pub trait SidebarPanelTemplate: Send + Sync {
 pub struct ThemedSidebarPanelTemplate {
     theme: Arc<dyn SidebarTheme>,
     floating_menu_theme: Arc<dyn FloatingMenuTheme>,
-    modifiers: Vec<SidebarPanelTemplateModifier>,
+    modifiers: ElementModifiers<Stateful<Div>>,
 }
 
 impl ThemedSidebarPanelTemplate {
     pub fn new(theme: Arc<dyn SidebarTheme>) -> Self {
-        Self { theme, floating_menu_theme: default_floating_menu_theme(), modifiers: Vec::new() }
+        Self { theme, floating_menu_theme: default_floating_menu_theme(), modifiers: ElementModifiers::default() }
     }
 
     pub fn new_with_floating_menu_theme(
         theme: Arc<dyn SidebarTheme>,
         floating_menu_theme: Arc<dyn FloatingMenuTheme>,
     ) -> Self {
-        Self { theme, floating_menu_theme, modifiers: Vec::new() }
+        Self { theme, floating_menu_theme, modifiers: ElementModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
     where
         F: Fn(Stateful<Div>) -> Stateful<Div> + Send + Sync + 'static,
     {
-        self.modifiers.push(Box::new(modifier));
+        self.modifiers.push(Box::new(move |root, _: &mut App| modifier(root)));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root);
-        }
-        root
-    }
-}
-
-struct ModifiedSidebarPanelTemplate {
-    base: Arc<dyn SidebarPanelTemplate>,
-    modifiers: Vec<SidebarPanelTemplateModifier>,
-}
-
-impl ModifiedSidebarPanelTemplate {
-    fn new(base: Arc<dyn SidebarPanelTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SidebarPanelTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root);
-        }
-        root
     }
 }
 
@@ -142,10 +117,10 @@ pub(crate) fn modified_sidebar_panel_template<F>(
 where
     F: Fn(Stateful<Div>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSidebarPanelTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(move |root, _: &mut App| modifier(root))))
 }
 
-impl SidebarPanelTemplate for ModifiedSidebarPanelTemplate {
+impl SidebarPanelTemplate for ModifiedElementTemplate<dyn SidebarPanelTemplate, Stateful<Div>> {
     fn render(
         &self,
         model: SidebarPanelEngineRenderModel,
@@ -155,7 +130,7 @@ impl SidebarPanelTemplate for ModifiedSidebarPanelTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, main_scroll, handlers, window, cx);
-        self.apply_modifiers(root)
+        self.apply(root, cx)
     }
 }
 
@@ -165,7 +140,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
         model: SidebarPanelEngineRenderModel,
         main_scroll: &ScrollContainer,
         handlers: SidebarPanelTemplateHandlers,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
         let theme = &self.theme;
@@ -235,12 +210,13 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
                 root = root.child(
                     deferred(render_rail_submenu_overlay(
                         rail_submenu,
-                        self.floating_menu_theme.resolve(),
+                        self.floating_menu_theme.style(),
                         self.theme.geometry(),
                         rail_submenu_item_hovers,
                         rail_submenu_item_clicks,
                         rail_submenu_bounds,
                         rail_submenu_mouse_down_out.expect("rail submenu should have outside click handler"),
+                        PopupSpace::of(window, cx),
                     ))
                     .with_priority(1),
                 );
@@ -310,7 +286,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
             );
         }
 
-        self.apply_modifiers(root)
+        self.modifiers.apply(root, cx)
     }
 }
 
@@ -485,7 +461,7 @@ fn render_node(
         binding
             .bind(
                 div().id(gpui::SharedString::from(format!("{id}-drag-row"))).w_full().child(row),
-                theme.resolve_drag(),
+                theme.drag_style(),
                 cx,
             )
             .into_any_element()
@@ -581,16 +557,18 @@ fn render_row(input: RowRenderInput, handlers: RowHandlers, theme: &Arc<dyn Side
 }
 
 fn render_section_row(label: SharedString, theme: &Arc<dyn SidebarTheme>) -> Div {
-    let look = theme.resolve_section();
+    let resolved = super::resolve_sidebar_row(&theme.style(), false, InteractionState::default());
+    let look = resolved.part(PartId::new("section"));
+    let typography = look.typography(12.5, 18.0);
 
     div()
-        .min_h(px(look.height))
+        .min_h(px(look.number("height")))
         .pt(px(theme.geometry().section_padding_top))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
-        .font_weight(look.typography.weight)
+        .text_size(px(typography.size))
+        .line_height(px(typography.line_height))
+        .font_weight(typography.weight)
         .font_features(theme.section_font_features())
-        .text_color(look.label_color)
+        .text_color(look.color("foreground"))
         .child(label)
 }
 
@@ -619,32 +597,30 @@ fn render_item_row(
         disabled: state.disabled,
         invalid: false,
     };
-    let look = if has_children {
-        theme.resolve_branch(interaction)
-    } else {
-        theme.resolve_item(state.selected, interaction)
-    };
-    let depth_indent = (look.icon_size + look.gap) * CHILD_DEPTH_INDENT_MULTIPLIER;
-    let padding_left = look.padding_x + state.depth as f32 * depth_indent;
+    // A branch row is never the current page.
+    let resolved = super::resolve_sidebar_row(&theme.style(), !has_children && state.selected, interaction);
+    let (root, look) = (resolved.root(), resolved.part(PartId::new("item")));
+    let depth_indent = (root.number("item_icon_size") + look.number("gap")) * CHILD_DEPTH_INDENT_MULTIPLIER;
+    let padding_left = look.number("padding_x") + state.depth as f32 * depth_indent;
     let mut row = div()
         .id((id.clone(), 0usize))
         .role(gpui::Role::Button)
         .aria_label(label.clone().unwrap_or(id.clone()))
         .w_full()
-        .min_h(px(look.height))
+        .min_h(px(look.number("height")))
         .flex()
         .items_center()
-        .gap(px(look.gap))
+        .gap(px(look.number("gap")))
         .pl(px(padding_left))
-        .pr(px(look.padding_x))
-        .rounded(px(look.radius))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
-        .text_color(look.foreground)
-        .font_weight(look.typography.weight);
+        .pr(px(look.number("padding_x")))
+        .rounded(px(look.number("radius")))
+        .text_size(px(look.typography(12.5, 18.0).size))
+        .line_height(px(look.typography(12.5, 18.0).line_height))
+        .text_color(look.color("foreground"))
+        .font_weight(look.typography(12.5, 18.0).weight);
 
     if let Some(icon) = icon {
-        row = row.child(render_lucide_icon(icon, look.icon_color, look.icon_size));
+        row = row.child(render_lucide_icon(icon, look.color("foreground"), root.number("item_icon_size")));
     }
 
     row = row.child(div().flex_1().child(label.unwrap_or(id)));
@@ -653,19 +629,19 @@ fn render_item_row(
         row = row.child(render_disclosure_icon(
             &disclosure_icons,
             expansion_progress,
-            look.icon_color,
+            look.color("foreground"),
             theme.geometry().disclosure_icon_size,
         ));
     }
 
-    if let Some(background) = look.background {
+    if let Some(background) = look.painted("background") {
         row = row.bg(background);
     }
 
     row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
-        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        look.painted("focus_border").unwrap_or_else(gpui::transparent_black),
         !interaction.disabled,
-        look.radius,
+        look.number("radius"),
         true,
     ));
 
@@ -673,7 +649,7 @@ fn render_item_row(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    row = crate::style::fade(row, look.opacity);
+    row = crate::style::fade(row, look.opacity());
 
     let RowHandlers { hover, mouse_down, mouse_up, mouse_up_out, click, .. } = handlers;
     let mut row = row;
@@ -719,69 +695,67 @@ fn render_collapsed_rail_node(
         disabled: state.disabled,
         invalid: false,
     };
-    let look = if has_children {
-        theme.resolve_branch(interaction)
-    } else {
-        theme.resolve_item(state.selected, interaction)
-    };
+    // A branch row is never the current page.
+    let resolved = super::resolve_sidebar_row(&theme.style(), !has_children && state.selected, interaction);
+    let (root, look) = (resolved.root(), resolved.part(PartId::new("item")));
     let row_width = if has_children {
-        rail_branch_button_width(look.height, &theme.geometry())
+        rail_branch_button_width(look.number("height"), &theme.geometry())
     } else {
-        look.height
+        look.number("height")
     };
     let mut row = div()
         .id((id.clone(), 1usize))
         .role(gpui::Role::Button)
         .aria_label(label.unwrap_or(id.clone()))
         .w(px(row_width))
-        .h(px(look.height))
+        .h(px(look.number("height")))
         .flex_none()
         .flex()
         .relative()
         .items_center()
         .justify_center()
-        .rounded(px(look.radius))
-        .text_color(look.foreground);
+        .rounded(px(look.number("radius")))
+        .text_color(look.color("foreground"));
 
     if has_children {
         row = row.child(
             div()
                 .absolute()
-                .left(px(centered_icon_left(look.height, look.icon_size)))
-                .top(px(centered_icon_left(look.height, look.icon_size)))
+                .left(px(centered_icon_left(look.number("height"), root.number("item_icon_size"))))
+                .top(px(centered_icon_left(look.number("height"), root.number("item_icon_size"))))
                 .child(render_lucide_icon(
                     icon.expect("collapsed rail nodes always have icons"),
-                    look.icon_color,
-                    look.icon_size,
+                    look.color("foreground"),
+                    root.number("item_icon_size"),
                 )),
         );
         row = row.child(
             div()
                 .absolute()
-                .left(px(rail_branch_indicator_left(look.height, &theme.geometry())))
-                .top(px(centered_icon_left(look.height, theme.geometry().rail_branch_indicator_size)))
+                .left(px(rail_branch_indicator_left(look.number("height"), &theme.geometry())))
+                .top(px(centered_icon_left(look.number("height"), theme.geometry().rail_branch_indicator_size)))
                 .child(render_icon_source(
                     &disclosure_icons.collapsed,
-                    look.icon_color,
+                    look.color("foreground"),
                     theme.geometry().rail_branch_indicator_size,
                 )),
         );
     } else {
         row = row.child(render_lucide_icon(
             icon.expect("collapsed rail nodes always have icons"),
-            look.icon_color,
-            look.icon_size,
+            look.color("foreground"),
+            root.number("item_icon_size"),
         ));
     }
 
-    if let Some(background) = look.background {
+    if let Some(background) = look.painted("background") {
         row = row.bg(background);
     }
 
     row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
-        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        look.painted("focus_border").unwrap_or_else(gpui::transparent_black),
         !interaction.disabled,
-        look.radius,
+        look.number("radius"),
         true,
     ));
 
@@ -789,7 +763,7 @@ fn render_collapsed_rail_node(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    row = crate::style::fade(row, look.opacity);
+    row = crate::style::fade(row, look.opacity());
 
     let RowHandlers { bounds, hover, mouse_down, mouse_up, mouse_up_out, click } = handlers;
     if state.enabled {
@@ -830,27 +804,36 @@ fn render_collapsed_rail_node(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_rail_submenu_overlay(
     submenu: RenderedRailSubmenu,
-    look: FloatingMenuLook,
+    menu_style: crate::style::StyleBinding,
     geometry: crate::theme::stylesheet::SidebarGeometry,
     item_hovers: Vec<FloatingMenuHoverHandler>,
     item_clicks: Vec<FloatingMenuClickHandler>,
     bounds_handler: Option<SidebarPanelBoundsHandler>,
     mouse_down_out: SidebarPanelMouseDownHandler,
+    viewport: PopupSpace,
 ) -> impl IntoElement {
     let menu = render_floating_menu(
         &submenu.id,
         &submenu.items,
         submenu.open_submenu,
         submenu.active_path,
-        look.clone(),
+        menu_style,
         item_hovers,
         item_clicks,
     );
 
+    // Beside the rail row, flipping to the other side at the window edge (#433).
+    let placement = PopupPlacementRequest::new(submenu.parent_bounds, PopupSide::End, viewport)
+        .flip(true)
+        .gap(px(geometry.rail_submenu_offset_x))
+        .content_size(submenu.content_size)
+        .window_margin(px(geometry.window_margin))
+        .resolve();
     let content_size = submenu.content_size.unwrap_or_default();
-    let offset = submenu.presence.adjust_offset(point(px(geometry.rail_submenu_offset_x), px(0.0)), content_size);
+    let offset = submenu.presence.adjust_offset(placement.offset, content_size);
     let content = if let Some(bounds_handler) = bounds_handler {
         div()
             .on_mouse_down_out(move |event, window, cx| mouse_down_out(event, window, cx))
@@ -865,8 +848,8 @@ fn render_rail_submenu_overlay(
 
     anchored()
         .snap_to_window_with_margin(px(geometry.window_margin))
-        .anchor(Anchor::TopLeft)
-        .position(point(submenu.parent_bounds.right(), submenu.parent_bounds.top()))
+        .anchor(placement.anchor)
+        .position(placement.position)
         .offset(offset)
         .child(content)
 }

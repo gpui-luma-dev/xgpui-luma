@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{Hsla, SharedString};
 
 use crate::theme::scales::snap_to_pixel;
-use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AccordionScale {
@@ -79,8 +79,15 @@ pub trait AccordionTheme: Send + Sync {
 
     /// Inherited post-drop position motion.
     /// Theme-owned preview and insertion feedback.
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        crate::infra::drag_drop::resolve_drag_preview(&crate::infra::drag_drop::sdk_drag_preview())
+    }
+
+    /// Theme-owned preview and insertion feedback.
+    #[deprecated(note = "templates draw from the resolved style; use `drag_style` (#433)")]
+    #[allow(deprecated)]
     fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default())
+        crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
     }
 
     /// Resolve pixel-snapped layout. Themes may share this result with inspection tools.

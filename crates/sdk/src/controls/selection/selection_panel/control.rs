@@ -1,3 +1,5 @@
+use crate::infra::focus_report::ReportsFocus as _;
+use crate::style::PartRead;
 use gpui::{
     App, AppContext, ClickEvent, Context, Entity, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
     MouseDownEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Subscription, Window, div, prelude::*, px,
@@ -7,8 +9,8 @@ use crate::controls::popup_scroll_surface::PopupScrollSurface;
 use crate::controls::scrollbar::{ScrollbarEvent, ScrollbarTemplate};
 use super::item_template::{SelectionPanelItemTemplate, make_selection_panel_item_template};
 use super::model::{
-    SelectionPanelRole, HoverActivationPolicy, SelectionPanelBuilder, SelectionPanelLookProvider, SelectionPanelItem,
-    SelectionPanelItemLike, SelectionPanelModel, default_selection_panel_model,
+    SelectionPanelRole, HoverActivationPolicy, SelectionPanelBuilder, SelectionPanelItem, SelectionPanelItemLike,
+    SelectionPanelModel, default_selection_panel_model,
 };
 use super::template::SelectionPanelTemplate;
 use super::template::{
@@ -52,9 +54,8 @@ where
     pressed_visible_index: Option<usize>,
     focus_handle: FocusHandle,
     popup_surface: PopupScrollSurface,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    emitted_focused: bool,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    focus_report: crate::infra::focus_report::FocusReport,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -144,9 +145,8 @@ where
             },
             pressed_visible_index: None,
             popup_surface,
-            focus_in_subscription: None,
-            focus_out_subscription: None,
-            emitted_focused: false,
+            focus_subscriptions: Default::default(),
+            focus_report: Default::default(),
             _subscriptions: subscriptions,
         }
     }
@@ -204,8 +204,7 @@ where
 
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.state.set_hovered_visible_index(None);
             self.pressed_visible_index = None;
@@ -271,8 +270,9 @@ where
         cx.notify();
     }
 
-    pub fn set_look_provider(&mut self, provider: SelectionPanelLookProvider, cx: &mut Context<Self>) {
-        self.model.look_provider = provider;
+    /// Replace where the panel's style comes from: a `selection_panel` binding, read each time it is drawn (#433).
+    pub fn set_menu(&mut self, menu: crate::controls::popup_menu::MenuSource, cx: &mut Context<Self>) {
+        self.model.menu = menu;
         cx.notify();
     }
 
@@ -452,15 +452,6 @@ where
         if policy.boundary.consumes(moved) {
             cx.stop_propagation();
         }
-    }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-        self.emitted_focused = focused;
-        cx.emit(SelectionPanelEvent::FocusChanged { focused });
-        true
     }
 
     fn handle_focus_in(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -669,22 +660,21 @@ where
             window.blur(cx);
         }
         self.clamp_state();
-        if self.focus_in_subscription.is_none() {
-            self.focus_in_subscription = Some(cx.on_focus(&self.focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            self.focus_out_subscription = Some(cx.on_focus_out(&self.focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
-        let look = (self.model.look_provider)();
-        let panel_min_width = look.min_width;
+        let menu = (self.model.menu)();
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&menu);
+        let panel_min_width = style.panel().number("min_width");
+        let item_height = style.item().number("height");
 
         let item_count = self.model.visible_indices.len();
         let min_visible_rows = self.model.min_visible_rows.max(1);
         let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
         let visible_rows = item_count.max(1).clamp(min_visible_rows, max_visible_rows) as f32;
-        let viewport_height = px(look.item_height * visible_rows);
-        let row_height = px(look.item_height);
+        let viewport_height = px(item_height * visible_rows);
+        let row_height = px(item_height);
         let content_top_padding = px(0.0);
         let allow_scrolling = self.model.scrolling && item_count > max_visible_rows;
 
@@ -711,7 +701,7 @@ where
                 enabled: self.model.enabled,
                 focus,
                 item_template: self.model.item_template.as_ref(),
-                look: look.clone(),
+                menu: menu.clone(),
                 show_selection_marker: self.model.show_selection_marker,
                 icons: &self.model.icons,
                 show_panel_chrome: false,
@@ -737,14 +727,10 @@ where
                 0.0
             };
 
-        let panel_shell = div()
+        let panel_shell = style
+            .surface(div().id("selection-panel-shell"))
             .min_w(px(content_width))
-            .p(px(look.padding))
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow)
+            .p(px(style.panel().number("padding")))
             .block_mouse_except_scroll()
             .child(rows_content);
 
@@ -934,5 +920,24 @@ mod interaction_tests {
                 assert!(elsewhere.is_focused(window));
             });
         }
+    }
+}
+
+impl<T> crate::infra::focus_report::ReportsFocus for SelectionPanelControl<T>
+where
+    T: SelectionPanelItemLike + 'static,
+{
+    type FocusEvent = SelectionPanelEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SelectionPanelEvent {
+        SelectionPanelEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

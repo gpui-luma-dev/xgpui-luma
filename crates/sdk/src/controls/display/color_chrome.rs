@@ -1,11 +1,12 @@
 //! Color-control chrome read from `.lss` (issue #285): `color_chrome.lss`.
 
+use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::Value;
 
 use crate::style::StyleBinding;
 
 /// The color controls' edge and panel fill.
+#[deprecated(note = "read the chrome from `StyledColorChrome::resolve` (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ColorChromeLook {
     pub border: Hsla,
@@ -28,17 +29,22 @@ impl StyledColorChrome {
         Self::new(StyleBinding::sdk("color_chrome"))
     }
 
+    /// The chrome's style (#433): read its root's `border` and `background`.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
+    #[deprecated(note = "read the chrome from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> ColorChromeLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
-        let color = |name: &str| {
-            root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-        };
-        ColorChromeLook { border: color("border"), background: color("background") }
+        ColorChromeLook { border: root.color("border"), background: root.color("background") }
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

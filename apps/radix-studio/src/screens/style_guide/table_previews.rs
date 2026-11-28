@@ -94,16 +94,21 @@ fn sample(
     let id = SharedString::from(format!("guide-table-{name}"));
     // Render this sample with a Look sized to its row.
     let theme = radix::table_theme(&look.with_size(size));
-    let shell = theme.resolve_look(!state.disabled, state.focused);
+    use xgpui_luma::style::PartRead;
+    let styled = StyledTable::new(theme.style());
+    let shell = styled.resolve(!state.disabled, state.focused);
+    let (divider_width, column_padding_x) =
+        (shell.root().number("row_divider_width"), shell.root().number("column_padding_x"));
     let scale = ListRowScale::compute(&theme.metrics(), window.scale_factor());
-    let row_look = theme.resolve_row_look(false, Default::default(), &scale);
-    let row_height = default_row_height(&row_look);
-    let body_height = body_rows_height(3, row_height, shell.row_divider_width);
+    let row_layout = TableRowLayout::new(&scale);
+    let row_style = styled.resolve_row(false, Default::default());
+    let row_height = default_row_height(&row_layout);
+    let body_height = body_rows_height(3, row_height, divider_width);
     let shell_height = compute_shell_height(3, row_height, &shell, true);
     let columns = columns();
     let header = column_grid(
         columns.iter().map(|column| div().truncate().child(column.header().clone()).into_any_element()),
-        shell.column_padding_x,
+        column_padding_x,
     );
     let records = [Record { name: "Olivia" }, Record { name: "Noah" }, Record { name: "Emma" }];
     let mut body = div().w_full().flex().flex_col();
@@ -114,9 +119,10 @@ fn sample(
         } else {
             InteractionState { disabled: !enabled, ..Default::default() }
         };
-        let mut resolved = theme.resolve_row_look(selected && index == 0, interaction, &scale);
+        let resolved = styled.resolve_row(selected && index == 0, interaction);
+        let mut layout = row_layout;
         // As in the SDK grid view, columns own horizontal insets and alignment.
-        resolved.padding_x = 0.0;
+        layout.padding_x = 0.0;
         let model = TableRowRenderModel {
             table_id: &id,
             row: record,
@@ -129,28 +135,31 @@ fn sample(
             focused: state.focused,
             focus_visible: state.focused,
             enabled,
-            look: resolved,
+            style: resolved.clone(),
+            layout,
         };
         let content =
-            column_grid(columns.iter().map(|column| column.render_cell(&model, window, cx)), resolved.column_padding_x);
+            column_grid(columns.iter().map(|column| column.render_cell(&model, window, cx)), column_padding_x);
         let row_id = format!("{id}-row-{index}");
         body = body.child(
             render_table_row(
                 (id.clone(), index),
                 content,
-                resolved,
+                &resolved,
+                layout,
                 enabled,
                 index > 0,
                 false,
-                Some(row_height + if index > 0 { shell.row_divider_width } else { 0.0 }),
+                Some(row_height + if index > 0 { divider_width } else { 0.0 }),
             )
             .debug_selector(move || row_id.clone()),
         );
     }
     let model = TableRenderModel {
         id: &id,
-        look: shell,
-        row_look,
+        style: shell,
+        row_style,
+        row_layout,
         row_count: 3,
         selection_mode: TableSelectionMode::Extended,
         scroll_mode: TableScrollMode::ScrollSmooth,

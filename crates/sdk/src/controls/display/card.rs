@@ -1,5 +1,6 @@
 //! The card read from `.lss` (issue #285): `card.lss`. Looks render the element from [`CardLook`].
 
+use crate::style::PartRead;
 use gpui::{AnyElement, BoxShadow, Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma_style::{PartId, PartView, Value};
 
@@ -7,6 +8,7 @@ use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
 
 /// A card's surface, text and spacing.
+#[deprecated(note = "the card draws from `StyledCard::resolve` (#433)")]
 #[derive(Clone, Debug)]
 pub struct CardLook {
     /// The surface fill, when it has color.
@@ -29,20 +31,8 @@ pub struct CardLook {
     pub font_family: SharedString,
 }
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
 fn text(part: PartView<'_>) -> LumaTextStyle {
-    LumaTextStyle {
-        size: part.font_size().unwrap_or(14.0),
-        line_height: part.line_height().unwrap_or(20.0),
-        weight: gpui::FontWeight(number(part, "font_weight").max(100.0)),
-    }
+    part.typography(14.0, 20.0)
 }
 
 fn opaque(color: Hsla) -> Option<Hsla> {
@@ -65,15 +55,21 @@ impl StyledCard {
         Self::new(StyleBinding::sdk("card"))
     }
 
-    /// The card for the binding's attributes and states.
+    /// The card's style for the binding's attributes and states (#433): the card draws from its parts.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
+    #[deprecated(note = "the card draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> CardLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
         let (title, description) = (resolved.part(PartId::new("title")), resolved.part(PartId::new("description")));
         CardLook {
-            background: opaque(color(root, "background")),
-            border: opaque(color(root, "border")),
-            border_width: number(root, "border_width"),
+            background: opaque(root.color("background")),
+            border: opaque(root.color("border")),
+            border_width: root.number("border_width"),
             shadow: root
                 .value("shadow")
                 .and_then(|v| match v {
@@ -81,18 +77,18 @@ impl StyledCard {
                     _ => None,
                 })
                 .unwrap_or_default(),
-            radius: number(root, "radius"),
-            padding: number(root, "padding_x"),
-            section_gap: number(root, "section_gap"),
-            header_gap: number(root, "header_gap"),
-            body_gap: number(root, "body_gap"),
-            title_color: color(title, "foreground"),
-            description_color: color(description, "foreground"),
-            body_color: color(root, "foreground"),
+            radius: root.number("radius"),
+            padding: root.number("padding_x"),
+            section_gap: root.number("section_gap"),
+            header_gap: root.number("header_gap"),
+            body_gap: root.number("body_gap"),
+            title_color: title.color("foreground"),
+            description_color: description.color("foreground"),
+            body_color: root.color("foreground"),
             title: text(title),
             description: text(description),
             body: text(root),
-            font_family: root.font_family().unwrap_or("").to_string().into(),
+            font_family: root.font_family_name(),
         }
     }
 }
@@ -154,31 +150,45 @@ impl IntoElement for Card {
     type Element = Div;
 
     fn into_element(self) -> Div {
-        let look = self.styled.look();
+        let look = self.styled.resolve();
         let header = (self.title.is_some() || self.description.is_some()).then(|| {
             div()
                 .flex()
                 .flex_col()
-                .gap(px(look.header_gap))
-                .children(self.title.map(|t| text_block(t, look.title_color, &look.title)))
-                .children(self.description.map(|d| text_block(d, look.description_color, &look.description)))
+                .gap(px(look.root().number("header_gap")))
+                .children(self.title.map(|t| {
+                    text_block(
+                        t,
+                        look.part(PartId::new("title")).color("foreground"),
+                        &look.part(PartId::new("title")).typography(14.0, 20.0),
+                    )
+                }))
+                .children(self.description.map(|d| {
+                    text_block(
+                        d,
+                        look.part(PartId::new("description")).color("foreground"),
+                        &look.part(PartId::new("description")).typography(14.0, 20.0),
+                    )
+                }))
         });
-        let body =
-            (!self.children.is_empty()).then(|| div().flex().flex_col().gap(px(look.body_gap)).children(self.children));
+        let body = (!self.children.is_empty())
+            .then(|| div().flex().flex_col().gap(px(look.root().number("body_gap"))).children(self.children));
         div()
             .flex()
             .flex_col()
-            .gap(px(look.section_gap))
-            .p(px(look.padding))
-            .rounded(px(look.radius))
-            .when_some(look.background, |card, background| card.bg(background))
-            .when_some(look.border, |card, border| card.border(px(look.border_width)).border_color(border))
-            .shadow(look.shadow.clone())
-            .when(!look.font_family.is_empty(), |card| card.font_family(look.font_family.clone()))
-            .text_color(look.body_color)
-            .text_size(px(look.body.size))
-            .line_height(px(look.body.line_height))
-            .font_weight(look.body.weight)
+            .gap(px(look.root().number("section_gap")))
+            .p(px(look.root().number("padding_x")))
+            .rounded(px(look.root().number("radius")))
+            .when_some(look.root().painted("background"), |card, background| card.bg(background))
+            .when_some(look.root().painted("border"), |card, border| {
+                card.border(px(look.root().number("border_width"))).border_color(border)
+            })
+            .shadow(look.root().box_shadow())
+            .when(!look.root().font_family_name().is_empty(), |card| card.font_family(look.root().font_family_name()))
+            .text_color(look.root().color("foreground"))
+            .text_size(px(look.root().typography(14.0, 20.0).size))
+            .line_height(px(look.root().typography(14.0, 20.0).line_height))
+            .font_weight(look.root().typography(14.0, 20.0).weight)
             .children(header)
             .children(body)
     }
@@ -190,9 +200,16 @@ mod tests {
 
     #[test]
     fn sdk_card_is_an_edged_panel_with_header_text() {
-        let look = StyledCard::sdk().look();
-        assert!(look.background.is_some() && look.border.is_some());
-        assert!(look.title.size > look.description.size);
-        assert!(look.padding > 0.0 && look.section_gap > 0.0 && look.header_gap >= 2.0);
+        let look = StyledCard::sdk().resolve();
+        assert!(look.root().painted("background").is_some() && look.root().painted("border").is_some());
+        assert!(
+            look.part(PartId::new("title")).typography(14.0, 20.0).size
+                > look.part(PartId::new("description")).typography(14.0, 20.0).size
+        );
+        assert!(
+            look.root().number("padding_x") > 0.0
+                && look.root().number("section_gap") > 0.0
+                && look.root().number("header_gap") >= 2.0
+        );
     }
 }

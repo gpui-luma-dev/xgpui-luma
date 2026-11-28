@@ -51,7 +51,8 @@ fn open_state(theme: &Theme, edge: SlidePanelEdge, focus: FocusHandle, motion: b
 /// The drawer in `state` inside a `frame`, drawn from `theme`, with inert handlers.
 fn drawer(theme: &Theme, state: &SlidePanelState, frame: (f32, f32)) -> AnyElement {
     let panels = StyledResizablePanelsTheme::new(binding("resizable_panels", theme));
-    let look = panels.resolve(InteractionState::default());
+    let look =
+        xgpui_luma::controls::resizable_panels::resolve_resizable_panels(&panels.style(), InteractionState::default());
     let palette = ThemeTokens::default().palette.surface;
     let content = div()
         .size_full()

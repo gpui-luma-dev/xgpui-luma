@@ -1,3 +1,7 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::ModifiedElementTemplate;
+use crate::infra::template::ModifiedTemplate;
+use crate::infra::template::RenderModel;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -5,10 +9,9 @@ use gpui::{
     SharedString, Stateful, Window, div, prelude::*, px,
 };
 
-use crate::controls::button::face::{Face, FaceShape};
-use crate::controls::selector::SelectorLook;
-use crate::controls::selector::theme::selector_face_look;
-use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::button::face::{Face, FaceLook, FaceShape};
+use crate::style::PartRead;
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
 
 use super::behavior::SelectionItem;
@@ -69,7 +72,10 @@ pub struct SearchSelectorRenderModel {
     pub trigger_label: SharedString,
     pub trigger_label_is_placeholder: bool,
     pub trigger_state: TextFieldState,
-    pub trigger_look: SelectorLook,
+    /// The trigger's resolved selector style (see `resolve_selector_trigger`), read through the shared face reader.
+    pub trigger: Arc<xgpui_luma_style::Resolved>,
+    /// Drop the trigger's shadow.
+    pub without_elevation: bool,
     pub trigger_typography_override: Option<LumaTextStyle>,
     pub enabled: bool,
     pub full_width: bool,
@@ -91,25 +97,6 @@ pub trait SearchSelectorTemplate: Send + Sync {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<gpui::Div>;
-}
-
-struct ModifiedSearchSelectorTemplate {
-    base: Arc<dyn SearchSelectorTemplate>,
-    modifiers: Vec<SearchSelectorTemplateModifier>,
-}
-
-impl ModifiedSearchSelectorTemplate {
-    fn new(base: Arc<dyn SearchSelectorTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: Fn(Stateful<gpui::Div>, &mut App) -> Stateful<gpui::Div> + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
 }
 
 pub struct DefaultSearchSelectorTemplate;
@@ -138,15 +125,18 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             trigger_bounds,
         } = handlers;
 
-        let mut trigger_look = model.trigger_look;
-        if let Some(typography) = model.trigger_typography_override {
-            trigger_look.trigger_typography = typography;
-            trigger_look.trigger_icon_size = typography.size;
-        }
+        let root = model.trigger.root();
+        let face_look = trigger_face_look(
+            &model.trigger,
+            &model.geometry,
+            model.without_elevation,
+            model.trigger_typography_override,
+        );
+        let icon_color = root.color("icon");
         let label_color = if model.trigger_label_is_placeholder {
-            trigger_look.trigger_icon
+            icon_color
         } else {
-            trigger_look.trigger_foreground
+            face_look.foreground
         };
 
         // The trigger is a button face (#430), dense: its focus ring paints inside the edge so focusing never
@@ -154,7 +144,7 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
         let face = Face {
             id: "trigger".into(),
             shape: FaceShape::Padded,
-            radius: trigger_look.trigger_radius,
+            radius: root.number("radius"),
             full_width: true,
             min_height: false,
             focused: model.trigger_state.focus_visible && model.enabled && !model.trigger_state.invalid,
@@ -162,12 +152,6 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             elevation: true,
             compact: true,
         };
-        // Border visibility changes paint only; invalid/disabled ghost triggers keep the same label and icon geometry.
-        let metrics = crate::theme::MetricTokens {
-            border_width: model.geometry.border_width,
-            ..crate::theme::MetricTokens::default()
-        };
-        let face_look = selector_face_look(&trigger_look, &metrics);
         let label = div()
             .debug_selector(|| "search-selector-label".into())
             .min_w(px(0.0))
@@ -182,10 +166,10 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             .flex()
             .items_center()
             .justify_center()
-            .text_color(trigger_look.trigger_icon)
+            .text_color(icon_color)
             .child(crate::infra::icon::render_icon_source(
                 &model.icons.resolve(crate::theme::stylesheet::IconRole::Search),
-                trigger_look.trigger_icon,
+                icon_color,
                 model.geometry.search_icon_size,
             ))
             .into_any_element();
@@ -223,7 +207,26 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
     }
 }
 
-impl SearchSelectorTemplate for ModifiedSearchSelectorTemplate {
+/// The trigger's face (#433): the shared face reader over the resolved selector style, with the search selector's
+/// own border width so border visibility changes paint only and never move the label or icon.
+fn trigger_face_look(
+    trigger: &xgpui_luma_style::Resolved,
+    geometry: &crate::theme::stylesheet::SearchSelectorGeometry,
+    without_elevation: bool,
+    typography_override: Option<LumaTextStyle>,
+) -> FaceLook {
+    let mut face_look = FaceLook::from_part(trigger.root());
+    face_look.border_width = geometry.border_width;
+    if without_elevation {
+        face_look.shadow = None;
+    }
+    if let Some(typography) = typography_override {
+        face_look.typography = typography;
+    }
+    face_look
+}
+
+impl SearchSelectorTemplate for ModifiedElementTemplate<dyn SearchSelectorTemplate, Stateful<gpui::Div>> {
     fn render(
         &self,
         model: SearchSelectorRenderModel,
@@ -231,13 +234,9 @@ impl SearchSelectorTemplate for ModifiedSearchSelectorTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
-        let mut element = self.base.render(model, handlers, window, cx);
+        let element = self.base.render(model, handlers, window, cx);
 
-        for modifier in &self.modifiers {
-            element = (modifier)(element, cx);
-        }
-
-        element
+        self.apply(element, cx)
     }
 }
 
@@ -248,7 +247,7 @@ pub(super) fn template_with_modifier<F>(
 where
     F: Fn(Stateful<gpui::Div>, &mut App) -> Stateful<gpui::Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSearchSelectorTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedElementTemplate::new(template, Box::new(modifier)))
 }
 
 pub struct SearchSelectorItemsRenderModel<'a> {
@@ -262,7 +261,8 @@ pub struct SearchSelectorItemsRenderModel<'a> {
     pub open: bool,
     pub enabled: bool,
     pub item_template: Option<&'a SearchSelectorItemTemplate<SelectionItem>>,
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
 }
 
 pub struct SearchSelectorItemsTemplateHandlers {
@@ -284,13 +284,17 @@ pub trait SearchSelectorItemsTemplate: Send + Sync {
     ) -> Stateful<gpui::Div>;
 }
 
+impl RenderModel for dyn SearchSelectorItemsTemplate {
+    type Model<'a> = SearchSelectorItemsRenderModel<'a>;
+}
+
 pub struct DefaultSearchSelectorItemsTemplate {
-    modifiers: Vec<SearchSelectorItemsTemplateModifier>,
+    modifiers: RootModifiers<dyn SearchSelectorItemsTemplate>,
 }
 
 impl DefaultSearchSelectorItemsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     #[allow(dead_code)]
@@ -301,49 +305,11 @@ impl DefaultSearchSelectorItemsTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &SearchSelectorItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
 }
 
 impl Default for DefaultSearchSelectorItemsTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-struct ModifiedSearchSelectorItemsTemplate {
-    base: Arc<dyn SearchSelectorItemsTemplate>,
-    modifiers: Vec<SearchSelectorItemsTemplateModifier>,
-}
-
-impl ModifiedSearchSelectorItemsTemplate {
-    fn new(base: Arc<dyn SearchSelectorItemsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SearchSelectorItemsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &SearchSelectorItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -359,7 +325,7 @@ pub fn search_selector_items_template_with_modifier<F>(
 where
     F: Fn(Stateful<gpui::Div>, &SearchSelectorItemsRenderModel<'_>) -> Stateful<gpui::Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSearchSelectorItemsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
@@ -370,10 +336,17 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let colors = style.row_colors();
+        let typography = style.item().typography(14.0, 20.0);
 
-        let mut root =
-            div().id((model.menu_id.clone(), 0usize)).relative().flex().flex_col().w_full().p(px(look.padding));
+        let mut root = div()
+            .id((model.menu_id.clone(), 0usize))
+            .relative()
+            .flex()
+            .flex_col()
+            .w_full()
+            .p(px(style.panel().number("padding")));
         let mut clicks = item_clicks.into_iter();
 
         for (visible_index, (source_index, hover)) in model.visible_indices.iter().copied().zip(item_hovers).enumerate()
@@ -385,9 +358,9 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
 
             let enabled_item = model.enabled && item.enabled;
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let selected = model.selected_source_index == Some(source_index);
             let active = enabled_item && model.active_visible_index == Some(visible_index);
@@ -408,8 +381,11 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
             } else {
                 let mut content = div().flex().items_center().justify_between().flex_1().child(item.label.clone());
                 if let Some(icon) = item.trailing_icon {
-                    content =
-                        content.child(crate::infra::icon::lucide_icon(icon, look.positive, model.trailing_icon_size));
+                    content = content.child(crate::infra::icon::lucide_icon(
+                        icon,
+                        style.panel().color("positive"),
+                        model.trailing_icon_size,
+                    ));
                 }
                 content.into_any_element()
             };
@@ -418,41 +394,41 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
                 .id(("row", visible_index))
                 .flex()
                 .items_center()
-                .min_h(px(look.item_height))
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
+                .min_h(px(style.item().number("height")))
+                .px(px(style.item().number("padding_x")))
+                .rounded(px(style.item_radius()))
                 .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(content);
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let hover_background = colors.hover_background;
+                    let hover_foreground = colors.hover_foreground;
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if active {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(click) = click {
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             root = root.child(row);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl SearchSelectorItemsTemplate for ModifiedSearchSelectorItemsTemplate {
+impl SearchSelectorItemsTemplate for ModifiedTemplate<dyn SearchSelectorItemsTemplate> {
     fn render(
         &self,
         model: &SearchSelectorItemsRenderModel<'_>,
@@ -460,7 +436,7 @@ impl SearchSelectorItemsTemplate for ModifiedSearchSelectorItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -474,6 +450,85 @@ mod tests {
         crate::infra::focus_adorner::testing::assert_search_selector_layout(
             crate::controls::selector::default_selector_theme(),
         );
+    }
+
+    /// The face matches the selector's compatibility look in every state, except the border width, which is the
+    /// search selector's own.
+    #[test]
+    #[allow(deprecated)]
+    fn the_trigger_face_matches_the_selector_look() {
+        use crate::controls::selector::{
+            SelectorLook, SelectorTriggerStyle, SelectorVisualState, default_selector_theme, resolve_selector_trigger,
+        };
+        use crate::theme::InteractionState;
+        use crate::theme::stylesheet::SearchSelectorGeometry;
+
+        let theme = default_selector_theme();
+        let geometry = SearchSelectorGeometry::sdk();
+        let states = [
+            SelectorVisualState::default(),
+            SelectorVisualState {
+                interaction: InteractionState { hovered: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { pressed: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { disabled: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState {
+                interaction: InteractionState { focused: true, ..Default::default() },
+                ..Default::default()
+            },
+            SelectorVisualState { open: true, ..Default::default() },
+            SelectorVisualState { invalid: true, ..Default::default() },
+        ];
+        for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
+            for visual in states {
+                for without_elevation in [false, true] {
+                    let resolved = resolve_selector_trigger(&theme.style(), style, visual, 1.0);
+                    let look = SelectorLook::from_resolved(
+                        &resolved,
+                        crate::controls::selector_list::SelectorItemsPanelLook::from_style(&theme.menu()),
+                        without_elevation,
+                    );
+                    let face = trigger_face_look(&resolved, &geometry, without_elevation, None);
+                    let case = format!("{style:?} {visual:?} without_elevation={without_elevation}");
+                    assert_eq!(face.background, look.trigger_background, "{case}");
+                    assert_eq!(face.foreground, look.trigger_foreground, "{case}");
+                    assert_eq!(face.border, look.trigger_border, "{case}");
+                    assert_eq!(face.border_width, geometry.border_width, "{case}");
+                    assert_eq!(face.shadow, look.trigger_shadow, "{case}");
+                    assert_eq!(face.typography, look.trigger_typography, "{case}");
+                    assert_eq!(face.padding_x, look.trigger_padding_x, "{case}");
+                    assert_eq!(face.padding_y, look.trigger_padding_y, "{case}");
+                    assert_eq!(face.gap, look.trigger_gap, "{case}");
+                    assert_eq!(face.height, look.trigger_height, "{case}");
+                    assert_eq!(face.focus_border, look.trigger_focus_border, "{case}");
+                    assert_eq!(face.opacity, look.trigger_opacity, "{case}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_typography_override_replaces_the_styled_typography() {
+        use crate::controls::selector::{default_selector_theme, resolve_selector_trigger};
+
+        let theme = default_selector_theme();
+        let resolved = resolve_selector_trigger(&theme.style(), Default::default(), Default::default(), 1.0);
+        let mut typography = FaceLook::from_part(resolved.root()).typography;
+        typography.size += 3.0;
+        let face = trigger_face_look(
+            &resolved,
+            &crate::theme::stylesheet::SearchSelectorGeometry::sdk(),
+            false,
+            Some(typography),
+        );
+        assert_eq!(face.typography, typography);
     }
 
     #[test]

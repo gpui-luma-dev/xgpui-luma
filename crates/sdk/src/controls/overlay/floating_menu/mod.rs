@@ -9,18 +9,23 @@
 
 mod model;
 mod styled;
-pub use styled::{StyledFloatingMenuTheme, floating_menu_source, styled_floating_menu_look};
+#[allow(deprecated)]
+pub use styled::styled_floating_menu_look;
+pub use styled::{StyledFloatingMenuTheme, floating_menu_source};
 mod template;
 pub(crate) mod theme;
 
 pub use model::{FloatingMenuActivateResult, FloatingMenuState, FloatingMenuStepDirection};
 pub use template::{
-    FloatingMenuClickHandler, FloatingMenuHighlight, FloatingMenuHoverHandler, FloatingMenuRenderModel,
-    FloatingMenuSeparatorTemplate, ThemedFloatingMenuSeparatorTemplate, FloatingMenuTemplate,
+    FloatingMenuClickHandler, FloatingMenuHighlight, FloatingMenuHoverHandler, FloatingMenuRenderModel, MenuStyle,
+    RowColors, FloatingMenuSeparatorTemplate, ThemedFloatingMenuSeparatorTemplate, FloatingMenuTemplate,
     FloatingMenuTemplateHandlers, FloatingMenuTemplateModifier, ThemedFloatingMenuTemplate,
-    default_floating_menu_template, floating_menu_template_with_modifier, render_floating_menu,
-    render_floating_menu_with_submenu_hovers_and_icons, render_floating_menu_with_submenu_hovers,
-    render_floating_menu_with_submenu_hovers_and_icons_and_transition, render_floating_menu_with_submenu_presence,
-    render_floating_menu_with_submenu_presence_and_transition, render_floating_menu_with_template,
+    default_floating_menu_template, floating_menu_size, floating_menu_template_with_modifier,
+    floating_menu_window_margin, render_floating_menu, render_floating_menu_with_submenu_hovers_and_icons,
+    render_floating_menu_with_submenu_hovers, render_floating_menu_with_submenu_hovers_and_icons_and_transition,
+    render_floating_menu_with_submenu_presence, render_floating_menu_with_submenu_presence_and_transition,
+    render_floating_menu_with_template,
 };
-pub use theme::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
+#[allow(deprecated)]
+pub use theme::FloatingMenuLook;
+pub use theme::{FloatingMenuTheme, default_floating_menu_theme};

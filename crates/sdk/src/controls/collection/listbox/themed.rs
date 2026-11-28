@@ -4,10 +4,11 @@
 //! style text content inherits. The focus ring is the drop marker, and the theme's tooltip the drag preview. Looks can still supply their
 //! own [`ListBoxTemplate`]; this is what a listbox draws without one ([`super::ListBoxBuilder::build_default`]).
 
-use gpui::{App, Div, Stateful, div, prelude::*, px};
+use crate::style::PartRead;
+use gpui::{App, Div, Stateful, div, prelude::*};
 
 use super::{ListBoxDragLook, ListBoxMotion, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxTemplate, StyledListBox};
-use crate::controls::tooltip::styled_tooltip_look;
+use crate::controls::tooltip::resolve_tooltip;
 use crate::style::{StyleBinding, ThemeSource};
 
 /// Listbox chrome drawn from a theme's `listbox.lss`.
@@ -38,15 +39,10 @@ impl ThemedListBoxTemplate {
 
 impl ListBoxTemplate for ThemedListBoxTemplate {
     fn render(&self, model: &ListBoxRenderModel, _: &mut App) -> Stateful<Div> {
-        let surface = self.styled.surface(true, model.focused);
-        div()
-            .bg(surface.background)
-            .border(px(surface.border_width))
-            .border_color(surface.border)
-            .rounded(px(surface.radius))
+        self.styled
+            .paint_surface(div().id(model.id), model.focused)
             .overflow_hidden()
             .p_1()
-            .id(model.id)
             .w_full()
             .min_w_0()
     }
@@ -61,10 +57,10 @@ impl ListBoxTemplate for ThemedListBoxTemplate {
 
     fn drag_look(&self) -> ListBoxDragLook {
         ListBoxDragLook {
-            marker_color: self.styled.surface(true, true).border,
+            marker_color: self.styled.resolve_surface(true, true).root().color("border"),
             marker_width: 2.,
             surface_color: None,
-            preview: styled_tooltip_look(&self.tooltip),
+            preview: resolve_tooltip(&self.tooltip),
         }
     }
 

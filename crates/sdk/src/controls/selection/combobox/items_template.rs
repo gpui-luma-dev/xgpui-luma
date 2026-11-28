@@ -1,10 +1,13 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, SharedString, Stateful, div, prelude::*, px};
 
 use super::behavior::SelectionItem;
 use super::item_template::ComboBoxItemTemplate;
-use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler};
 
 pub struct ComboBoxItemsRenderModel<'a> {
     pub menu_id: &'a SharedString,
@@ -16,7 +19,8 @@ pub struct ComboBoxItemsRenderModel<'a> {
     pub open: bool,
     pub enabled: bool,
     pub item_template: Option<&'a ComboBoxItemTemplate<SelectionItem>>,
-    pub look: SelectorItemsPanelLook,
+    /// The panel's style (a `floating_menu` binding, #433): the template resolves it and draws from its parts.
+    pub menu: crate::style::StyleBinding,
 }
 
 pub struct ComboBoxItemsTemplateHandlers {
@@ -37,13 +41,17 @@ pub trait ComboBoxItemsTemplate: Send + Sync {
     ) -> Stateful<gpui::Div>;
 }
 
+impl RenderModel for dyn ComboBoxItemsTemplate {
+    type Model<'a> = ComboBoxItemsRenderModel<'a>;
+}
+
 pub struct DefaultComboBoxItemsTemplate {
-    modifiers: Vec<ComboBoxItemsTemplateModifier>,
+    modifiers: RootModifiers<dyn ComboBoxItemsTemplate>,
 }
 
 impl DefaultComboBoxItemsTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     #[allow(dead_code)]
@@ -54,49 +62,11 @@ impl DefaultComboBoxItemsTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &ComboBoxItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
 }
 
 impl Default for DefaultComboBoxItemsTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-struct ModifiedComboBoxItemsTemplate {
-    base: Arc<dyn ComboBoxItemsTemplate>,
-    modifiers: Vec<ComboBoxItemsTemplateModifier>,
-}
-
-impl ModifiedComboBoxItemsTemplate {
-    fn new(base: Arc<dyn ComboBoxItemsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ComboBoxItemsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(
-        &self,
-        mut root: Stateful<gpui::Div>,
-        model: &ComboBoxItemsRenderModel<'_>,
-    ) -> Stateful<gpui::Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -112,7 +82,7 @@ pub fn combobox_items_template_with_modifier<F>(
 where
     F: Fn(Stateful<gpui::Div>, &ComboBoxItemsRenderModel<'_>) -> Stateful<gpui::Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedComboBoxItemsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
@@ -123,10 +93,17 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let ComboBoxItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
-        let look = &model.look;
+        let style = crate::controls::floating_menu::MenuStyle::resolve(&model.menu);
+        let colors = style.row_colors();
+        let typography = style.item().typography(14.0, 20.0);
 
-        let mut root =
-            div().id((model.menu_id.clone(), 0usize)).relative().flex().flex_col().w_full().p(px(look.padding));
+        let mut root = div()
+            .id((model.menu_id.clone(), 0usize))
+            .relative()
+            .flex()
+            .flex_col()
+            .w_full()
+            .p(px(style.panel().number("padding")));
         let mut clicks = item_clicks.into_iter();
 
         for (visible_index, (source_index, hover)) in model.visible_indices.iter().copied().zip(item_hovers).enumerate()
@@ -138,9 +115,9 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
 
             let enabled_item = model.enabled && item.enabled;
             let color = if enabled_item {
-                look.foreground
+                colors.foreground
             } else {
-                look.item_disabled_foreground
+                colors.disabled_foreground
             };
             let selected = model.selected_source_index == Some(source_index);
             let active = enabled_item && model.active_visible_index == Some(visible_index);
@@ -166,41 +143,41 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
                 .id(("row", visible_index))
                 .flex()
                 .items_center()
-                .min_h(px(look.item_height))
-                .px(px(look.item_padding_x))
-                .rounded(px(look.item_radius))
+                .min_h(px(style.item().number("height")))
+                .px(px(style.item().number("padding_x")))
+                .rounded(px(style.item_radius()))
                 .text_color(color)
-                .text_size(px(look.item_typography.size))
-                .line_height(px(look.item_typography.line_height))
-                .font_weight(look.item_typography.weight)
+                .text_size(px(typography.size))
+                .line_height(px(typography.line_height))
+                .font_weight(typography.weight)
                 .child(content);
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
-                    let hover_background = look.item_hover_background;
-                    let hover_foreground = look.item_hover_foreground;
+                    let hover_background = colors.hover_background;
+                    let hover_foreground = colors.hover_foreground;
                     move |style| style.bg(hover_background).text_color(hover_foreground)
                 });
 
                 if active {
-                    row = row.bg(look.item_hover_background).text_color(look.item_hover_foreground);
+                    row = row.bg(colors.hover_background).text_color(colors.hover_foreground);
                 }
 
                 if let Some(click) = click {
                     row = row.on_click(click);
                 }
             } else {
-                row = crate::style::fade(row, look.item_disabled_opacity);
+                row = crate::style::fade(row, style.disabled_opacity());
             }
 
             root = root.child(row);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
-impl ComboBoxItemsTemplate for ModifiedComboBoxItemsTemplate {
+impl ComboBoxItemsTemplate for ModifiedTemplate<dyn ComboBoxItemsTemplate> {
     fn render(
         &self,
         model: &ComboBoxItemsRenderModel<'_>,
@@ -208,7 +185,7 @@ impl ComboBoxItemsTemplate for ModifiedComboBoxItemsTemplate {
         cx: &mut App,
     ) -> Stateful<gpui::Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

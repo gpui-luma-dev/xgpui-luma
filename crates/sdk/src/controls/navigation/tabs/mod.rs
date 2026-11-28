@@ -127,7 +127,7 @@
 //! and its post-layout redraw. Animation frames invalidate only the body slot.
 //!
 mod styled;
-pub use styled::{StyledTabs, StyledTabsTheme};
+pub use styled::{StyledTabs, StyledTabsTheme, resolve_tab, resolve_tabs_list};
 mod content;
 mod transition;
 mod control;
@@ -155,7 +155,9 @@ pub use template::{
     resolve_tabs_uniform_item_width,
 };
 
-pub use theme::{TabsBaseline, TabsItemLook, TabsListLook, TabsTheme, default_tabs_theme};
+#[allow(deprecated)]
+pub use theme::{TabsItemLook, TabsListLook};
+pub use theme::{TabsBaseline, TabsTheme, default_tabs_theme};
 
 pub use crate::infra::state::{CompositeItemState as TabsItemState, ControlFocusState};
 

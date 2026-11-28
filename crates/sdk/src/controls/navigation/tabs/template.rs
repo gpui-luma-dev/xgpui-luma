@@ -1,15 +1,19 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use gpui::{
-    Anchor, AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, Point, SharedString, Size, Stateful, TextRun, Window,
-    anchored, deferred, div, font, hsla, point, px, prelude::*,
+    AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, SharedString, Size, Stateful, TextRun, Window, anchored,
+    deferred, div, font, hsla, px, prelude::*,
 };
 
 use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::infra::lock;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
@@ -19,7 +23,9 @@ use crate::controls::control_group::{
 };
 use crate::infra::icon::{DisclosureIcons, IconSource, render_icon_source, render_disclosure_icon};
 use crate::motion::overlay_presence::OverlayPresence;
-use crate::controls::tabs::{TabsItemLook, TabsTheme, default_tabs_theme};
+use crate::controls::tabs::{TabsTheme, default_tabs_theme, resolve_tab, resolve_tabs_list};
+use crate::style::PartRead;
+use xgpui_luma_style::{PartId, Resolved};
 use crate::theme::InteractionState;
 
 pub type TabsClickHandler = ControlGroupClickHandler;
@@ -29,15 +35,14 @@ pub type TabsMouseDownHandler = ControlGroupMouseDownHandler;
 pub type TabsMouseUpHandler = ControlGroupMouseUpHandler;
 pub type TabsTemplateHandlers = ControlGroupTemplateHandlers;
 
-pub type TabsTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &TabsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 #[derive(Clone)]
 pub struct TabsOverlayState {
     motion: Arc<Mutex<crate::motion::MotionConfig<crate::motion::PresenceMotion>>>,
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     presence: Arc<Mutex<OverlayPresence>>,
     last_overlay: Arc<Mutex<Option<TabsCachedOverlay>>>,
+    /// The window size and layout direction, read when the trigger is laid out.
+    space: Arc<Mutex<PopupSpace>>,
 }
 
 #[derive(Clone)]
@@ -55,6 +60,7 @@ impl Default for TabsOverlayState {
             trigger_bounds: Arc::new(Mutex::new(None)),
             presence: Arc::new(Mutex::new(OverlayPresence::new(false, true))),
             last_overlay: Arc::new(Mutex::new(None)),
+            space: Arc::new(Mutex::new(PopupSpace::default())),
         }
     }
 }
@@ -133,30 +139,43 @@ pub struct TabsItemOverlay {
     pub window_margin: Pixels,
 }
 
-#[derive(Clone, Copy)]
-struct ResolvedTabsOverlayPlacement {
-    anchor: Anchor,
-    position: Point<Pixels>,
-    offset: Point<Pixels>,
-}
-
 #[derive(Clone)]
 struct TabsButtonData {
-    look: TabsItemLook,
+    /// The tab's resolved style in its state (#433).
+    style: Arc<Resolved>,
+    /// The tab's horizontal padding, less any inset label background's.
+    padding_x: f32,
+    /// The tab's fill, unless an inset label background took it.
+    background: Option<gpui::Hsla>,
     disclosure_icons: DisclosureIcons,
+}
+
+impl TabsButtonData {
+    fn label_color(&self) -> gpui::Hsla {
+        self.style.part(PartId::new("item")).color("foreground")
+    }
+
+    fn accessory_size(&self) -> f32 {
+        self.style.root().number("accessory_size")
+    }
+
+    fn accessory_gap(&self) -> f32 {
+        self.style.root().number("accessory_gap")
+    }
 }
 
 #[derive(Clone)]
 pub struct TabsItemButtonStyle {
-    pub look: TabsItemLook,
+    /// The tab's resolved style in its state (#433; see [`resolve_tab`]): its root and `item` part.
+    pub style: Arc<Resolved>,
     pub font_family: SharedString,
     pub disclosure_icons: DisclosureIcons,
 }
 
 impl TabsItemButtonStyle {
-    pub fn new(look: TabsItemLook, font_family: SharedString) -> Self {
+    pub fn new(style: Arc<Resolved>, font_family: SharedString) -> Self {
         Self {
-            look,
+            style,
             font_family,
             disclosure_icons: DisclosureIcons::menu_from_stylesheet(
                 crate::theme::stylesheet::CommonStylesheet::sdk_default(),
@@ -180,14 +199,18 @@ pub trait TabsTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TabsTemplate {
+    type Model<'a> = TabsRenderModel<'a>;
+}
+
 pub struct ThemedTabsTemplate {
     theme: Arc<dyn TabsTheme>,
-    modifiers: Vec<TabsTemplateModifier>,
+    modifiers: RootModifiers<dyn TabsTemplate>,
 }
 
 impl ThemedTabsTemplate {
     pub fn new(theme: Arc<dyn TabsTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -196,36 +219,6 @@ impl ThemedTabsTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TabsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-struct ModifiedTabsTemplate {
-    base: Arc<dyn TabsTemplate>,
-    modifiers: Vec<TabsTemplateModifier>,
-}
-
-impl ModifiedTabsTemplate {
-    fn new(base: Arc<dyn TabsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TabsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TabsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -239,10 +232,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn TabsTemplate>, modifie
 where
     F: Fn(Stateful<Div>, &TabsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTabsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl TabsTemplate for ModifiedTabsTemplate {
+impl TabsTemplate for ModifiedTemplate<dyn TabsTemplate> {
     fn render(
         &self,
         model: &TabsRenderModel<'_>,
@@ -251,7 +244,7 @@ impl TabsTemplate for ModifiedTabsTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -263,17 +256,21 @@ impl TabsTemplate for ThemedTabsTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        let list_look = self.theme.resolve_list(model.enabled);
+        let list_style = resolve_tabs_list(&self.theme.style(), model.enabled);
+        let list = list_style.part(PartId::new("list"));
+        let (list_gap, list_padding, list_background, list_border) =
+            (list.number("gap"), list.number("padding"), list.painted("background"), list.painted("border"));
         let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), window);
 
         let active_item = model.items.iter().find(|item| item.active);
-        let active_look = active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state()));
         if let Some(motion) = model.indicator_motion {
-            let look = active_look.unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default()));
+            let state = active_item.map_or_else(InteractionState::default, |item| item.state.interaction_state());
+            let active = resolve_tab(&self.theme.item_style(true, state), true, state);
+            let root = active.root();
             motion.set_metrics(
-                self.theme.indicator_inset().unwrap_or(look.padding_x),
-                look.indicator_height,
-                look.indicator,
+                self.theme.indicator_inset().unwrap_or(active.part(PartId::new("item")).number("padding_x")),
+                root.number("indicator_height"),
+                root.painted("indicator"),
             );
         }
 
@@ -292,9 +289,9 @@ impl TabsTemplate for ThemedTabsTemplate {
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(list_look.gap))
-            .p(px(list_look.padding))
-            .rounded(px(list_look.radius));
+            .gap(px(list_gap))
+            .p(px(list_padding))
+            .rounded(px(list.number("radius")));
         if let Some((motion, scroll)) = &drop_scope {
             let scroll = scroll.clone();
             root = motion.begin_surface(root, move || scroll.offset());
@@ -306,12 +303,12 @@ impl TabsTemplate for ThemedTabsTemplate {
             });
         }
 
-        if let Some(background) = list_look.background {
+        if let Some(background) = list_background {
             root = root.bg(background);
         }
 
-        if let Some(border) = list_look.border {
-            root = root.border(px(list_look.border_width)).border_color(border);
+        if let Some(border) = list_border {
+            root = root.border(px(list.number("border_width"))).border_color(border);
         }
 
         if let Some(baseline) = self.theme.baseline(model.enabled) {
@@ -334,11 +331,12 @@ impl TabsTemplate for ThemedTabsTemplate {
             }
         }
         for (item, item_handlers) in model.items.iter().zip(handlers.into_item_handlers()) {
-            let look = self.theme.resolve_item(item.active, item.state.interaction_state());
+            let state = item.state.interaction_state();
+            let style = resolve_tab(&self.theme.item_style(item.active, state), item.active, state);
             let mut tab = render_tab_button_with_content_padding(
                 model.id,
                 item,
-                TabsItemButtonStyle::new(look, self.theme.font_family())
+                TabsItemButtonStyle::new(style, self.theme.font_family())
                     .disclosure_icons(model.disclosure_icons.clone()),
                 self.theme.content_padding(),
                 window,
@@ -356,7 +354,7 @@ impl TabsTemplate for ThemedTabsTemplate {
 
             if let Some(owner) = &model.drag_drop {
                 if let Ok(bound) = owner.update(cx, |tabs, cx| {
-                    let bound = tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.resolve_drag(), cx);
+                    let bound = tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.drag_style(), cx);
                     tabs.drop_layout.item(item.id.clone(), bound)
                 }) {
                     root = root.child(bound);
@@ -370,9 +368,9 @@ impl TabsTemplate for ThemedTabsTemplate {
             if let Ok(bound) = owner.update(cx, |tabs, cx| {
                 tabs.bind_tab_drop_targets(
                     root,
-                    list_look.gap,
-                    list_look.padding + if list_look.border.is_some() { 1.0 } else { 0.0 },
-                    self.theme.resolve_drag(),
+                    list_gap,
+                    list_padding + if list_border.is_some() { 1.0 } else { 0.0 },
+                    self.theme.drag_style(),
                     cx,
                 )
             }) {
@@ -397,7 +395,7 @@ impl TabsTemplate for ThemedTabsTemplate {
         if let Some((motion, _)) = drop_scope {
             root = motion.end_surface(root);
         }
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 
@@ -414,29 +412,32 @@ pub fn resolve_tabs_uniform_item_width(
     let mut max_width = 0.0_f32;
 
     for item in &model.items {
-        let look = theme.resolve_item(item.active, item.state.interaction_state());
+        let state = item.state.interaction_state();
+        let style = resolve_tab(&theme.item_style(item.active, state), item.active, state);
+        let (root, part) = (style.root(), style.part(PartId::new("item")));
+        let typography = part.typography(14.0, 20.0);
         let run = TextRun {
             len: item.label.len(),
             font: {
                 let mut font = font(font_family.clone());
-                font.weight = look.label_typography.weight;
+                font.weight = typography.weight;
                 font
             },
-            color: look.label_color,
+            color: part.color("foreground"),
             background_color: None,
             underline: None,
             strikethrough: None,
         };
-        let line = window.text_system().shape_line(item.label.clone(), px(look.label_typography.size), &[run], None);
+        let line = window.text_system().shape_line(item.label.clone(), px(typography.size), &[run], None);
         let accessory_count =
             usize::from(item.leading_accessory.is_some()) + usize::from(item.trailing_accessory.is_some());
-        let accessory_width = accessory_count as f32 * look.accessory_size
+        let accessory_width = accessory_count as f32 * root.number("accessory_size")
             + if accessory_count > 0 {
-                accessory_count as f32 * look.accessory_gap
+                accessory_count as f32 * root.number("accessory_gap")
             } else {
                 0.0
             };
-        let width = line.x_for_index(item.label.len()).as_f32() + look.padding_x * 2.0 + accessory_width;
+        let width = line.x_for_index(item.label.len()).as_f32() + part.number("padding_x") * 2.0 + accessory_width;
         max_width = max_width.max(width);
     }
 
@@ -458,10 +459,12 @@ where
     let mut root = div()
         .on_children_prepainted({
             let trigger_bounds = overlay_state.trigger_bounds.clone();
-            move |bounds, _, _| {
+            let space = overlay_state.space.clone();
+            move |bounds, window, cx| {
                 if let Some(bounds) = bounds.first() {
                     *lock::mutex(&trigger_bounds) = Some(*bounds);
                 }
+                *lock::mutex(&space) = PopupSpace::of(window, cx);
             }
         })
         .id(id)
@@ -487,12 +490,21 @@ where
             let presence = overlay_state.presence_snapshot();
             let placement = resolve_tabs_overlay_placement(
                 overlay_state.trigger_bounds(),
+                *lock::mutex(&overlay_state.space),
                 overlay.placement,
                 overlay.content_size,
                 overlay.offset_y,
+                overlay.window_margin,
             );
             let offset = presence.adjust_offset(placement.offset, overlay.content_size);
-            let content = div().opacity(presence.opacity()).child(overlay.content);
+            // Taller than the space on its side, the overlay scrolls (#433).
+            let content = div().opacity(presence.opacity()).child(
+                div()
+                    .id("tabs-overlay-scroll")
+                    .max_h(tabs_overlay_max_height(&placement, overlay.content_size))
+                    .overflow_y_scroll()
+                    .child(overlay.content),
+            );
             let anchored_overlay = anchored()
                 .snap_to_window_with_margin(overlay.window_margin)
                 .anchor(placement.anchor)
@@ -509,14 +521,18 @@ where
             {
                 let placement = resolve_tabs_overlay_placement(
                     overlay_state.trigger_bounds(),
+                    *lock::mutex(&overlay_state.space),
                     cached.placement,
                     cached.content_size,
                     cached.offset_y,
+                    cached.window_margin,
                 );
                 let offset = presence.adjust_offset(placement.offset, cached.content_size);
                 // Exit keeps a sized shell while content is unavailable (`AnyElement` is not cloneable).
-                let content =
-                    div().w(cached.content_size.width).h(cached.content_size.height).opacity(presence.opacity());
+                let content = div()
+                    .w(cached.content_size.width)
+                    .h(tabs_overlay_max_height(&placement, cached.content_size))
+                    .opacity(presence.opacity());
                 let anchored_overlay = anchored()
                     .snap_to_window_with_margin(cached.window_margin)
                     .anchor(placement.anchor)
@@ -530,27 +546,39 @@ where
 
     root.into_any_element()
 }
-
 fn resolve_tabs_overlay_placement(
     trigger_bounds: Option<Bounds<Pixels>>,
+    space: impl Into<PopupSpace>,
     placement: TabsOverlayPlacement,
     content_size: Size<Pixels>,
     offset_y: Pixels,
-) -> ResolvedTabsOverlayPlacement {
-    let trigger_bounds = trigger_bounds
-        .unwrap_or_else(|| Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(0.0) }));
+    window_margin: Pixels,
+) -> ResolvedPopupPlacement {
+    let trigger_bounds = trigger_bounds.unwrap_or_default();
+    let space: PopupSpace = space.into();
+    let align = match placement {
+        TabsOverlayPlacement::BelowStart => PopupAlign::Start,
+        TabsOverlayPlacement::BelowCenter => PopupAlign::Center,
+    };
+    // Until the trigger is laid out the window size is unknown: open below, unlimited.
+    let measured = space.viewport.height > px(0.0);
+    let mut placement = PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, space)
+        .align(align)
+        .flip(measured)
+        .gap(offset_y)
+        .content_size(Some(content_size))
+        .window_margin(window_margin)
+        .resolve();
+    placement.scrolling &= measured;
+    placement
+}
 
-    match placement {
-        TabsOverlayPlacement::BelowStart => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
-            offset: point(px(0.0), offset_y),
-        },
-        TabsOverlayPlacement::BelowCenter => ResolvedTabsOverlayPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.center().x, trigger_bounds.bottom()),
-            offset: point(-(content_size.width * 0.5), offset_y),
-        },
+/// The height the overlay may take: unlimited until the window size is known.
+fn tabs_overlay_max_height(placement: &ResolvedPopupPlacement, content_size: Size<Pixels>) -> Pixels {
+    if placement.scrolling {
+        placement.max_size.height
+    } else {
+        content_size.height
     }
 }
 
@@ -563,12 +591,12 @@ fn tab_button_template() -> Arc<dyn ButtonTemplate<TabsButtonData>> {
 pub fn render_tab_button(
     navigation_id: &SharedString,
     item: &TabsRenderItem<'_>,
-    look: TabsItemLook,
+    style: Arc<Resolved>,
     font_family: SharedString,
     window: &mut Window,
     cx: &mut App,
 ) -> Stateful<Div> {
-    render_tab_button_with_style(navigation_id, item, TabsItemButtonStyle::new(look, font_family), window, cx)
+    render_tab_button_with_style(navigation_id, item, TabsItemButtonStyle::new(style, font_family), window, cx)
 }
 
 pub fn render_tab_button_with_style(
@@ -590,7 +618,7 @@ fn render_tab_button_with_content_padding(
     cx: &mut App,
 ) -> Stateful<Div> {
     tab_button_template().render(
-        &tab_button_model(navigation_id, item, style.look, style.font_family, style.disclosure_icons, content_padding),
+        &tab_button_model(navigation_id, item, style.style, style.font_family, style.disclosure_icons, content_padding),
         window,
         cx,
     )
@@ -599,15 +627,18 @@ fn render_tab_button_with_content_padding(
 fn tab_button_model(
     navigation_id: &SharedString,
     item: &TabsRenderItem<'_>,
-    mut look: TabsItemLook,
+    style: Arc<Resolved>,
     font_family: SharedString,
     disclosure_icons: DisclosureIcons,
     content_padding: Option<(f32, f32)>,
 ) -> ButtonRenderModel<TabsButtonData> {
+    let part = style.part(PartId::new("item"));
+    let (mut padding_x, mut background, radius) =
+        (part.number("padding_x"), part.painted("background"), part.number("radius"));
     let inner_background = content_padding.map(|(x, y)| {
-        let x = x.clamp(0.0, look.padding_x.max(0.0));
-        look.padding_x -= x;
-        (x, y.max(0.0), look.background.take(), look.radius)
+        let x = x.clamp(0.0, padding_x.max(0.0));
+        padding_x -= x;
+        (x, y.max(0.0), background.take(), radius)
     });
     let label = item.label.clone();
     let leading_accessory = item.leading_accessory.cloned();
@@ -616,10 +647,10 @@ fn tab_button_model(
 
     ButtonRenderModel {
         id: format!("{}-tab-{}", navigation_id, item.id).into(),
-        data: TabsButtonData { look, disclosure_icons },
+        data: TabsButtonData { style, padding_x, background, disclosure_icons },
         icon: None,
         content: Arc::new(move |model, _| {
-            let mut label_content = div().flex().items_center().gap(px(model.data.look.accessory_gap));
+            let mut label_content = div().flex().items_center().gap(px(model.data.accessory_gap()));
             if let Some((x, y, background, radius)) = inner_background {
                 label_content = label_content.px(px(x)).py(px(y)).rounded(px(radius));
                 if let Some(background) = background {
@@ -629,20 +660,20 @@ fn tab_button_model(
             if let Some(accessory) = &leading_accessory {
                 label_content = label_content.child(render_accessory(
                     accessory,
-                    model.data.look.label_color,
+                    model.data.label_color(),
                     &model.data.disclosure_icons,
                     disclosure_progress,
-                    model.data.look.accessory_size,
+                    model.data.accessory_size(),
                 ));
             }
             label_content = label_content.child(label.clone());
             if let Some(accessory) = &trailing_accessory {
                 label_content = label_content.child(render_accessory(
                     accessory,
-                    model.data.look.label_color,
+                    model.data.label_color(),
                     &model.data.disclosure_icons,
                     disclosure_progress,
-                    model.data.look.accessory_size,
+                    model.data.accessory_size(),
                 ));
             }
             label_content.into_any_element()
@@ -650,7 +681,7 @@ fn tab_button_model(
         role: ButtonFamilyRole::Toggle { selected: item.active },
         state: item.state.interaction_state(),
         round: false,
-        radius_override: Cell::new(Some(look.radius)),
+        radius_override: Cell::new(Some(radius)),
         elevation: false,
         // Tabs own their focus indicator; retain the dense item footprint.
         compact: true,
@@ -661,25 +692,26 @@ fn tab_button_model(
         switch_orientation: crate::controls::switch::SwitchOrientation::Horizontal,
         switch_track_content: None,
         switch_thumb_content: None,
-        look: Some(Arc::new(move |model| tab_button_look(model.data.look, font_family.clone()))),
+        look: Some(Arc::new(move |model| tab_button_look(&model.data, font_family.clone()))),
     }
 }
 
-fn tab_button_look(look: TabsItemLook, font_family: SharedString) -> ButtonFamilyLook {
+fn tab_button_look(data: &TabsButtonData, font_family: SharedString) -> ButtonFamilyLook {
+    let part = data.style.part(PartId::new("item"));
     ButtonFamilyLook {
         focus_border: gpui::transparent_black(),
-        background: look.background.unwrap_or_else(|| hsla(0.0, 0.0, 0.0, 0.0)),
-        foreground: look.label_color,
-        muted_foreground: look.label_color,
+        background: data.background.unwrap_or_else(|| hsla(0.0, 0.0, 0.0, 0.0)),
+        foreground: data.label_color(),
+        muted_foreground: data.label_color(),
         border: None,
-        typography: look.label_typography,
+        typography: part.typography(14.0, 20.0),
         font_family,
-        radius: look.radius,
-        padding_x: look.padding_x,
+        radius: part.number("radius"),
+        padding_x: data.padding_x,
         padding_y: 0.0,
-        gap: look.accessory_gap,
-        height: look.height,
-        icon_size: look.accessory_size,
+        gap: data.accessory_gap(),
+        height: part.number("height"),
+        icon_size: data.accessory_size(),
         shadow: None,
     }
 }
@@ -757,7 +789,7 @@ fn tabs_render_model<'a>(
 
 #[cfg(test)]
 mod tests {
-    use gpui::{Bounds, point, px, size};
+    use gpui::{Anchor, Bounds, point, px, size};
 
     use super::*;
 
@@ -765,9 +797,11 @@ mod tests {
     fn overlay_below_start_anchors_to_trigger_bottom_left() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            size(px(800.0), px(600.0)),
             TabsOverlayPlacement::BelowStart,
             size(px(200.0), px(120.0)),
             px(6.0),
+            px(8.0),
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -779,9 +813,11 @@ mod tests {
     fn overlay_below_center_anchors_to_trigger_center_with_content_offset() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            size(px(800.0), px(600.0)),
             TabsOverlayPlacement::BelowCenter,
             size(px(200.0), px(120.0)),
             px(6.0),
+            px(8.0),
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -799,5 +835,45 @@ mod tests {
         assert!(!state.should_paint());
         assert!(!state.is_animating());
         assert!(state.trigger_bounds().is_none());
+    }
+}
+
+#[cfg(test)]
+mod height_tests {
+    use gpui::{Bounds, point, px, size};
+
+    use super::*;
+
+    #[test]
+    fn overlay_near_the_window_bottom_flips_and_limits_its_height() {
+        let trigger = Some(Bounds::new(point(px(40.0), px(500.0)), size(px(80.0), px(32.0))));
+        let content = size(px(200.0), px(900.0));
+        let placement = resolve_tabs_overlay_placement(
+            trigger,
+            size(px(800.0), px(600.0)),
+            TabsOverlayPlacement::BelowStart,
+            content,
+            px(6.0),
+            px(8.0),
+        );
+        // Below: 600 - 8 - 538 = 54; above: 500 - 6 - 8 = 486.
+        assert_eq!(placement.side, PopupSide::Above);
+        assert!(placement.scrolling);
+        assert_eq!(tabs_overlay_max_height(&placement, content), px(486.0));
+    }
+
+    #[test]
+    fn overlay_before_layout_opens_below_unlimited() {
+        let content = size(px(200.0), px(900.0));
+        let placement = resolve_tabs_overlay_placement(
+            None,
+            gpui::Size::default(),
+            TabsOverlayPlacement::BelowStart,
+            content,
+            px(6.0),
+            px(8.0),
+        );
+        assert_eq!(placement.side, PopupSide::Below);
+        assert_eq!(tabs_overlay_max_height(&placement, content), content.height);
     }
 }

@@ -1,3 +1,5 @@
+use crate::infra::item_tracker::ItemChange;
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{ClickEvent, Context, FocusOutEvent, MouseDownEvent, MouseUpEvent, ScrollEvent, TouchPhase, Window, px};
 
 use super::selection::{TableDirection, next_enabled_index};
@@ -88,40 +90,30 @@ where
     }
 
     pub(super) fn clear_pointer_interaction(&mut self, cx: &mut Context<Self>) {
-        if self.hovered_index.is_none() && self.pressed_index.is_none() {
+        let changes = self.rows_pointer.clear();
+        self.emit_row_changes(changes, cx);
+    }
+
+    /// Report row hover changes, in the order the tracker made them, and redraw. Rows report no press events.
+    pub(super) fn emit_row_changes(&mut self, changes: Vec<ItemChange<usize>>, cx: &mut Context<Self>) {
+        if changes.is_empty() {
             return;
         }
-
-        self.clear_hovered_index(cx);
-        self.pressed_index = None;
+        for change in changes {
+            if let ItemChange::Hovered { key, hovered } = change {
+                cx.emit(TableEvent::RowHoverChanged { index: key, hovered });
+            }
+        }
         cx.notify();
     }
 
-    pub(super) fn clear_hovered_index(&mut self, cx: &mut Context<Self>) {
-        if let Some(index) = self.hovered_index.take() {
-            cx.emit(TableEvent::RowHoverChanged { index, hovered: false });
-        }
-    }
-
     pub(super) fn handle_item_hover(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
-        if !self.can_use_item(index) {
+        // Only a usable row can be entered; any row can be left.
+        if hovered && !self.can_use_item(index) {
             return;
         }
-
-        if hovered {
-            if self.hovered_index != Some(index) {
-                self.clear_hovered_index(cx);
-                self.hovered_index = Some(index);
-                cx.emit(TableEvent::RowHoverChanged { index, hovered: true });
-                cx.notify();
-            }
-        } else if self.hovered_index == Some(index) {
-            self.clear_hovered_index(cx);
-            if self.pressed_index == Some(index) {
-                self.pressed_index = None;
-            }
-            cx.notify();
-        }
+        let changes = self.rows_pointer.hover(index, hovered);
+        self.emit_row_changes(changes, cx);
     }
 
     pub(super) fn handle_item_mouse_down(
@@ -132,17 +124,15 @@ where
         cx: &mut Context<Self>,
     ) {
         if self.can_use_item(index) {
-            self.pressed_index = Some(index);
+            let changes = self.rows_pointer.press(index);
+            self.emit_row_changes(changes, cx);
             self.model.pointer_focus.apply(&self.focus_handle, window, cx);
-            cx.notify();
         }
     }
 
     pub(super) fn handle_item_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.pressed_index.is_some() {
-            self.pressed_index = None;
-            cx.notify();
-        }
+        let changes = self.rows_pointer.release();
+        self.emit_row_changes(changes, cx);
     }
 
     pub(super) fn handle_item_click(&mut self, index: usize, event: &ClickEvent, cx: &mut Context<Self>) {
@@ -331,15 +321,5 @@ where
         if self.emit_focus_changed(false, cx) {
             cx.notify();
         }
-    }
-
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(TableEvent::FocusChanged { focused });
-        true
     }
 }

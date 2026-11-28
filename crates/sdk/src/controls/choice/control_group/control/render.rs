@@ -17,7 +17,6 @@ where
         let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
         let effective_selected_ids = self.model.effective_selected_ids();
         let item_count = self.model.items.len();
-        let keyboard_focus_visible = window.last_input_was_keyboard();
 
         let items = self
             .model
@@ -38,12 +37,12 @@ where
                     && target.focus_handle.is_focused(window)
                 {
                     item_active = true;
-                    item_focus_visible = keyboard_focus_visible;
+                    item_focus_visible = crate::infra::state::focus_visible(true, window);
                 }
 
                 let state = CompositeItemState {
-                    hovered: enabled && self.hovered_item == Some(index),
-                    pressed: enabled && self.pressed_item == Some(index),
+                    hovered: enabled && self.items_pointer.is_hovered(item.id()),
+                    pressed: enabled && self.items_pointer.is_pressed(item.id()),
                     disabled: !enabled,
                     selected,
                     active: item_active,
@@ -150,13 +149,15 @@ where
             }
         }
 
-        if self.focus_in_subscription.is_none() {
-            self.focus_in_subscription = Some(cx.on_focus(&self.focus_handle, window, Self::handle_group_focus_entry));
-        }
-        if self.focus_out_subscription.is_none() {
-            self.focus_out_subscription =
-                Some(cx.on_focus_out(&self.focus_handle, window, Self::handle_group_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+
+        self.focus_subscriptions.ensure(
+            &focus_handle,
+            window,
+            cx,
+            Self::handle_group_focus_entry,
+            Self::handle_group_focus_out,
+        );
         self.ensure_item_focus_subscriptions(window, cx);
 
         if self.model.focus_strategy == ControlGroupFocusStrategy::RovingItemFocus

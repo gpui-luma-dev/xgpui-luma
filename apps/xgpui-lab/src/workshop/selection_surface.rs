@@ -17,20 +17,16 @@ use std::sync::{Arc, Mutex};
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::MenuItem;
-use xgpui_luma::controls::popup_menu::{
-    PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
-    StyledPopupMenuTheme,
-};
+use xgpui_luma::controls::popup_menu::{PopupMenuTheme, StyledPopupMenuTheme};
 use xgpui_luma::controls::selector::{
-    Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorLook, SelectorPalette, SelectorTheme,
-    SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme, ThemedSelectorTemplate,
+    Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorTheme, StyledSelectorTheme, ThemedSelectorTemplate,
 };
 use xgpui_luma::controls::split_button::{SplitButton, SplitButtonBuilder, SplitButtonEvent, ThemedSplitButtonTemplate};
 use xgpui_luma::controls::floating_menu::floating_menu_source;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, selector_list};
-use xgpui_luma::style::ThemeSource;
+use xgpui_luma::style::{StyleBinding, ThemeSource};
 use xgpui_luma::style::lss::Theme;
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::MetricTokens;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -68,11 +64,6 @@ impl Cells {
     }
 }
 
-/// `state`, or the picked states when some are pinned.
-fn pin(pinned: &Option<StateSet>, state: InteractionState) -> InteractionState {
-    pinned.as_ref().map_or(state, StateSet::interaction)
-}
-
 // --- Selector ----------------------------------------------------------------------------------------------
 
 struct PinnedSelectorTheme {
@@ -81,35 +72,24 @@ struct PinnedSelectorTheme {
 }
 
 impl SelectorTheme for PinnedSelectorTheme {
-    fn resolve(&self, style: SelectorTriggerStyle, state: InteractionState, flat: bool) -> SelectorPalette {
-        self.base.resolve(style, pin(&self.pinned, state), flat)
+    /// The base style with the pinned states set in its key (#433), so Design mode draws them however the
+    /// pointer moves.
+    fn style(&self) -> StyleBinding {
+        let base = self.base.style();
+        let Some(pinned) = &self.pinned else {
+            return base;
+        };
+        ["hover", "pressed", "focused", "disabled", "invalid"]
+            .into_iter()
+            .fold(base, |binding, name| binding.state(name, pinned.has(name)))
+    }
+
+    fn menu(&self) -> xgpui_luma::style::StyleBinding {
+        self.base.menu()
     }
 
     fn metrics(&self) -> MetricTokens {
         self.base.metrics()
-    }
-
-    fn resolve_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        flat: bool,
-    ) -> SelectorLook {
-        self.base.resolve_look(style, pin(&self.pinned, state), scale, flat)
-    }
-
-    fn resolve_visual_look(
-        &self,
-        style: SelectorTriggerStyle,
-        visual: SelectorVisualState,
-        scale: &StandardBoxScale,
-        flat: bool,
-    ) -> SelectorLook {
-        match &self.pinned {
-            Some(states) => self.base.resolve_look(style, states.interaction(), scale, flat),
-            None => self.base.resolve_visual_look(style, visual, scale, flat),
-        }
     }
 }
 
@@ -202,28 +182,24 @@ struct PinnedPopupMenuTheme {
 }
 
 impl PopupMenuTheme for PinnedPopupMenuTheme {
-    fn resolve(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-    ) -> PopupMenuPalette {
-        self.base.resolve(style, metrics, pin(&self.pinned, state))
+    /// The base style with the pinned states set in its key (#433), so Design mode draws them however the
+    /// pointer moves.
+    fn style(&self) -> StyleBinding {
+        let base = self.base.style();
+        let Some(pinned) = &self.pinned else {
+            return base;
+        };
+        ["hover", "pressed", "focused", "disabled", "invalid"]
+            .into_iter()
+            .fold(base, |binding, name| binding.state(name, pinned.has(name)))
+    }
+
+    fn menu(&self) -> StyleBinding {
+        self.base.menu()
     }
 
     fn metrics(&self) -> MetricTokens {
         self.base.metrics()
-    }
-
-    fn resolve_look(
-        &self,
-        style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-        scale_factor: f32,
-        cx: &mut App,
-    ) -> PopupMenuLook {
-        self.base.resolve_look(style, metrics, pin(&self.pinned, state), scale_factor, cx)
     }
 }
 
@@ -402,7 +378,7 @@ impl SurfaceControl for AutocompleteSurface {
         let field = autocomplete_field(theme.clone(), pinned.cloned());
         self.control.update(cx, |control, cx| {
             control.set_autocomplete_theme(autocomplete_theme(theme.clone()), cx);
-            control.set_popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
+            control.set_popup_menu(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
             control.set_textfield_template(field, cx);
         });
     }
@@ -434,7 +410,7 @@ impl SurfaceControl for AutocompleteSurface {
         let cell = self.cells.get(&id, || {
             autocomplete::AutocompleteBuilder::new(id.clone(), filter_items())
                 .autocomplete_theme(autocomplete_theme(theme.clone()))
-                .popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
+                .popup_menu(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
                 .textfield_template(autocomplete_field(theme.clone(), Some(states.clone())))
                 .enabled(!states.has("disabled"))
                 .spawn(cx)
@@ -598,7 +574,7 @@ impl SurfaceControl for SearchSelectorSurface {
         let field = autocomplete_field(theme.clone(), None);
         self.control.update(cx, |control, cx| {
             control.set_selector_theme(trigger, cx);
-            control.set_popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
+            control.set_popup_menu(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
             control.set_textfield_template(field, cx);
             control.set_template(Arc::new(PinnedSearchSelectorTemplate { pinned: pinned.cloned() }), cx);
         });
@@ -630,7 +606,7 @@ impl SurfaceControl for SearchSelectorSurface {
         let cell = self.cells.get(&id, || {
             search_selector::SearchSelectorBuilder::new(id.clone(), filter_items())
                 .selector_theme(search_selector_trigger(theme.clone(), Some(states.clone())))
-                .popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
+                .popup_menu(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
                 .template(Arc::new(PinnedSearchSelectorTemplate { pinned: Some(states.clone()) }))
                 .textfield_template(autocomplete_field(theme.clone(), None))
                 .enabled(!states.has("disabled"))
@@ -648,10 +624,10 @@ impl SurfaceControl for SearchSelectorSurface {
 
 // --- SelectionPanel ----------------------------------------------------------------------------------------
 
-/// The panel's look for the `selection_panel` control in `theme` (the floating menu's surface and rows).
-fn selection_panel_look(theme: Theme) -> selection_panel::SelectionPanelLookProvider {
+/// The panel's style: the `selection_panel` control in `theme` (the floating menu's surface and rows).
+fn selection_panel_menu(theme: Theme) -> xgpui_luma::controls::popup_menu::MenuSource {
     let binding = xgpui_luma::style::StyleBinding::new("selection_panel", ThemeSource::Fixed(theme));
-    Arc::new(move || selection_panel::styled_selection_panel_look(&binding, &MetricTokens::default()))
+    Arc::new(move || binding.clone())
 }
 
 /// Draws the SDK panel template enabled or disabled as Design mode picks it (Design disables the live panel's
@@ -684,7 +660,7 @@ impl selection_panel::SelectionPanelTemplate<selection_panel::SelectionPanelItem
             enabled: !states.has("disabled"),
             focus: model.focus,
             item_template: model.item_template,
-            look: model.look.clone(),
+            menu: model.menu.clone(),
             show_selection_marker: model.show_selection_marker,
             icons: model.icons,
             show_panel_chrome: model.show_panel_chrome,
@@ -734,9 +710,9 @@ impl SurfaceControl for SelectionPanelSurface {
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         self.cells.clear();
-        let (look, template) = (selection_panel_look(theme), selection_panel_template(pinned.cloned()));
+        let (menu, template) = (selection_panel_menu(theme), selection_panel_template(pinned.cloned()));
         self.control.update(cx, |control, cx| {
-            control.set_look_provider(look, cx);
+            control.set_menu(menu, cx);
             control.set_template(template, cx);
         });
     }
@@ -771,8 +747,8 @@ impl SurfaceControl for SelectionPanelSurface {
                 .template(selection_panel_template(Some(states.clone())))
                 .enabled(!states.has("disabled"))
                 .spawn(cx);
-            let look = selection_panel_look(theme.clone());
-            control.update(cx, |control, cx| control.set_look_provider(look, cx));
+            let menu = selection_panel_menu(theme.clone());
+            control.update(cx, |control, cx| control.set_menu(menu, cx));
             control.into()
         });
         div().w(px(Self::WIDTH)).child(cell).into_any_element()
@@ -785,10 +761,13 @@ impl SurfaceControl for SelectionPanelSurface {
 }
 
 #[cfg(all(test, feature = "test-support"))]
+#[allow(deprecated)]
 mod tests {
     use gpui::{Focusable, TestAppContext};
 
     use super::*;
+    use xgpui_luma::controls::selector::SelectorTriggerStyle;
+    use xgpui_luma::theme::InteractionState;
     use crate::workshop::surface_page::WorkMode;
     use crate::workshop::tests_support::open_surface;
 
@@ -799,22 +778,28 @@ mod tests {
         let want = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
             &xgpui_luma::style::StyleBinding::new("floating_menu", ThemeSource::Fixed(dark.clone())),
         );
-        let sdk = xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve();
+        let sdk = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+            &xgpui_luma::controls::floating_menu::default_floating_menu_theme().style(),
+        );
         assert_ne!(want.background, sdk.background, "the dark menu differs from the SDK's");
 
-        let popup = popup_menu_theme(dark.clone(), None).resolve(
-            PopupMenuTriggerStyle::default(),
-            PopupMenuTriggerMetrics::default(),
-            InteractionState::default(),
+        let popup = popup_menu_theme(dark.clone(), None);
+        assert_eq!(
+            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&popup.menu()).background,
+            want.background,
+            "popup menu and split button"
         );
-        assert_eq!(popup.floating_menu.background, want.background, "popup menu and split button");
-        let selector = search_selector_trigger(dark.clone(), None).resolve(
-            SelectorTriggerStyle::default(),
-            InteractionState::default(),
-            false,
+        let selector = search_selector_trigger(dark.clone(), None).menu();
+        assert_eq!(
+            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&selector).background,
+            want.background,
+            "selector"
         );
-        assert_eq!(selector.items_panel.background, want.background, "selector");
-        assert_eq!(autocomplete_theme(dark).resolve().menu.background, want.background, "autocomplete");
+        assert_eq!(
+            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&autocomplete_theme(dark).menu()).background,
+            want.background,
+            "autocomplete"
+        );
     }
 
     fn pin_and_show_matrix(side: &Entity<ControlSide>, state: &str, cx: &mut gpui::VisualTestContext) {
@@ -885,8 +870,9 @@ mod tests {
             side.update(cx, |side, cx| side.choose_mode("dark", cx));
             cx.run_until_parked();
             let theme = cx.update(|_, cx| side.read(cx).bound_theme());
-            let want = selector_list::selector_items_panel_source(ThemeSource::Fixed(theme))().background;
-            let sdk = selector_list::default_selector_items_panel_look(&Default::default()).background;
+            let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look;
+            let want = menu(&selector_list::selector_items_panel_source(ThemeSource::Fixed(theme))()).background;
+            let sdk = menu(&xgpui_luma::style::StyleBinding::sdk("floating_menu")).background;
             assert_ne!(want, sdk, "{id}: the dark menu differs from the SDK's");
 
             let at = cx.debug_bounds("workshop-surface-control").expect("the control").center();
@@ -974,9 +960,15 @@ mod tests {
         assert!(pinned.has("hover"), "{pinned:?}");
         let theme = xgpui_luma::style::default_theme();
         let background = |pinned: Option<StateSet>| {
-            search_selector_trigger(theme.clone(), pinned)
-                .resolve(SelectorTriggerStyle::default(), InteractionState::default(), false)
-                .trigger_background
+            use xgpui_luma::style::PartRead;
+            xgpui_luma::controls::selector::resolve_selector_trigger(
+                &search_selector_trigger(theme.clone(), pinned).style(),
+                SelectorTriggerStyle::default(),
+                Default::default(),
+                1.0,
+            )
+            .root()
+            .color("background")
         };
         assert_ne!(background(Some(pinned)), background(None), "the pinned trigger draws its hover background");
         side.update(cx, |side, cx| side.show_matrix(cx));
@@ -990,9 +982,20 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "search-selector");
         let side = cx.update(|_, cx| page.read(cx).side());
-        let ring = search_selector_trigger(xgpui_luma::style::default_theme(), None)
-            .resolve(SelectorTriggerStyle::default(), InteractionState { focused: true, ..Default::default() }, false)
-            .trigger_focus_border;
+        let ring = {
+            use xgpui_luma::style::PartRead;
+            xgpui_luma::controls::selector::resolve_selector_trigger(
+                &search_selector_trigger(xgpui_luma::style::default_theme(), None).style(),
+                SelectorTriggerStyle::default(),
+                xgpui_luma::controls::selector::SelectorVisualState {
+                    interaction: InteractionState { focused: true, ..Default::default() },
+                    ..Default::default()
+                },
+                1.0,
+            )
+            .root()
+            .color("focus_border")
+        };
         let ring_painted = |cx: &mut gpui::VisualTestContext| {
             cx.update(|window, _| window.painted_quads().iter().any(|quad| quad.border_color == ring))
         };
@@ -1014,9 +1017,10 @@ mod tests {
         assert!(cx.update(|_, cx| side.read(cx).control_as::<SelectionPanelSurface>().is_some()));
         let pinned = pin(&side, "disabled", true, cx);
         assert!(pinned.has("disabled"), "{pinned:?}");
-        // The look the page binds is the theme's floating-menu rows, not left at a default.
-        let look = (selection_panel_look(xgpui_luma::style::default_theme()))();
-        assert!(look.item_hover_background.a > 0.0, "the theme's row hover is bound");
+        // The style the page binds is the theme's floating-menu rows, not left at a default.
+        let menu = (selection_panel_menu(xgpui_luma::style::default_theme()))();
+        let rows = xgpui_luma::controls::floating_menu::MenuStyle::resolve(&menu).row_colors();
+        assert!(rows.hover_background.a > 0.0, "the theme's row hover is bound");
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw panels");

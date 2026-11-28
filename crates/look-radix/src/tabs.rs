@@ -3,7 +3,9 @@
 use std::sync::Arc;
 
 use gpui::{Hsla, SharedString};
-use xgpui_luma::controls::tabs::{TabsBaseline, TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::controls::tabs::{TabsBaseline, TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+#[cfg(test)]
 use xgpui_luma::theme::InteractionState;
 
 use crate::look::Look;
@@ -127,23 +129,29 @@ impl TabsStyle {
     /// `look`'s line tabs from its `.lss`: the list gap, indicator height and baseline at size 2, and the
     /// size 1 and size 2 tab metrics.
     pub(crate) fn from_look(look: &Look) -> Self {
-        let styled = styled_tabs(look, TabsVariant::Line, crate::RadixSize::Two);
-        let list = styled.list(true);
-        let item = styled.item(true, InteractionState::default());
+        use xgpui_luma::controls::tabs::{resolve_tab, resolve_tabs_list};
+        use xgpui_luma::style::PartRead;
+        let active = |size| resolve_tab(&tabs_binding(look, TabsVariant::Line, size), true, Default::default());
+        let (list, tab) = (
+            resolve_tabs_list(&tabs_binding(look, TabsVariant::Line, crate::RadixSize::Two), true),
+            active(crate::RadixSize::Two),
+        );
         let metrics = |size| {
-            let item = styled_tabs(look, TabsVariant::Line, size).item(true, InteractionState::default());
+            let resolved = active(size);
+            let item = resolved.part(PartId::new("item"));
+            let typography = item.typography(14.0, 20.0);
             TabsMetrics {
-                height: item.height,
-                padding_x: item.padding_x,
-                font_size: item.label_typography.size,
-                line_height: item.label_typography.line_height,
+                height: item.number("height"),
+                padding_x: item.number("padding_x"),
+                font_size: typography.size,
+                line_height: typography.line_height,
             }
         };
         Self {
             baseline: Some(TabsBaselineStyle::from_look(look)),
-            indicator_height: item.indicator_height,
+            indicator_height: tab.root().number("indicator_height"),
             indicator_inset: 0.0,
-            gap: list.gap,
+            gap: list.part(PartId::new("list")).number("gap"),
             small: metrics(crate::RadixSize::One),
             medium: metrics(crate::RadixSize::Two),
         }
@@ -169,30 +177,30 @@ struct TabsThemeAdapter {
 }
 
 impl TabsTheme for TabsThemeAdapter {
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        crate::navigation::drag_look(&self.look, self.look.size())
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        crate::navigation::drag_style(&self.look, self.look.size())
     }
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        let mut list = self.styled.list(enabled);
-        if let (TabsVariant::Line, Some(style)) = (self.variant, self.look.tabs_style_override()) {
-            list.gap = style.gap;
+    /// The `.lss` tabs with the look-wide [`TabsStyle`] tuning set over them (#433).
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        let binding = self.styled.binding();
+        let Some(style) = self.look.tabs_style_override() else {
+            return binding;
+        };
+        let tab = style.metrics(self.look.size());
+        let (root, list, item) = (PartId::ROOT, PartId::new("list"), PartId::new("item"));
+        let mut overrides = Overrides::new()
+            .set(item, Prop::<f32>::new("height"), tab.height)
+            .set(item, Prop::<f32>::new("padding_x"), tab.padding_x)
+            .set(item, Prop::<f32>::new("font_size"), tab.font_size)
+            .set(item, Prop::<f32>::new("line_height"), tab.line_height);
+        if self.variant == TabsVariant::Line {
+            overrides = overrides.set(list, Prop::<f32>::new("gap"), style.gap).set(
+                root,
+                Prop::<f32>::new("indicator_height"),
+                style.indicator_height,
+            );
         }
-        list
-    }
-
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let mut item = self.styled.item(active, state);
-        if let Some(style) = self.look.tabs_style_override() {
-            let tab = style.metrics(self.look.size());
-            item.height = tab.height;
-            item.padding_x = tab.padding_x;
-            item.label_typography.size = tab.font_size;
-            item.label_typography.line_height = tab.line_height;
-            if self.variant == TabsVariant::Line {
-                item.indicator_height = style.indicator_height;
-            }
-        }
-        item
+        binding.with_overrides(&overrides)
     }
 
     fn baseline(&self, _enabled: bool) -> Option<TabsBaseline> {
@@ -280,6 +288,7 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::scale::ScaleFamily;
@@ -456,21 +465,29 @@ mod tests {
 
 #[cfg(test)]
 mod drag_tests {
+    use xgpui_luma::style::PartRead;
     use super::*;
     #[test]
     fn drag_surfaces_follow_semantic_roles_in_both_modes() {
         let look = Look::built_in();
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
-            let drag = tabs_theme(&look).resolve_drag();
-            crate::control_group::assert_close(drag.background, look.resolve_role(crate::SemanticRole::Surface).hsla());
+            let drag = tabs_theme(&look).drag_style();
+            let drag = drag.root();
             crate::control_group::assert_close(
-                drag.foreground,
+                drag.color("background"),
+                look.resolve_role(crate::SemanticRole::Surface).hsla(),
+            );
+            crate::control_group::assert_close(
+                drag.color("foreground"),
                 look.resolve_role(crate::SemanticRole::Foreground).hsla(),
             );
-            crate::control_group::assert_close(drag.valid_marker, look.resolve_role(crate::SemanticRole::Focus).hsla());
             crate::control_group::assert_close(
-                drag.invalid_marker,
+                drag.color("valid_marker"),
+                look.resolve_role(crate::SemanticRole::Focus).hsla(),
+            );
+            crate::control_group::assert_close(
+                drag.color("invalid_marker"),
                 look.resolve_role(crate::SemanticRole::Destructive).hsla(),
             );
         }

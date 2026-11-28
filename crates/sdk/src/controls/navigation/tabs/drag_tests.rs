@@ -291,20 +291,16 @@ fn compact_drag_preview_stays_beside_pointer() {
 
 #[test]
 fn neighboring_halves_share_one_gap_marker_and_destination() {
-    use crate::theme::InteractionState;
+    use xgpui_luma_style::{Overrides, PartId, Prop};
     struct GapTheme(f32);
     impl TabsTheme for GapTheme {
-        fn resolve_list(&self, enabled: bool) -> TabsListLook {
-            let mut look = super::StyledTabsTheme::sdk().resolve_list(enabled);
-            look.gap = self.0;
-            look.padding = 6.;
-            look
-        }
-        fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-            super::StyledTabsTheme::sdk().resolve_item(active, state)
-        }
-        fn font_family(&self) -> gpui::SharedString {
-            super::StyledTabsTheme::sdk().font_family()
+        fn style(&self) -> crate::style::StyleBinding {
+            let list = PartId::new("list");
+            crate::style::StyleBinding::sdk("tabs").overrides(
+                Overrides::new()
+                    .set(list, Prop::<f32>::new("gap"), self.0)
+                    .set(list, Prop::<f32>::new("padding"), 6.),
+            )
         }
     }
     for gap in [0., 12.] {

@@ -258,10 +258,13 @@ pub fn operate(host: &Entity<Host>, cx: &mut VisualTestContext, phase: &str, cou
         // Fixed fixture columns and the SDK theme define the actual divider.
         // GPUI debug selectors are absent in release; integration tests verify
         // these coordinates against measured geometry and the committed resize.
-        let look = StyledTableTheme::sdk().resolve_look(true, true);
+        use xgpui_luma::style::PartRead;
+        let frame = xgpui_luma::controls::table::StyledTable::sdk().resolve(true, true);
+        let (root, header) = (frame.root(), frame.part(xgpui_luma::style::lss::PartId::new("header")));
+        let border_width = root.number("border_width");
         let start = point(
-            px(look.border_width + look.padding_x + 150.0 + if step.is_multiple_of(2) { 24.0 } else { 0.0 }),
-            px(look.border_width + look.padding_y + look.header_typography.line_height * 0.5),
+            px(border_width + root.number("padding_x") + 150.0 + if step.is_multiple_of(2) { 24.0 } else { 0.0 }),
+            px(border_width + root.number("padding_y") + header.typography(14.0, 20.0).line_height * 0.5),
         );
         let end = start + point(px(if step.is_multiple_of(2) { -24.0 } else { 24.0 }), px(0.0));
         cx.simulate_mouse_down(start, gpui::MouseButton::Left, Default::default());

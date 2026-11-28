@@ -7,7 +7,7 @@ use gpui::{
 
 use super::layout::{TextAreaCachedLine, TextAreaDecorationKey, TextAreaLayoutCache, TextAreaLayoutKey, TextAreaPaintLine};
 use super::TextArea;
-use crate::theme::StandardBoxScale;
+use super::super::values::{AreaValues, resolve_area};
 
 #[cfg(all(test, feature = "test-support"))]
 thread_local! {
@@ -57,12 +57,7 @@ impl gpui::Element for TextAreaElement {
                 input.model.look_override.clone(),
             )
         };
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
-        let mut look = theme.resolve_look(state, enabled, &scale);
-        if let Some(override_fn) = &look_override {
-            look = override_fn(look);
-        }
+        let look = AreaValues::read(&resolve_area(&theme, state, enabled, look_override.as_ref()));
         let mut style = Style::default();
         style.size.width = relative(1.0).into();
         style.size.height = px(look.typography.line_height * rows as f32).into();
@@ -83,12 +78,8 @@ impl gpui::Element for TextAreaElement {
             (input.model.theme.clone(), input.state, input.model.enabled, input.model.look_override.clone())
         };
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
         let input = self.input.read(cx);
-        let mut look = theme.resolve_look(state, enabled, &scale);
-        if let Some(override_fn) = &look_override {
-            look = override_fn(look);
-        }
+        let look = AreaValues::read(&resolve_area(&theme, state, enabled, look_override.as_ref()));
         let line_height = px(look.typography.line_height);
         let font_size = px(look.typography.size);
         let mut selection_quads = Vec::new();

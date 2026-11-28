@@ -77,7 +77,6 @@ where
 
 pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfield::TextFieldTheme>) {
     use crate::controls::textfield::*;
-    use crate::theme::StandardBoxScale;
     for placeholder in ["", "A nonempty placeholder"] {
         for full_width in [false, true] {
             let template = ThemedTextFieldTemplate::new(theme.clone());
@@ -93,7 +92,6 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     invalid: state.invalid,
                     ..Default::default()
                 };
-                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
                 let model = TextFieldRenderModel {
                     id: &id,
                     placeholder: &placeholder.into(),
@@ -106,7 +104,7 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     caret_visible: false,
                     horizontal_scroll: 0.,
                     character_offsets: vec![0.],
-                    look: theme.resolve_look(state, enabled, &scale),
+                    style: theme.resolve_style(state, enabled),
                 };
                 let handlers = TextFieldTemplateHandlers {
                     hover: Box::new(|_, _, _| {}),
@@ -269,17 +267,16 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
 pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {
     use crate::controls::search_selector::*;
     use crate::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use crate::theme::StandardBoxScale;
     for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
         let theme = theme.clone();
         assert_stable_layout_with_content(
             move |state, selected, window, cx| {
-                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-                let trigger_look = theme.resolve_visual_look(
+                let _ = window;
+                let trigger = crate::controls::selector::resolve_selector_trigger(
+                    &theme.style(),
                     style,
                     SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
-                    &scale,
-                    true,
+                    1.0,
                 );
                 let model = SearchSelectorRenderModel {
                     icons: Default::default(),
@@ -294,7 +291,8 @@ pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::
                         invalid: state.invalid,
                         ..Default::default()
                     },
-                    trigger_look,
+                    trigger,
+                    without_elevation: true,
                     trigger_typography_override: None,
                     enabled: !state.disabled,
                     full_width: true,

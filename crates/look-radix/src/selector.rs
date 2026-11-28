@@ -19,7 +19,7 @@ pub fn selector_theme(look: &Look) -> Arc<dyn SelectorTheme> {
     Arc::new(
         StyledSelectorTheme::new(
             crate::textfield::live_source(look),
-            Arc::new(move || crate::selector_items_panel_look(&panel, PopupMenuVariant::Solid, Tone::Accent)),
+            Arc::new(move || crate::selector_items_panel_style(&panel, PopupMenuVariant::Solid, Tone::Accent)),
         )
         .with(|binding| {
             if size != crate::RadixSize::Two {
@@ -180,43 +180,55 @@ mod lss_tests {
     use super::*;
     use crate::SemanticRole;
     use crate::control_group::assert_close;
-    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState, resolve_selector_trigger};
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::theme::InteractionState;
 
     #[test]
     fn trigger_matches_the_popup_menu_trigger() {
         let look = Look::built_in();
         let theme = selector_theme(&look);
-        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let at = |style, interaction| {
-            theme.resolve_visual_look(style, SelectorVisualState { interaction, ..Default::default() }, &scale, false)
+            resolve_selector_trigger(
+                &theme.style(),
+                style,
+                SelectorVisualState { interaction, ..Default::default() },
+                1.0,
+            )
         };
         let rest = at(SelectorTriggerStyle::Outline, InteractionState::default());
-        assert_close(rest.trigger_background, look.resolve_role(SemanticRole::Background).hsla());
-        assert_close(rest.trigger_border.unwrap(), look.resolve_role(SemanticRole::Border).hsla());
-        assert_close(rest.trigger_icon, rest.trigger_foreground);
+        let rest = rest.root();
+        assert_close(rest.color("background"), look.resolve_role(SemanticRole::Background).hsla());
+        assert_close(rest.color("border"), look.resolve_role(SemanticRole::Border).hsla());
+        assert_close(rest.color("icon"), rest.color("foreground"));
         assert_eq!(
             (
-                rest.trigger_height,
-                rest.trigger_padding_x,
-                rest.trigger_gap,
-                rest.trigger_radius,
-                rest.trigger_icon_size
+                rest.number("height"),
+                rest.number("padding_x"),
+                rest.number("gap"),
+                rest.number("radius"),
+                rest.number("icon_size")
             ),
             (32.0, 12.0, 8.0, 4.0, 14.0)
         );
-        assert_eq!((rest.trigger_typography.size, rest.trigger_typography.line_height), (14.0, 20.0));
-        assert_eq!(rest.trigger_typography.weight, gpui::FontWeight::MEDIUM);
-        assert_eq!(rest.menu_offset_y, 4.0);
+        assert_eq!((rest.typography(14.0, 20.0).size, rest.typography(14.0, 20.0).line_height), (14.0, 20.0));
+        assert_eq!(rest.typography(14.0, 20.0).weight, gpui::FontWeight::MEDIUM);
+        assert_eq!(rest.number("menu_offset_y"), 4.0);
         let hover = at(SelectorTriggerStyle::Ghost, InteractionState { hovered: true, ..Default::default() });
-        assert_close(hover.trigger_background, Tone::Accent.step(&look, 3));
+        let hover = hover.root();
+        assert_close(hover.color("background"), Tone::Accent.step(&look, 3));
         let disabled = at(SelectorTriggerStyle::Ghost, InteractionState { disabled: true, ..Default::default() });
-        assert_close(disabled.trigger_background, look.resolve_role(SemanticRole::Surface).hsla());
-        assert_close(disabled.trigger_foreground, look.resolve_role(SemanticRole::MutedForeground).hsla());
-        assert_close(disabled.trigger_icon, disabled.trigger_foreground);
-        assert_eq!(disabled.trigger_opacity, 1.0, "Radix draws disabled colors and does not fade");
+        let disabled = disabled.root();
+        assert_close(disabled.color("background"), look.resolve_role(SemanticRole::Surface).hsla());
+        assert_close(disabled.color("foreground"), look.resolve_role(SemanticRole::MutedForeground).hsla());
+        assert_close(disabled.color("icon"), disabled.color("foreground"));
+        assert_eq!(disabled.opacity(), 1.0, "Radix draws disabled colors and does not fade");
         let small = selector_theme(&look.with_size(crate::RadixSize::One));
-        let small = small.resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false);
-        assert_eq!((small.trigger_height, small.trigger_typography.size, small.menu_offset_y), (24.0, 14.0, 2.0));
+        let small = resolve_selector_trigger(&small.style(), SelectorTriggerStyle::Outline, Default::default(), 1.0);
+        let small = small.root();
+        assert_eq!(
+            (small.number("height"), small.typography(14.0, 20.0).size, small.number("menu_offset_y")),
+            (24.0, 14.0, 2.0)
+        );
     }
 }

@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 mod input;
 mod render;
 mod selection;
@@ -15,14 +16,12 @@ mod tests;
 
 pub use keys::TableSelectionError;
 
-use gpui::{
-    App, Context, EventEmitter, Focusable, IntoElement, ListOffset, ListState, SharedString, Subscription, Window, px,
-};
+use gpui::{App, Context, EventEmitter, Focusable, IntoElement, ListOffset, ListState, SharedString, Window, px};
 
 use super::layout::{clamp_page, page_after_size_change, page_count};
 use super::model::{
-    TableBuilder, TableHeaderTemplate, TableLabel, TableLookOverride, TableModel, TableRenderModel,
-    TableRowRenderModel, TableScrollMode, TableSelectionMode, make_table_header_template, make_table_row_template,
+    TableBuilder, TableHeaderTemplate, TableLabel, TableModel, TableRenderModel, TableRowRenderModel, TableScrollMode,
+    TableSelectionMode, make_table_header_template, make_table_row_template,
 };
 use super::template::TableTemplate;
 use super::theme::TableTheme;
@@ -79,13 +78,12 @@ where
     uniform_row_height: Option<f32>,
     uniform_hint_width: Option<gpui::Pixels>,
     focus_handle: gpui::FocusHandle,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    hovered_index: Option<usize>,
-    pressed_index: Option<usize>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    /// The hovered and pressed rows, by index.
+    pub(super) rows_pointer: crate::infra::item_tracker::ItemTracker<usize>,
     current_page: usize,
     emitted_scroll_top_index: usize,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     wheel_gesture_active: bool,
     /// When fill-height + paged, row height stretched so `page_size` rows fill the viewport.
     fill_row_height: Option<f32>,
@@ -174,15 +172,13 @@ where
             uniform_row_height,
             uniform_hint_width: None,
             focus_handle: cx.focus_handle().tab_stop(builder.model.enabled),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
             model: builder.model,
             drop_layout: Default::default(),
-            hovered_index: None,
-            pressed_index: None,
+            rows_pointer: Default::default(),
             current_page: 0,
             emitted_scroll_top_index: 0,
-            emitted_focused: false,
+            focus_report: Default::default(),
             wheel_gesture_active: false,
             fill_row_height: None,
             item_state_override: None,
@@ -271,8 +267,7 @@ where
             self.selection_anchor = None;
         }
         self.model.items = items;
-        self.hovered_index = None;
-        self.pressed_index = None;
+        self.clear_pointer_interaction(cx);
         self.current_page = clamp_page(self.current_page, self.model.items.len(), self.page_size().unwrap_or(1));
         self.sync_list_state();
         normalize_model(&mut self.model);
@@ -457,12 +452,10 @@ where
 
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
 
         if !enabled {
-            self.clear_hovered_index(cx);
-            self.pressed_index = None;
+            self.clear_pointer_interaction(cx);
             self.emit_focus_changed(false, cx);
         }
 
@@ -481,8 +474,9 @@ where
         cx.notify();
     }
 
-    pub fn set_look_override(&mut self, look_override: Option<TableLookOverride>, cx: &mut Context<Self>) {
-        self.model.look_override = look_override;
+    /// Values set on the theme's style, over its `.lss` (#433).
+    pub fn set_style_overrides(&mut self, overrides: Option<xgpui_luma_style::Overrides>, cx: &mut Context<Self>) {
+        self.model.style_overrides = overrides;
         self.list_state.remeasure();
         cx.notify();
     }
@@ -565,4 +559,20 @@ fn wheel_policy_dispatch_matrix() {
             cx.notify();
         },
     );
+}
+
+impl<T: 'static> crate::infra::focus_report::ReportsFocus for TableControl<T> {
+    type FocusEvent = TableEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> TableEvent {
+        TableEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
+    }
 }

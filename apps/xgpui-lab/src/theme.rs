@@ -126,16 +126,11 @@ pub(crate) fn icon_button(
 
 struct ColorVizScrollbarTheme(Look);
 impl xgpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme {
-    fn resolve(
-        &self,
-        state: xgpui_luma::theme::InteractionState,
-        orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
-        style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
-    ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
-        use xgpui_luma::controls::scrollbar::StyledScrollbarTheme;
-        let mut resolved = StyledScrollbarTheme::sdk().resolve(state, orientation, style);
-        resolved.track_background = gpui::transparent_black();
-        resolved.thumb_background = self
+    /// The SDK scrollbar with a clear track and a gray thumb that darkens on hover and press (#433).
+    fn state_style(&self, state: xgpui_luma::theme::InteractionState) -> xgpui_luma::style::StyleBinding {
+        use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+        use xgpui_luma::style::lss_color;
+        let thumb = self
             .0
             .resolve_step(
                 xgpui_luma_look_radix::ScaleFamily::Gray,
@@ -148,7 +143,14 @@ impl xgpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme 
                 },
             )
             .hsla();
-        resolved
+        let root = PartId::ROOT;
+        xgpui_luma::style::StyleBinding::sdk("scrollbar").overrides(
+            Overrides::new().set(root, Prop::new("background"), lss_color(gpui::transparent_black())).set(
+                root,
+                Prop::new("thumb"),
+                lss_color(thumb),
+            ),
+        )
     }
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.0.metrics()

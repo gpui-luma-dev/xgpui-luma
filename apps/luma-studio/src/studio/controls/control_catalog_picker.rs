@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, FontFeatures, FontWeight, MouseButton, Window, div, prelude::*, px};
-use xgpui_luma::controls::floating_menu::FloatingMenuLook;
+use xgpui_luma::controls::floating_menu::MenuStyle;
+use xgpui_luma::style::PartRead;
 use xgpui_luma::theme::LumaTextStyle;
 
 use crate::studio::components::catalog::{
@@ -14,30 +15,30 @@ const LEAF_LEFT_INDENT: f32 = 7.0;
 const COLUMN_GAP_EXTRA: f32 = 5.0;
 const CONTAINER_INNER_PADDING: f32 = 15.0;
 
-fn column_gap(menu_look: &FloatingMenuLook) -> f32 {
-    menu_look.item_gap * 3.5 + COLUMN_GAP_EXTRA
+fn column_gap(menu_look: &MenuStyle) -> f32 {
+    menu_look.item().number("gap") * 3.5 + COLUMN_GAP_EXTRA
 }
 
 pub(crate) fn render_control_catalog_picker<M: 'static>(
-    menu_look: &FloatingMenuLook,
+    menu_look: &MenuStyle,
     selected_exposition_id: Option<&'static str>,
     interactive: bool,
     cx: &mut Context<M>,
     on_select: impl Fn(&mut M, &'static str, &mut Window, &mut Context<M>) + Clone + 'static,
 ) -> AnyElement {
-    let category_style = menu_look.item_typography;
-    let item_style = menu_look.item_typography;
+    let category_style = menu_look.item().typography(14.0, 20.0);
+    let item_style = menu_look.item().typography(14.0, 20.0);
 
     div()
         .id("controls-catalog-picker")
         .flex_shrink_0()
         .occlude()
         .p(px(CONTAINER_INNER_PADDING))
-        .bg(menu_look.background)
+        .bg(menu_look.panel().color("background"))
         .border_1()
-        .border_color(menu_look.border)
-        .rounded(px(menu_look.radius))
-        .shadow(menu_look.shadow.clone())
+        .border_color(menu_look.panel().color("border"))
+        .rounded(px(menu_look.panel().number("radius")))
+        .shadow(menu_look.panel().box_shadow())
         .child(div().flex_shrink_0().flex().items_start().gap(px(column_gap(menu_look))).children(
             (0..COLUMN_COUNT).map(|column| {
                 render_column(
@@ -56,7 +57,7 @@ pub(crate) fn render_control_catalog_picker<M: 'static>(
 }
 
 fn render_column<M: 'static>(
-    menu_look: &FloatingMenuLook,
+    menu_look: &MenuStyle,
     column: usize,
     selected_exposition_id: Option<&'static str>,
     interactive: bool,
@@ -69,7 +70,7 @@ fn render_column<M: 'static>(
         .flex_shrink_0()
         .flex()
         .flex_col()
-        .gap(px(menu_look.item_gap * 1.5))
+        .gap(px(menu_look.item().number("gap") * 1.5))
         .children(groups_for_column(column).map(|group| {
             render_category_section(
                 menu_look,
@@ -86,7 +87,7 @@ fn render_column<M: 'static>(
 }
 
 fn render_category_section<M: 'static>(
-    menu_look: &FloatingMenuLook,
+    menu_look: &MenuStyle,
     group: &ComponentCatalogGroup,
     selected_exposition_id: Option<&'static str>,
     interactive: bool,
@@ -99,16 +100,16 @@ fn render_category_section<M: 'static>(
         .flex_shrink_0()
         .flex()
         .flex_col()
-        .gap(px(menu_look.item_gap * 0.25))
+        .gap(px(menu_look.item().number("gap") * 0.25))
         .child(
             div()
                 .flex_shrink_0()
                 .flex()
                 .items_center()
-                .gap(px(menu_look.item_gap))
+                .gap(px(menu_look.item().number("gap")))
                 .whitespace_nowrap()
-                .text_color(menu_look.foreground)
-                .child(render_category_icon(group.icon, menu_look.foreground))
+                .text_color(menu_look.panel().color("foreground"))
+                .child(render_category_icon(group.icon, menu_look.panel().color("foreground")))
                 .child(
                     div()
                         .text_size(px(category_style.size))
@@ -133,7 +134,7 @@ fn render_category_section<M: 'static>(
 }
 
 fn render_catalog_item<M: 'static>(
-    menu_look: &FloatingMenuLook,
+    menu_look: &MenuStyle,
     entry: &ComponentCatalogEntry,
     selected_exposition_id: Option<&'static str>,
     interactive: bool,
@@ -150,29 +151,31 @@ fn render_catalog_item<M: 'static>(
         .id(format!("controls-catalog-item-{gallery_id}"))
         .flex_shrink_0()
         .whitespace_nowrap()
-        .pl(px(menu_look.item_padding_x + LEAF_LEFT_INDENT))
-        .pr(px(menu_look.item_padding_x))
-        .min_h(px(menu_look.item_height * 0.85))
+        .pl(px(menu_look.item().number("padding_x") + LEAF_LEFT_INDENT))
+        .pr(px(menu_look.item().number("padding_x")))
+        .min_h(px(menu_look.item().number("height") * 0.85))
         .flex()
         .items_center()
-        .rounded(px(menu_look.item_radius))
+        .rounded(px(menu_look.item_radius()))
         .text_size(px(item_style.size))
         .line_height(px(item_style.line_height))
         .text_color(if active {
-            menu_look.item_hover_foreground
+            menu_look.row_colors().hover_foreground
         } else {
-            menu_look.foreground
+            menu_look.panel().color("foreground")
         })
         .font_weight(if active {
             FontWeight::SEMIBOLD
         } else {
             FontWeight::NORMAL
         })
-        .when(active, |item| item.bg(menu_look.item_hover_background))
+        .when(active, |item| item.bg(menu_look.row_colors().hover_background))
         .when(selectable, |item| item.cursor_pointer())
         .when(selectable, |item| {
             item.hover(move |style| {
-                style.bg(menu_look.item_hover_background).text_color(menu_look.item_hover_foreground)
+                style
+                    .bg(menu_look.row_colors().hover_background)
+                    .text_color(menu_look.row_colors().hover_foreground)
             })
         })
         .when(selectable, |item| {

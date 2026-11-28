@@ -1,11 +1,10 @@
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma_look_shadcn::ShadcnSize;
-use xgpui_luma::controls::floating_menu::{
-    FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuLook, render_floating_menu,
-};
+use xgpui_luma::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::controls::popup_menu::{
     ControlFocusState as PopupMenuControlFocusState, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplate,
@@ -221,7 +220,7 @@ fn render_floating_menu_size_cell(
     size: ShadcnSize,
     scroll_wheel: MenuPreviewScrollWheelHandler,
 ) -> AnyElement {
-    let menu_look = floating_menu_look_for_size(look, size);
+    let menu_look = floating_menu_style_for_size(look, size);
     let id = SharedString::from(format!("luma-studio-floating-menu-size-{}", menu_trigger_size_id(size)));
     let items = floating_menu_default_items();
     let cell_scroll_wheel = scroll_wheel.clone();
@@ -249,8 +248,8 @@ fn render_floating_menu_size_cell(
         .into_any_element()
 }
 
-fn floating_menu_look_for_size(look: &Arc<ShadcnLook>, size: ShadcnSize) -> FloatingMenuLook {
-    look.with_size(size).floating_menu_theme().resolve()
+fn floating_menu_style_for_size(look: &Arc<ShadcnLook>, size: ShadcnSize) -> xgpui_luma::style::StyleBinding {
+    look.with_size(size).floating_menu_theme().style()
 }
 
 fn render_menu_trigger_state_cell(
@@ -552,7 +551,7 @@ fn render_floating_menu_template_preview(
     scroll_wheel: MenuPreviewScrollWheelHandler,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let menu_look = floating_menu_look_for_size(look, ShadcnSize::Md);
+    let menu_look = floating_menu_style_for_size(look, ShadcnSize::Md);
 
     div()
         .flex()
@@ -598,7 +597,7 @@ fn render_floating_menu_template_preview(
 #[allow(clippy::too_many_arguments)]
 fn render_floating_menu_state_sample(
     label: &'static str,
-    look: &FloatingMenuLook,
+    look: &xgpui_luma::style::StyleBinding,
     label_color: gpui::Hsla,
     items: &[MenuItem],
     active_path: Option<MenuPath>,

@@ -1,12 +1,64 @@
 //! The popover's own panel, from `popover.lss` (#397): its `panel` part, drawn while `show_panel` is on. The
 //! SDK leaves it off, so content brings its own chrome (a card, a menu); a look turns it on.
 
+use std::sync::Arc;
+
+use crate::style::PartRead;
 use gpui::{BoxShadow, Hsla};
-use xgpui_luma_style::{PartId, PartView, Value, box_shadows};
+use xgpui_luma_style::{Overrides, PartId, Prop, Resolved};
 
 use crate::style::StyleBinding;
 
+/// The popover panel's style for `binding` (a `popover` control) (#433): the popover draws its panel from the
+/// `panel` part, while the root's `show_panel` is on.
+pub fn resolve_popover_panel(binding: &StyleBinding) -> Arc<Resolved> {
+    binding.resolve(&[], 1.0)
+}
+
+/// `binding` with its panel turned on or off (`show_panel`).
+pub fn show_popover_panel(binding: StyleBinding, shown: bool) -> StyleBinding {
+    let show = Overrides::new().set(PartId::ROOT, Prop::<f32>::new("show_panel"), if shown { 1.0 } else { 0.0 });
+    binding.with_overrides(&show)
+}
+
+/// Whether `resolved` (see [`resolve_popover_panel`]) draws its panel.
+pub fn popover_panel_shown(resolved: &Resolved) -> bool {
+    resolved.root().number("show_panel") != 0.0
+}
+
+/// The height the panel `resolved` describes adds around its content: padding and border on both edges, or
+/// nothing when the panel is off.
+pub fn popover_panel_chrome_height(resolved: &Resolved) -> f32 {
+    if !popover_panel_shown(resolved) {
+        return 0.0;
+    }
+    let panel = resolved.part(PartId::new("panel"));
+    2.0 * (panel.number("padding") + panel.number("border_width"))
+}
+
+/// `content` inside the panel `resolved` describes; just `content` while the panel is off (`show_panel`). The
+/// popover draws its content through this, and a page can draw the panel inline with it.
+pub fn wrap_popover_panel(resolved: &Resolved, content: impl gpui::IntoElement) -> gpui::AnyElement {
+    use gpui::{div, prelude::*, px};
+    if !popover_panel_shown(resolved) {
+        return content.into_any_element();
+    }
+    let panel = resolved.part(PartId::new("panel"));
+    div()
+        .debug_selector(|| "popover-panel".into())
+        .bg(panel.color("background"))
+        .text_color(panel.color("foreground"))
+        .border(px(panel.number("border_width")))
+        .border_color(panel.color("border"))
+        .rounded(px(panel.number("radius")))
+        .shadow(panel.box_shadow())
+        .p(px(panel.number("padding")))
+        .child(content)
+        .into_any_element()
+}
+
 /// The panel a popover draws around its content.
+#[deprecated(note = "the popover draws its panel from its style; see `resolve_popover_panel` (#433)")]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PopoverPanelLook {
     /// Whether the panel is drawn (`show_panel`); the rest is what it draws.
@@ -21,35 +73,27 @@ pub struct PopoverPanelLook {
     pub padding: f32,
 }
 
-fn color(part: PartView<'_>, name: &str) -> Hsla {
-    part.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black)
-}
-
-fn number(part: PartView<'_>, name: &str) -> f32 {
-    part.value(name).and_then(Value::as_number).unwrap_or(0.0)
-}
-
+#[allow(deprecated)]
 impl PopoverPanelLook {
     /// The panel `binding` (a `popover` control) resolves to.
     pub fn from_binding(binding: &StyleBinding) -> Self {
-        let resolved = binding.resolve(&[], 1.0);
+        let resolved = resolve_popover_panel(binding);
         let panel = resolved.part(PartId::new("panel"));
         Self {
-            shown: number(resolved.root(), "show_panel") != 0.0,
-            background: color(panel, "background"),
-            foreground: color(panel, "foreground"),
-            border: color(panel, "border"),
-            border_width: number(panel, "border_width"),
-            shadow: panel.shadow().map(|layers| box_shadows(&layers)).unwrap_or_default(),
-            radius: number(panel, "radius"),
-            padding: number(panel, "padding"),
+            shown: popover_panel_shown(&resolved),
+            background: panel.color("background"),
+            foreground: panel.color("foreground"),
+            border: panel.color("border"),
+            border_width: panel.number("border_width"),
+            shadow: panel.box_shadow(),
+            radius: panel.number("radius"),
+            padding: panel.number("padding"),
         }
     }
 
     /// The SDK's panel: off, with a floating surface's values for when a look turns it on.
     pub fn sdk() -> Self {
-        static SDK: std::sync::OnceLock<PopoverPanelLook> = std::sync::OnceLock::new();
-        SDK.get_or_init(|| Self::from_binding(&StyleBinding::sdk("popover"))).clone()
+        Self::from_binding(&StyleBinding::sdk("popover"))
     }
 
     /// This look with the panel turned on or off.
@@ -57,24 +101,14 @@ impl PopoverPanelLook {
         Self { shown, ..self }
     }
 
-    /// `content` inside the panel this look draws; just `content` while the panel is off (`show_panel`). The
-    /// popover draws its content through this, and a page can draw the panel inline with it.
-    pub fn wrap(&self, content: impl gpui::IntoElement) -> gpui::AnyElement {
-        use gpui::{div, prelude::*, px};
-        if !self.shown {
-            return content.into_any_element();
+    /// The height the panel adds around its content: padding and border on both edges, or nothing when the
+    /// panel is off.
+    pub fn chrome_height(&self) -> f32 {
+        if self.shown {
+            2.0 * (self.padding + self.border_width)
+        } else {
+            0.0
         }
-        div()
-            .debug_selector(|| "popover-panel".into())
-            .bg(self.background)
-            .text_color(self.foreground)
-            .border(px(self.border_width))
-            .border_color(self.border)
-            .rounded(px(self.radius))
-            .shadow(self.shadow.clone())
-            .p(px(self.padding))
-            .child(content)
-            .into_any_element()
     }
 }
 
@@ -85,15 +119,19 @@ mod tests {
     /// The SDK's popover panel is off, but its part is a real floating surface for a look to turn on (#397).
     #[test]
     fn the_sdk_panel_is_off_and_is_a_floating_surface() {
-        let look = PopoverPanelLook::sdk();
-        assert!(!look.shown, "off in the SDK");
-        let menu = crate::controls::floating_menu::styled_floating_menu_look(&StyleBinding::sdk("floating_menu"));
+        let binding = StyleBinding::sdk("popover");
+        let resolved = resolve_popover_panel(&binding);
+        assert!(!popover_panel_shown(&resolved), "off in the SDK");
+        assert!(popover_panel_shown(&resolve_popover_panel(&show_popover_panel(binding, true))));
+        let panel = resolved.part(PartId::new("panel"));
+        let menu_style = StyleBinding::sdk("floating_menu").resolve(&[], 1.0);
+        let menu = menu_style.root();
         assert_eq!(
-            (look.background, look.foreground, look.border),
-            (menu.background, menu.foreground, menu.border),
+            (panel.color("background"), panel.color("foreground"), panel.color("border")),
+            (menu.color("background"), menu.color("foreground"), menu.color("border")),
             "a floating surface's colors"
         );
-        assert!(look.background.a > 0.0 && !look.shadow.is_empty(), "{look:?}");
-        assert!(look.border_width > 0.0 && look.radius > 0.0 && look.padding > 0.0, "{look:?}");
+        assert!(panel.color("background").a > 0.0 && !panel.box_shadow().is_empty());
+        assert!(panel.number("border_width") > 0.0 && panel.number("radius") > 0.0 && panel.number("padding") > 0.0);
     }
 }

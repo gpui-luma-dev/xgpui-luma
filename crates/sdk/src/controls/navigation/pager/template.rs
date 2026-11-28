@@ -1,12 +1,17 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, MouseDownEvent, SharedString, Stateful, Window, div, prelude::*, px};
 
 use super::model::{PagerPageItem, PagerRenderModel, PagerStyle};
-use super::theme::{PagerLook, PagerTheme, default_pager_theme};
+use super::theme::{PagerTheme, default_pager_theme};
+use crate::style::PartRead;
+use xgpui_luma_style::PartView;
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonContentContext, ButtonRenderModel, ControlPresenter};
 use crate::infra::icon::{IconSource, render_icon_source};
+use crate::infra::popup_placement::{PopupSide, attached_popup};
 use crate::theme::InteractionState;
 
 pub type PagerOutsideMouseDownHandler = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + Send + Sync + 'static>;
@@ -21,9 +26,6 @@ pub struct PagerTemplateHandlers {
     pub set_page_size: PagerPageSizeClickHandler,
 }
 
-pub type PagerTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &PagerRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait PagerTemplate: Send + Sync {
     fn render(
         &self,
@@ -34,14 +36,18 @@ pub trait PagerTemplate: Send + Sync {
     ) -> AnyElement;
 }
 
+impl RenderModel for dyn PagerTemplate {
+    type Model<'a> = PagerRenderModel<'a>;
+}
+
 pub struct ThemedPagerTemplate {
     theme: Arc<dyn PagerTheme>,
-    modifiers: Vec<PagerTemplateModifier>,
+    modifiers: RootModifiers<dyn PagerTemplate>,
 }
 
 impl ThemedPagerTemplate {
     pub fn new(theme: Arc<dyn PagerTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -50,36 +56,6 @@ impl ThemedPagerTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PagerRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-struct ModifiedPagerTemplate {
-    base: Arc<dyn PagerTemplate>,
-    modifiers: Vec<PagerTemplateModifier>,
-}
-
-impl ModifiedPagerTemplate {
-    fn new(base: Arc<dyn PagerTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: PagerTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PagerRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -93,10 +69,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn PagerTemplate>, modifi
 where
     F: Fn(Stateful<Div>, &PagerRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedPagerTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl PagerTemplate for ModifiedPagerTemplate {
+impl PagerTemplate for ModifiedTemplate<dyn PagerTemplate> {
     fn render(
         &self,
         model: &PagerRenderModel<'_>,
@@ -106,7 +82,7 @@ impl PagerTemplate for ModifiedPagerTemplate {
     ) -> AnyElement {
         let root = div().id((model.id.clone(), 0usize));
         let root = root.child(self.base.render(model, handlers, window, cx));
-        self.apply_modifiers(root, model).into_any_element()
+        self.apply(root, model).into_any_element()
     }
 }
 
@@ -118,14 +94,15 @@ impl PagerTemplate for ThemedPagerTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> AnyElement {
-        let look = self.theme.resolve(model.enabled, model.style);
+        let resolved = super::styled::resolve_pager(&self.theme.style(), model.enabled, model.style);
+        let look = resolved.root();
         let root = match model.style {
-            PagerStyle::Minimal => render_minimal_pager(model, &look, &self.theme, &handlers, window, cx),
-            PagerStyle::MinimalEdge => render_minimal_edge_pager(model, &look, &self.theme, &handlers, window, cx),
-            PagerStyle::Numeric => render_numeric_pager(model, &look, &self.theme, &handlers, window, cx),
+            PagerStyle::Minimal => render_minimal_pager(model, look, &self.theme, &handlers, window, cx),
+            PagerStyle::MinimalEdge => render_minimal_edge_pager(model, look, &self.theme, &handlers, window, cx),
+            PagerStyle::Numeric => render_numeric_pager(model, look, &self.theme, &handlers, window, cx),
         };
 
-        self.apply_modifiers(root, model).into_any_element()
+        self.modifiers.apply(root, model).into_any_element()
     }
 }
 
@@ -172,7 +149,7 @@ pub fn numeric_page_items(current_page: usize, page_count: usize, slot_count: us
 
 fn render_minimal_pager(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     window: &mut Window,
@@ -184,17 +161,17 @@ fn render_minimal_pager(
         .flex()
         .items_center()
         .justify_end()
-        .gap(px(look.group_gap))
-        .py(px(look.padding_y))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
+        .gap(px(look.number("group_gap")))
+        .py(px(look.number("padding_y")))
+        .text_size(px(look.typography(11.0, 16.0).size))
+        .line_height(px(look.typography(11.0, 16.0).line_height))
         .child(render_page_indicator(model, look))
         .child(render_nav_group(model, look, theme, handlers, false, window, cx))
 }
 
 fn render_minimal_edge_pager(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     window: &mut Window,
@@ -206,17 +183,17 @@ fn render_minimal_edge_pager(
         .flex()
         .items_center()
         .justify_end()
-        .gap(px(look.group_gap))
-        .py(px(look.padding_y))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
+        .gap(px(look.number("group_gap")))
+        .py(px(look.number("padding_y")))
+        .text_size(px(look.typography(11.0, 16.0).size))
+        .line_height(px(look.typography(11.0, 16.0).line_height))
         .child(render_page_indicator(model, look))
         .child(render_nav_group(model, look, theme, handlers, true, window, cx))
 }
 
 fn render_numeric_pager(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     window: &mut Window,
@@ -229,20 +206,22 @@ fn render_numeric_pager(
         .flex()
         .items_center()
         .justify_end()
-        .gap(px(look.gap))
-        .py(px(look.padding_y))
+        .gap(px(look.number("gap")))
+        .py(px(look.number("padding_y")))
         .child(render_nav_group_leading(model, look, theme, handlers, true, window, cx))
-        .child(div().flex().items_center().gap(px(look.gap)).children(items.into_iter().map(|item| match item {
-            PagerPageItem::Page(page) => render_page_button(model, look, theme, page, handlers, window, cx),
-            PagerPageItem::Gap { target } => render_gap_button(model, look, theme, target, handlers, window, cx),
-        })))
+        .child(div().flex().items_center().gap(px(look.number("gap"))).children(items.into_iter().map(
+            |item| match item {
+                PagerPageItem::Page(page) => render_page_button(model, look, theme, page, handlers, window, cx),
+                PagerPageItem::Gap { target } => render_gap_button(model, look, theme, target, handlers, window, cx),
+            },
+        )))
         .child(render_nav_group_trailing(model, look, theme, handlers, true, window, cx))
 }
 
-pub(crate) fn render_page_indicator(model: &PagerRenderModel<'_>, look: &PagerLook) -> Div {
+pub(crate) fn render_page_indicator(model: &PagerRenderModel<'_>, look: PartView<'_>) -> Div {
     div()
         .flex_none()
-        .text_color(look.body_text)
+        .text_color(look.color("foreground"))
         .font_weight(gpui::FontWeight::MEDIUM)
         .child(model.page_indicator())
 }
@@ -259,7 +238,7 @@ pub(crate) fn render_info_slot(model: &PagerRenderModel<'_>, window: &mut Window
 
 pub(crate) fn render_page_size_select(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     handlers: &PagerTemplateHandlers,
 ) -> Div {
     div()
@@ -274,29 +253,29 @@ pub(crate) fn render_page_size_select(
             div()
                 .id("page-size-trigger")
                 .w_full()
-                .h(px(look.control_height))
+                .h(px(look.number("height")))
                 .flex()
                 .items_center()
                 .justify_between()
-                .gap(px(look.gap))
-                .px(px(look.padding_x))
-                .rounded(px(look.radius))
-                .border(px(look.border_width))
-                .border_color(look.border)
-                .bg(look.panel_background)
-                .text_color(look.body_text)
-                .text_size(px(look.typography.size))
-                .line_height(px(look.typography.line_height))
+                .gap(px(look.number("gap")))
+                .px(px(look.number("padding_x")))
+                .rounded(px(look.number("radius")))
+                .border(px(look.number("border_width")))
+                .border_color(look.color("border"))
+                .bg(look.color("background"))
+                .text_color(look.color("foreground"))
+                .text_size(px(look.typography(11.0, 16.0).size))
+                .line_height(px(look.typography(11.0, 16.0).line_height))
                 .when(model.enabled, |slot| slot.cursor_pointer())
                 .child(format!("{}", model.page_size))
-                .child(div().text_color(look.muted_text).child(render_icon_source(
+                .child(div().text_color(look.color("muted_text")).child(render_icon_source(
                     if model.page_size_open {
                         &model.icons.page_size_open
                     } else {
                         &model.icons.page_size_closed
                     },
-                    look.muted_text,
-                    look.typography.size,
+                    look.color("muted_text"),
+                    look.typography(11.0, 16.0).size,
                 )))
                 .when(model.enabled, |slot| {
                     slot.on_click({
@@ -306,51 +285,57 @@ pub(crate) fn render_page_size_select(
                 }),
         )
         .when(model.page_size_open, |slot| {
+            let menu = div()
+                .occlude()
+                .flex()
+                .flex_col()
+                .gap(px(look.number("popup_gap")))
+                .p(px(look.number("popup_padding")))
+                .min_w(px(model.page_size_trigger_width()))
+                .rounded(px(look.number("radius")))
+                .border(px(look.number("border_width")))
+                .border_color(look.color("border"))
+                .bg(look.color("background"))
+                .shadow(look.box_shadow())
+                .children(model.page_size_options.iter().copied().map(|option| {
+                    let selected = option == model.page_size;
+                    div()
+                        .id(("page-size", option))
+                        .px(px(look.number("padding_x")))
+                        .py(px(look.number("popup_item_padding_y")))
+                        .rounded(px((look.number("radius") - look.number("popup_item_radius_inset")).max(0.0)))
+                        .when(selected, |slot| {
+                            slot.bg(look.color("selected_background")).text_color(look.color("selected_foreground"))
+                        })
+                        .when(!selected, |slot| slot.text_color(look.color("foreground")))
+                        .text_size(px(look.typography(11.0, 16.0).size))
+                        .line_height(px(look.typography(11.0, 16.0).line_height))
+                        .when(model.enabled, |slot| slot.cursor_pointer())
+                        .child(format!("{option}"))
+                        .when(model.enabled, |slot| {
+                            slot.on_click({
+                                let set_page_size = handlers.set_page_size.clone();
+                                move |event, window, cx| set_page_size(option, event, window, cx)
+                            })
+                        })
+                }));
+            // Below the trigger, above it near the window bottom (#433).
+            let window_margin = crate::theme::stylesheet::PopoverGeometry::sdk().window_margin;
             slot.child(
-                div()
-                    .absolute()
-                    .top(px(look.control_height + look.popup_offset_y))
-                    .left(px(0.0))
-                    .occlude()
-                    .flex()
-                    .flex_col()
-                    .gap(px(look.popup_gap))
-                    .p(px(look.popup_padding))
-                    .min_w(px(model.page_size_trigger_width()))
-                    .rounded(px(look.radius))
-                    .border(px(look.border_width))
-                    .border_color(look.border)
-                    .bg(look.panel_background)
-                    .shadow(look.shadow.clone())
-                    .children(model.page_size_options.iter().copied().map(|option| {
-                        let selected = option == model.page_size;
-                        div()
-                            .id(("page-size", option))
-                            .px(px(look.padding_x))
-                            .py(px(look.popup_item_padding_y))
-                            .rounded(px((look.radius - look.popup_item_radius_inset).max(0.0)))
-                            .when(selected, |slot| {
-                                slot.bg(look.selected_background).text_color(look.selected_foreground)
-                            })
-                            .when(!selected, |slot| slot.text_color(look.body_text))
-                            .text_size(px(look.typography.size))
-                            .line_height(px(look.typography.line_height))
-                            .when(model.enabled, |slot| slot.cursor_pointer())
-                            .child(format!("{option}"))
-                            .when(model.enabled, |slot| {
-                                slot.on_click({
-                                    let set_page_size = handlers.set_page_size.clone();
-                                    move |event, window, cx| set_page_size(option, event, window, cx)
-                                })
-                            })
-                    })),
+                gpui::deferred(
+                    attached_popup(PopupSide::Below, menu)
+                        .band(px(0.0), px(look.number("height")))
+                        .gap(px(look.number("popup_offset_y")))
+                        .window_margin(px(window_margin)),
+                )
+                .with_priority(1),
             )
         })
 }
 
 pub(crate) fn render_nav_group(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     include_edges: bool,
@@ -360,21 +345,21 @@ pub(crate) fn render_nav_group(
     div()
         .flex()
         .items_center()
-        .gap(px(look.gap))
+        .gap(px(look.number("gap")))
         .child(render_nav_group_leading(model, look, theme, handlers, include_edges, window, cx))
         .child(render_nav_group_trailing(model, look, theme, handlers, include_edges, window, cx))
 }
 
 fn render_nav_group_leading(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     include_edges: bool,
     window: &mut Window,
     cx: &mut App,
 ) -> Div {
-    let mut group = div().flex().items_center().gap(px(look.gap));
+    let mut group = div().flex().items_center().gap(px(look.number("gap")));
     if include_edges {
         group = group.child(render_nav_button(
             model,
@@ -413,7 +398,7 @@ fn render_nav_group_leading(
 
 fn render_nav_group_trailing(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     handlers: &PagerTemplateHandlers,
     include_edges: bool,
@@ -421,7 +406,7 @@ fn render_nav_group_trailing(
     cx: &mut App,
 ) -> Div {
     let last_page = model.page_count.saturating_sub(1);
-    let mut group = div().flex().items_center().gap(px(look.gap)).child(render_nav_button(
+    let mut group = div().flex().items_center().gap(px(look.number("gap"))).child(render_nav_button(
         model,
         look,
         theme,
@@ -481,7 +466,7 @@ struct PagerButtonLayout {
 
 fn render_nav_button(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     spec: NavButtonSpec<'_>,
     handlers: &PagerTemplateHandlers,
@@ -489,9 +474,9 @@ fn render_nav_button(
     cx: &mut App,
 ) -> AnyElement {
     let has_label = spec.label.is_some();
-    let gap = look.gap;
-    let icon_color = look.body_text;
-    let icon_size = look.typography.size;
+    let gap = look.number("gap");
+    let icon_color = look.color("foreground");
+    let icon_size = look.typography(11.0, 16.0).size;
     let icon = spec.icon;
     let label_position = spec.label_position;
     let label = spec.label.cloned();
@@ -531,7 +516,11 @@ fn render_nav_button(
             },
             content,
             interaction_disabled: spec.disabled,
-            layout: PagerButtonLayout { min_width: look.button_min_width, square: !has_label, inactive: false },
+            layout: PagerButtonLayout {
+                min_width: look.number("button_min_width"),
+                square: !has_label,
+                inactive: false,
+            },
         },
         click,
         window,
@@ -541,7 +530,7 @@ fn render_nav_button(
 
 fn render_page_button(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     page: usize,
     handlers: &PagerTemplateHandlers,
@@ -569,7 +558,7 @@ fn render_page_button(
             role: ButtonFamilyRole::Toggle { selected },
             content,
             interaction_disabled: false,
-            layout: PagerButtonLayout { min_width: look.button_min_width, square: false, inactive: selected },
+            layout: PagerButtonLayout { min_width: look.number("button_min_width"), square: false, inactive: selected },
         },
         click,
         window,
@@ -579,7 +568,7 @@ fn render_page_button(
 
 fn render_gap_button(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     target: usize,
     handlers: &PagerTemplateHandlers,
@@ -587,8 +576,8 @@ fn render_gap_button(
     cx: &mut App,
 ) -> AnyElement {
     let icon = model.icons.gap.clone();
-    let color = look.muted_text;
-    let size = look.gap_icon_size;
+    let color = look.color("muted_text");
+    let size = look.number("gap_icon_size");
     let content: ControlPresenter<ButtonContentContext<()>> =
         Arc::new(move |_, _| crate::infra::icon::render_icon_source(&icon, color, size));
 
@@ -608,7 +597,7 @@ fn render_gap_button(
             role: ButtonFamilyRole::Icon,
             content,
             interaction_disabled: false,
-            layout: PagerButtonLayout { min_width: look.button_min_width, square: false, inactive: false },
+            layout: PagerButtonLayout { min_width: look.number("button_min_width"), square: false, inactive: false },
         },
         click,
         window,
@@ -627,7 +616,7 @@ struct PagerButtonSpec {
 
 fn render_pager_button(
     model: &PagerRenderModel<'_>,
-    look: &PagerLook,
+    look: PartView<'_>,
     theme: &Arc<dyn PagerTheme>,
     spec: PagerButtonSpec,
     click: Option<PagerClickHandler>,
@@ -645,7 +634,7 @@ fn render_pager_button(
         role: spec.role,
         state: InteractionState { disabled, ..InteractionState::default() },
         round: false,
-        radius_override: std::cell::Cell::new(Some(look.radius)),
+        radius_override: std::cell::Cell::new(Some(look.number("radius"))),
         elevation: true,
         compact: false,
         ..Default::default()
@@ -658,7 +647,7 @@ fn render_pager_button(
 
     let mut slot = div().id((spec.id_namespace, spec.identity)).min_w(px(spec.layout.min_width)).child(button);
     if spec.layout.square {
-        slot = slot.w(px(look.button_size));
+        slot = slot.w(px(look.number("button_size")));
     }
     if spec.layout.inactive || disabled {
         slot = slot.cursor_default();

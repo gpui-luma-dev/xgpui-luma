@@ -1,3 +1,5 @@
+use crate::infra::template::RootModifiers;
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
@@ -32,8 +34,8 @@ pub trait AccordionTemplate: Send + Sync {
     }
 
     /// Appearance used by SDK native handles and previews.
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        default_accordion_theme().resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        default_accordion_theme().drag_style()
     }
 
     fn render(
@@ -45,14 +47,18 @@ pub trait AccordionTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn AccordionTemplate {
+    type Model<'a> = AccordionRenderModel<'a>;
+}
+
 pub struct ThemedAccordionTemplate {
     theme: Arc<dyn AccordionTheme>,
-    modifiers: Vec<AccordionTemplateModifier>,
+    modifiers: RootModifiers<dyn AccordionTemplate>,
 }
 
 impl ThemedAccordionTemplate {
     pub fn new(theme: Arc<dyn AccordionTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -62,49 +68,15 @@ impl ThemedAccordionTemplate {
         self.modifiers.push(Box::new(modifier));
         self
     }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &AccordionRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
 }
 
-struct ModifiedAccordionTemplate {
-    base: Arc<dyn AccordionTemplate>,
-    modifiers: Vec<AccordionTemplateModifier>,
-}
-
-impl ModifiedAccordionTemplate {
-    fn new(base: Arc<dyn AccordionTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: AccordionTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &AccordionRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-
-    fn into_arc(self) -> Arc<dyn AccordionTemplate> {
-        Arc::new(self)
-    }
-}
-
-impl AccordionTemplate for ModifiedAccordionTemplate {
+impl AccordionTemplate for ModifiedTemplate<dyn AccordionTemplate> {
     fn drag_tooltip_theme(&self) -> Arc<dyn crate::controls::tooltip::TooltipTheme> {
         self.base.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        self.base.resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        self.base.drag_style()
     }
 
     fn render(
@@ -115,7 +87,7 @@ impl AccordionTemplate for ModifiedAccordionTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -132,7 +104,7 @@ pub(super) fn modified_accordion_template<F>(
 where
     F: Fn(Stateful<Div>, &AccordionRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedAccordionTemplate::new(template).with_modifier(Box::new(modifier)).into_arc()
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 impl AccordionTemplate for ThemedAccordionTemplate {
@@ -140,8 +112,8 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         self.theme.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        self.theme.resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        self.theme.drag_style()
     }
 
     fn render(
@@ -361,7 +333,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         if let Some(motion) = motion {
             root = motion.end_surface(root);
         }
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

@@ -1,3 +1,4 @@
+#![allow(deprecated)] // These tests exercise the look-closure bridge (#433).
 mod chrome;
 mod element;
 mod input;
@@ -13,7 +14,7 @@ use gpui::{
 use super::{TextAreaBuilder, TextAreaState, model::TextAreaModel};
 use crate::controls::scrollbar::{Scrollbar, ScrollbarEvent, ScrollbarOrientation};
 use crate::controls::text::select_all;
-use crate::theme::{StandardBoxScale, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 use self::layout::TextAreaLayoutCache;
 
@@ -289,12 +290,13 @@ impl TextArea {
         cx.notify();
     }
 
-    fn resolved_look(&self, scale: &StandardBoxScale) -> crate::controls::textarea::TextAreaLook {
-        let mut look = self.model.theme.resolve_look(self.state, self.model.enabled, scale);
-        if let Some(override_fn) = &self.model.look_override {
-            look = override_fn(look);
-        }
-        look
+    fn resolved_look(&self) -> super::values::AreaValues {
+        super::values::AreaValues::read(&super::values::resolve_area(
+            &self.model.theme,
+            self.state,
+            self.model.enabled,
+            self.model.look_override.as_ref(),
+        ))
     }
 
     fn sync_focus(&mut self, window: &Window, cx: &mut Context<Self>) {
@@ -610,7 +612,11 @@ fn wrapping_shapes_logical_lines_once_and_selection_decorates_only_visible_lines
             let underlines = window.painted_underlines();
             assert!(!underlines.is_empty(), "IME underline must reach paint");
             assert!(
-                underlines.iter().all(|underline| underline.color == gpui::blue()),
+                underlines.iter().all(|underline| {
+                    // The closure's color goes through the style language, which may drift a float.
+                    let (a, b) = (underline.color.to_rgb(), gpui::blue().to_rgb());
+                    [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 1e-3)
+                }),
                 "selected composition must use the selection foreground"
             );
         });
@@ -632,7 +638,10 @@ fn wrapping_shapes_logical_lines_once_and_selection_decorates_only_visible_lines
         let underlines = window.painted_underlines();
         assert!(!underlines.is_empty());
         assert!(
-            underlines.iter().all(|underline| underline.color == gpui::green()),
+            underlines.iter().all(|underline| {
+                let (a, b) = (underline.color.to_rgb(), gpui::green().to_rgb());
+                [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 1e-3)
+            }),
             "selection foreground changes must refresh painted decorations"
         );
     });

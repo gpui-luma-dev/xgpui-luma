@@ -5,7 +5,9 @@
 //! hook. A control supplies its data type through [`ChoiceData`] and draws itself in
 //! [`ChoiceData::render`]. Controls drawn as an indicator box with a mark inside (checkbox, radio)
 //! implement [`IndicatorChoice`] and render with [`render_indicator`]; the switch draws a track and thumb.
+#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
+use crate::style::PartRead;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Div, ElementId, Hsla, SharedString, Stateful, Window, div, hsla, prelude::*, px};
@@ -226,12 +228,7 @@ pub(crate) fn length(part: PartView<'_>, name: &'static str) -> f32 {
 /// The label's color, text style and font family.
 pub(crate) fn label_style(label: PartView<'_>) -> (Hsla, LumaTextStyle, SharedString) {
     let color = hsl(label.foreground()).unwrap_or_else(transparent);
-    let typography = LumaTextStyle {
-        size: label.font_size().unwrap_or(14.0),
-        line_height: label.line_height().unwrap_or(20.0),
-        weight: gpui::FontWeight(label.value("font_weight").and_then(Value::as_number).unwrap_or(0.0).max(100.0)),
-    };
-    (color, typography, label.font_family().unwrap_or("").to_string().into())
+    (color, label.typography(14.0, 20.0), label.font_family_name())
 }
 
 /// The focus ring from the root's `focus_gap`, `focus_width` and `focus_offset`.
@@ -411,7 +408,7 @@ pub(crate) fn render_indicator<D: IndicatorChoice>(
         .border_color(hsl(animated_root.border()).unwrap_or_else(transparent));
 
     let mut root_element = template.apply_modifiers(control, model);
-    root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+    root_element = crate::style::fade(root_element, root.opacity());
     if !model.state.disabled {
         root_element = root_element.cursor_pointer();
     }

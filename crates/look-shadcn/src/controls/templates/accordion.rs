@@ -25,8 +25,8 @@ impl AccordionTheme for ShadcnAccordionTheme {
         crate::tooltip_theme(&self.theme)
     }
 
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        super::drag::drag_look(&self.theme)
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        super::drag::drag_style(&self.theme)
     }
 
     fn resolve_trigger(&self, state: InteractionState) -> xgpui_luma::controls::accordion::AccordionPalette {
@@ -68,6 +68,7 @@ pub fn accordion_theme(theme: ShadcnLook) -> Arc<dyn AccordionTheme> {
 #[cfg(test)]
 mod drag_tests {
     use super::*;
+    use xgpui_luma::style::PartRead;
     #[test]
     fn drag_palette_follows_live_look_in_both_modes() {
         use xgpui_luma::theme::ThemeMode;
@@ -75,12 +76,11 @@ mod drag_tests {
         let theme = accordion_theme(look.clone());
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let drag = theme.resolve_drag();
-            let expected = super::super::tabs::tabs_theme(look.clone()).resolve_drag();
-            assert_eq!(drag.background, expected.background);
-            assert_eq!(drag.foreground, expected.foreground);
-            assert_eq!(drag.valid_marker, expected.valid_marker);
-            assert_eq!(drag.invalid_marker, expected.invalid_marker);
+            let drag = theme.drag_style();
+            let expected = super::super::tabs::tabs_theme(look.clone()).drag_style();
+            for name in ["background", "foreground", "valid_marker", "invalid_marker"] {
+                assert_eq!(drag.root().color(name), expected.root().color(name), "{name}");
+            }
         }
     }
 }

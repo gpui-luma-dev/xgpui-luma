@@ -12,7 +12,9 @@ pub use template::{
     default_context_menu_template,
 };
 
-pub use theme::{ContextMenuLook, ContextMenuTheme, default_context_menu_theme};
+#[allow(deprecated)]
+pub use theme::ContextMenuLook;
+pub use theme::{ContextMenuTheme, default_context_menu_theme};
 
 pub use crate::infra::menu_item::{MenuItem, MenuItemIcon};
 pub use crate::infra::state::{ControlFocusState, MenuPath};
