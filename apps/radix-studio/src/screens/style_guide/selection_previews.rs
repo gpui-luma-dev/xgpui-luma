@@ -322,8 +322,8 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             } else {
                 selector::SelectorTriggerStyle::Outline
             };
-            let trigger_look = selector::selector_look(
-                &*theme,
+            let trigger = selector::resolve_selector_trigger(
+                &theme.style(),
                 trigger_style,
                 selector::SelectorVisualState {
                     interaction: state,
@@ -331,7 +331,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                     selected: true,
                     invalid: state.invalid,
                 },
-                false,
+                1.0,
             );
             search_selector::default_search_selector_template()
                 .render(
@@ -342,7 +342,8 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                         trigger_label: "Option one".into(),
                         trigger_label_is_placeholder: false,
                         trigger_state: field_state,
-                        trigger_look,
+                        trigger,
+                        without_elevation: false,
                         trigger_typography_override: None,
                         enabled: !state.disabled,
                         full_width: true,

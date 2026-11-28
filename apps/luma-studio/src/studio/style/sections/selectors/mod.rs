@@ -542,8 +542,8 @@ fn render_selector_search_selector_trigger(
         disabled: !state.textfield_enabled,
         ..InteractionState::default()
     };
-    let trigger_look = xgpui_luma::controls::selector::selector_look(
-        &*selector_theme,
+    let trigger = xgpui_luma::controls::selector::resolve_selector_trigger(
+        &selector_theme.style(),
         Default::default(),
         SelectorVisualState {
             interaction,
@@ -551,7 +551,7 @@ fn render_selector_search_selector_trigger(
             selected: state.selector_selected,
             invalid: state.selector_state.invalid,
         },
-        false,
+        1.0,
     );
     let model = SearchSelectorRenderModel {
         icons: look.stylesheet().common.icons.clone(),
@@ -564,7 +564,8 @@ fn render_selector_search_selector_trigger(
         },
         trigger_label_is_placeholder: !state.selector_selected,
         trigger_state: state.textfield_state,
-        trigger_look,
+        trigger,
+        without_elevation: false,
         trigger_typography_override: Some(look.mode_tokens().typography.text.body),
         enabled: state.textfield_enabled,
         full_width: true,

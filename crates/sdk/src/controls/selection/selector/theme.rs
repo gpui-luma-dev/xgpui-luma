@@ -183,28 +183,6 @@ pub fn default_selector_theme() -> Arc<dyn SelectorTheme> {
 }
 
 /// The trigger's button face (#430): a selector look with its theme's border width and focus geometry.
-pub(crate) fn selector_face_look(
-    look: &SelectorLook,
-    metrics: &MetricTokens,
-) -> crate::controls::button::face::FaceLook {
-    crate::controls::button::face::FaceLook {
-        background: look.trigger_background,
-        foreground: look.trigger_foreground,
-        border: look.trigger_border,
-        border_width: metrics.border_width,
-        shadow: look.trigger_shadow.clone(),
-        typography: look.trigger_typography,
-        font_family: gpui::SharedString::default(),
-        padding_x: look.trigger_padding_x,
-        padding_y: look.trigger_padding_y,
-        gap: look.trigger_gap,
-        height: look.trigger_height,
-        focus: crate::infra::focus_adorner::FocusAdorner::new(metrics.focus),
-        focus_border: look.trigger_focus_border,
-        opacity: look.trigger_opacity,
-    }
-}
-
 /// These test the compatibility methods themselves, which build their looks from `style()`.
 #[cfg(test)]
 #[allow(deprecated)]

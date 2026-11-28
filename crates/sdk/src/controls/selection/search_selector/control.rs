@@ -901,21 +901,16 @@ impl Render for SearchSelectorControl {
         };
 
         let interaction_state = self.interaction.render_state(self.model.enabled, window);
-        let selector_theme = &self.model.selector_theme;
-        let trigger_look = crate::controls::selector::SelectorLook::from_resolved(
-            &crate::controls::selector::resolve_selector_trigger(
-                &selector_theme.style(),
-                self.model.trigger_style,
-                SelectorVisualState {
-                    interaction: interaction_state,
-                    open: self.behavior.state.open,
-                    selected: self.committed_selection.is_some(),
-                    invalid: self.model.invalid,
-                },
-                1.0,
-            ),
-            selector_theme.items_panel(),
-            self.model.without_elevation,
+        let trigger = crate::controls::selector::resolve_selector_trigger(
+            &self.model.selector_theme.style(),
+            self.model.trigger_style,
+            SelectorVisualState {
+                interaction: interaction_state,
+                open: self.behavior.state.open,
+                selected: self.committed_selection.is_some(),
+                invalid: self.model.invalid,
+            },
+            1.0,
         );
         let render_model = SearchSelectorRenderModel {
             icons: self.model.icons.clone(),
@@ -931,7 +926,8 @@ impl Render for SearchSelectorControl {
                 invalid: self.model.invalid,
                 ..TextFieldState::default()
             },
-            trigger_look,
+            trigger,
+            without_elevation: self.model.without_elevation,
             trigger_typography_override: None,
             enabled: self.model.enabled,
             full_width: self.model.full_width,
