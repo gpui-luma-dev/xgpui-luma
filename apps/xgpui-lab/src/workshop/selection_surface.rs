@@ -774,31 +774,19 @@ mod tests {
     #[test]
     fn popups_open_the_bound_themes_menu() {
         let dark = xgpui_luma::style::dark_theme();
-        let want = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
-            &xgpui_luma::style::StyleBinding::new("floating_menu", ThemeSource::Fixed(dark.clone())),
-        );
-        let sdk = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
-            &xgpui_luma::controls::floating_menu::default_floating_menu_theme().style(),
-        );
-        assert_ne!(want.background, sdk.background, "the dark menu differs from the SDK's");
+        let menu_fill = |binding: &xgpui_luma::style::StyleBinding| {
+            use xgpui_luma::style::PartRead;
+            xgpui_luma::controls::floating_menu::MenuStyle::resolve(binding).panel().color("background")
+        };
+        let want = menu_fill(&xgpui_luma::style::StyleBinding::new("floating_menu", ThemeSource::Fixed(dark.clone())));
+        let sdk = menu_fill(&xgpui_luma::controls::floating_menu::default_floating_menu_theme().style());
+        assert_ne!(want, sdk, "the dark menu differs from the SDK's");
 
         let popup = popup_menu_theme(dark.clone(), None);
-        assert_eq!(
-            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&popup.menu()).background,
-            want.background,
-            "popup menu and split button"
-        );
+        assert_eq!(menu_fill(&popup.menu()), want, "popup menu and split button");
         let selector = search_selector_trigger(dark.clone(), None).menu();
-        assert_eq!(
-            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&selector).background,
-            want.background,
-            "selector"
-        );
-        assert_eq!(
-            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&autocomplete_theme(dark).menu()).background,
-            want.background,
-            "autocomplete"
-        );
+        assert_eq!(menu_fill(&selector), want, "selector");
+        assert_eq!(menu_fill(&autocomplete_theme(dark).menu()), want, "autocomplete");
     }
 
     fn pin_and_show_matrix(side: &Entity<ControlSide>, state: &str, cx: &mut gpui::VisualTestContext) {
@@ -869,9 +857,12 @@ mod tests {
             side.update(cx, |side, cx| side.choose_mode("dark", cx));
             cx.run_until_parked();
             let theme = cx.update(|_, cx| side.read(cx).bound_theme());
-            let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look;
-            let want = menu(&selector_list::selector_items_panel_source(ThemeSource::Fixed(theme))()).background;
-            let sdk = menu(&xgpui_luma::style::StyleBinding::sdk("floating_menu")).background;
+            let menu = |binding: &xgpui_luma::style::StyleBinding| {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::floating_menu::MenuStyle::resolve(binding).panel().color("background")
+            };
+            let want = menu(&selector_list::selector_items_panel_source(ThemeSource::Fixed(theme))());
+            let sdk = menu(&xgpui_luma::style::StyleBinding::sdk("floating_menu"));
             assert_ne!(want, sdk, "{id}: the dark menu differs from the SDK's");
 
             let at = cx.debug_bounds("workshop-surface-control").expect("the control").center();
