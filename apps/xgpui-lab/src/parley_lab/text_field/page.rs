@@ -1,14 +1,12 @@
 //! Lab page: Parley text fields and text areas, on five screens. In the
 //! standalone Parley window each screen is one of the window's own tabs; in
 //! XGPUI Lab's "Text Field" tab a tab bar on the page chooses them.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Font, FontFallbacks, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::{
     button as radix_button,
     tabs::{Tabs, TabsItem},
-    textfield::TextFieldLook,
 };
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma_look_radix::{self as radix, Look};
@@ -133,14 +131,6 @@ fn long_text() -> String {
         .join("\n")
 }
 
-/// Testing aid: light text on the look's text color, for contrast while testing.
-fn inverted(mut look: TextFieldLook) -> TextFieldLook {
-    std::mem::swap(&mut look.background, &mut look.foreground);
-    look.placeholder = look.foreground.opacity(0.6);
-    look.caret = look.foreground;
-    look
-}
-
 pub(crate) fn font() -> Font {
     let mut font = gpui::font("IBM Plex Sans");
     font.fallbacks = Some(FontFallbacks::from_fonts(vec!["Noto Sans Hebrew".into(), "Noto Sans Arabic".into()]));
@@ -176,7 +166,7 @@ impl TextFieldPage {
                     .placeholder(*placeholder)
                     .aria_label(label)
                     .enabled(index != DISABLED)
-                    .look_override(move |look| if invert_colors { inverted(look) } else { look })
+                    .invert_colors(invert_colors)
                     .on_event(cx, move |this: &mut Self, event, cx| {
                         this.last_event = match event {
                             ParleyTextFieldEvent::Change { value } => format!("{label}: changed to {value:?}"),

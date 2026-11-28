@@ -1,17 +1,14 @@
-#![allow(deprecated)] // The look-closure bridge reads `TextAreaLook` until it is removed (#433).
 use crate::interaction::{ScrollInteraction, WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
 use std::sync::Arc;
 
 use gpui::{AppContext, Entity, SharedString};
 
 use super::template::template_with_modifier;
-use super::{TextArea, TextAreaLook, TextAreaState, TextAreaTemplate, default_textarea_template};
+use super::{TextArea, TextAreaState, TextAreaTemplate, default_textarea_template};
 use crate::controls::textarea::{TextAreaTheme, default_textarea_theme};
 use crate::infra::icon::IconSource;
 
 pub type Validator = Arc<dyn Fn(&str) -> bool + Send + Sync>;
-pub type TextAreaLookOverride = Arc<dyn Fn(TextAreaLook) -> TextAreaLook + Send + Sync + 'static>;
-
 #[derive(Clone)]
 pub struct TextAreaModel {
     pub(crate) id: SharedString,
@@ -30,7 +27,6 @@ pub struct TextAreaModel {
     pub(crate) validator: Option<Validator>,
     /// Style overrides set on this area, over its theme's style (#433).
     pub(crate) overrides: crate::style::lss::Overrides,
-    pub(crate) look_override: Option<TextAreaLookOverride>,
     pub(crate) template: Arc<dyn TextAreaTemplate>,
     pub(crate) theme: Arc<dyn TextAreaTheme>,
 }
@@ -137,7 +133,6 @@ impl TextAreaBuilder {
                     .resolve(crate::theme::stylesheet::IconRole::TextareaResize),
                 validator: None,
                 overrides: crate::style::lss::Overrides::new(),
-                look_override: None,
                 template: default_textarea_template(),
                 theme: default_textarea_theme(),
             },
@@ -236,15 +231,6 @@ impl TextAreaBuilder {
     /// Style overrides for this area (#433): values set over its style, such as `padding_x` or `font_size`.
     pub fn overrides(mut self, overrides: crate::style::lss::Overrides) -> Self {
         self.model.overrides = overrides;
-        self
-    }
-
-    #[deprecated(note = "set style overrides instead; the closure is bridged to them (#433)")]
-    pub fn look_override<F>(mut self, look_override: F) -> Self
-    where
-        F: Fn(TextAreaLook) -> TextAreaLook + Send + Sync + 'static,
-    {
-        self.model.look_override = Some(Arc::new(look_override));
         self
     }
 

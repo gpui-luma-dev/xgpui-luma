@@ -6,8 +6,7 @@ use std::sync::Arc;
 use gpui::{BoxShadow, Hsla, SharedString};
 use xgpui_luma_style::Resolved;
 
-use super::model::TextAreaLookOverride;
-use super::{TextAreaLook, TextAreaState, TextAreaTheme};
+use super::{TextAreaState, TextAreaTheme};
 use crate::controls::text::{input_typography, resolve_text_area};
 use crate::style::lss::Overrides;
 use crate::style::PartRead;
@@ -70,14 +69,6 @@ pub(crate) fn resolve_area(
     state: TextAreaState,
     enabled: bool,
     overrides: &Overrides,
-    look_override: Option<&TextAreaLookOverride>,
 ) -> Arc<Resolved> {
-    let binding = theme.style().with_overrides(overrides);
-    let Some(override_fn) = look_override else {
-        return resolve_text_area(&binding, state, enabled);
-    };
-    let before = TextAreaLook::from_resolved(&resolve_text_area(&binding, state, enabled));
-    let after = override_fn(before.clone());
-    let delta = TextAreaLook::overrides_between(&before, &after);
-    resolve_text_area(&binding.with_overrides(&delta), state, enabled)
+    resolve_text_area(&theme.style().with_overrides(overrides), state, enabled)
 }

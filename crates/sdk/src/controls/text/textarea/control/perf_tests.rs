@@ -1,4 +1,3 @@
-#![allow(deprecated)] // These tests exercise the look-closure bridge (#433).
 use super::*;
 use crate::perf_measure::measure;
 use gpui::prelude::*;
@@ -21,7 +20,7 @@ fn measure_textarea_hot_paths() {
         for case in ["warm", "cold layout", "edit", "resize", "scroll", "selection", "IME", "warm decoration"] {
             // Reset between workloads so selection and IME cases stay independent.
             editor.update(cx, |view, cx| {
-                view.model.look_override = None;
+                view.model.overrides = crate::style::lss::Overrides::new();
                 view.state.selection_anchor = None;
                 view.state.cursor = 0;
                 view.marked_range = None;
@@ -46,10 +45,11 @@ fn measure_textarea_hot_paths() {
                         }
                         "resize" => {
                             let width = if step % 2 == 0 { 280.0 } else { 300.0 };
-                            view.model.look_override = Some(std::sync::Arc::new(move |mut look| {
-                                look.padding_x = width - 275.0;
-                                look
-                            }));
+                            view.model.overrides = crate::style::lss::Overrides::new().set(
+                                crate::style::lss::PartId::ROOT,
+                                crate::style::lss::Prop::<f32>::new("padding_x"),
+                                width - 275.0,
+                            );
                         }
                         "scroll" => view.vertical_scroll = px(if step % 2 == 0 { 0.0 } else { 200.0 }),
                         "selection" | "warm decoration" => {

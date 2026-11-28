@@ -1,5 +1,4 @@
 //! Shadcn text fields, drawn from `.lss` (`style/textfield.lss`) following the look's mode and catalog.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -67,7 +66,7 @@ mod tests {
     use gpui::Hsla;
     use xgpui_luma::controls::textarea::TextAreaState;
     use xgpui_luma::controls::textfield::TextFieldState;
-    use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
+    use xgpui_luma::theme::{ThemeMode};
 
     use super::*;
 
@@ -86,12 +85,33 @@ mod tests {
         look.mode_tokens().catalog.color(name).unwrap()
     }
 
-    fn resolve(theme: Arc<dyn TextFieldTheme>, state: TextFieldState, enabled: bool) -> TextFieldLook {
-        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
-        theme.resolve_look(state, enabled, &scale)
+    /// A field's resolved root, read the way the old look read it (#433).
+    struct Probe {
+        background: Hsla,
+        border: Hsla,
+        foreground: Hsla,
+        selection_foreground: Hsla,
+        focus_border: Hsla,
+        shadow: Option<Vec<gpui::BoxShadow>>,
+        opacity: f32,
+        typography: xgpui_luma::theme::LumaTextStyle,
     }
 
-    use xgpui_luma::controls::textfield::TextFieldLook;
+    fn resolve(theme: Arc<dyn TextFieldTheme>, state: TextFieldState, enabled: bool) -> Probe {
+        use xgpui_luma::style::PartRead;
+        let style = theme.resolve_style(state, enabled);
+        let root = style.root();
+        Probe {
+            background: root.color("background"),
+            border: root.color("border"),
+            foreground: root.color("foreground"),
+            selection_foreground: root.color("selection_foreground"),
+            focus_border: root.color("focus_border"),
+            shadow: root.box_shadow_opt(),
+            opacity: root.opacity(),
+            typography: root.typography(14.0, 20.0),
+        }
+    }
 
     #[test]
     fn outline_is_transparent_in_light_and_input_tinted_in_dark() {
@@ -155,9 +175,13 @@ mod tests {
         );
 
         let theme = light.primary_textarea_theme();
-        let area =
-            theme.resolve_look(TextAreaState::default(), true, &StandardBoxScale::compute(&theme.metrics(), 1.0));
+        let style = theme.resolve_style(TextAreaState::default(), true);
+        let area = style.root();
+        use xgpui_luma::style::PartRead;
         let field = resolve(light.primary_textfield_theme(), TextFieldState::default(), true);
-        assert_eq!((area.background, area.border, area.shadow.is_some()), (field.background, field.border, true));
+        assert_eq!(
+            (area.color("background"), area.color("border"), area.box_shadow_opt().is_some()),
+            (field.background, field.border, true)
+        );
     }
 }

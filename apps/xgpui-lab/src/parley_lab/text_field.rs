@@ -15,7 +15,6 @@
 //! Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::Result;
@@ -32,11 +31,11 @@ use xgpui_luma::{
         button::ControlIcon,
         text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES,
         textfield::{
-            TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
-            TextFieldTemplateHandlers, TextFieldTheme, Validator,
+            TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTemplateHandlers, TextFieldTheme,
+            Validator,
         },
     },
-    theme::StandardBoxScale,
+    style::lss::{Overrides, PartId, Prop, Resolved},
 };
 
 /// Keep this much room between the caret and the viewport edge when scrolling.
@@ -78,6 +77,8 @@ pub(super) struct Options {
     pub propagate_home_end_to_parent: bool,
     pub max_clipboard_paste_bytes: Option<usize>,
     pub allow_tab_character: bool,
+    /// Testing aid: the text and background swapped, for contrast.
+    pub invert_colors: bool,
 }
 
 impl Default for Options {
@@ -92,6 +93,7 @@ impl Default for Options {
             propagate_home_end_to_parent: false,
             max_clipboard_paste_bytes: Some(DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
             allow_tab_character: false,
+            invert_colors: false,
         }
     }
 }
@@ -182,7 +184,7 @@ pub struct ParleyTextField {
     drag_position: Option<Point<Pixels>>,
     autoscroll_epoch: usize,
     autoscroll_task: Task<()>,
-    look_override: Option<TextFieldLookOverride>,
+    overrides: Overrides,
     scroll: Pixels,
     reveal_caret: bool,
     caret_visible: bool,
@@ -302,7 +304,7 @@ impl ParleyTextField {
             drag_position: None,
             autoscroll_epoch: 0,
             autoscroll_task: Task::ready(()),
-            look_override: builder.look_override,
+            overrides: builder.overrides,
             scroll: px(0.0),
             reveal_caret: false,
             caret_visible: false,
@@ -483,36 +485,63 @@ impl ParleyTextField {
         byte_from_utf16(&self.value, range.start)..byte_from_utf16(&self.value, range.end.max(range.start))
     }
 
-    fn look(&self, window: &Window) -> TextFieldLook {
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), window.scale_factor());
-        let state = TextFieldState { hovered: self.hovered, invalid: self.invalid, ..TextFieldState::default() };
-        let mut look = self.theme.resolve_look(state, self.enabled, &scale);
+    /// The field's style in `state`: the template's, with the compact size, the quiet focus ring of a disabled or
+    /// invalid field, and its own overrides set over it.
+    fn style_in(&self, state: TextFieldState) -> Arc<Resolved> {
+        let mut overrides = Overrides::new();
         if self.options.compact {
-            look.padding_y = look.helper_geometry.compact_textfield_padding_y;
-            look.min_height = look.helper_geometry.compact_textfield_height;
+            let geometry = xgpui_luma::theme::stylesheet::SharedGeometry::sdk();
+            overrides = overrides
+                .set(PartId::ROOT, Prop::<f32>::new("padding_y"), geometry.compact_textfield_padding_y)
+                .set(PartId::ROOT, Prop::<f32>::new("height"), geometry.compact_textfield_height);
         }
         if !self.enabled || self.invalid {
-            look.focus_border = gpui::transparent_black();
+            overrides = overrides.set(
+                PartId::ROOT,
+                Prop::<xgpui_luma::style::lss::Color>::new("focus_border"),
+                xgpui_luma::style::lss_color(gpui::transparent_black()),
+            );
         }
-        match &self.look_override {
-            Some(look_override) => look_override(look),
-            None => look,
+        let mut overrides = overrides.merge(&self.overrides);
+        let resolve = |overrides: &Overrides| {
+            xgpui_luma::controls::text::resolve_text_field(
+                &self.theme.style().with_overrides(overrides),
+                state,
+                self.enabled,
+            )
+        };
+        if self.options.invert_colors {
+            use xgpui_luma::style::PartRead;
+            let base = resolve(&overrides);
+            let (background, foreground) = (base.root().color("background"), base.root().color("foreground"));
+            let color = |name: &'static str, value| {
+                (Prop::<xgpui_luma::style::lss::Color>::new(name), xgpui_luma::style::lss_color(value))
+            };
+            for (prop, value) in [
+                color("background", foreground),
+                color("foreground", background),
+                color("placeholder", background.opacity(0.6)),
+                color("caret", background),
+            ] {
+                overrides = overrides.set(PartId::ROOT, prop, value);
+            }
         }
+        resolve(&overrides)
     }
 
-    fn font(&self, look: &TextFieldLook) -> Font {
+    fn look(&self, _window: &Window) -> Face {
+        let state = TextFieldState { hovered: self.hovered, invalid: self.invalid, ..TextFieldState::default() };
+        Face::read(&self.style_in(state))
+    }
+
+    fn font(&self, look: &Face) -> Font {
         Font { weight: look.typography.weight, ..self.font.clone() }
     }
 
     /// One-line layout no narrower than `viewport`, so start alignment (left for
     /// left-to-right, right for right-to-left) applies inside the field. Text
     /// wider than the field is laid out at its own width and scrolls.
-    fn layout(
-        &self,
-        viewport: Pixels,
-        look: &TextFieldLook,
-        window: &Window,
-    ) -> Result<Arc<dyn PlatformParagraphLayout>> {
+    fn layout(&self, viewport: Pixels, look: &Face, window: &Window) -> Result<Arc<dyn PlatformParagraphLayout>> {
         let system = window.text_system();
         let font_size = px(look.typography.size);
         let font_id = system.resolve_font(&self.font(look));
@@ -571,7 +600,7 @@ impl ParleyTextField {
     }
 
     /// Lay out for this frame, keep the caret visible and record geometry.
-    fn prepare(&mut self, viewport: Bounds<Pixels>, look: &TextFieldLook, window: &Window) -> Option<Geometry> {
+    fn prepare(&mut self, viewport: Bounds<Pixels>, look: &Face, window: &Window) -> Option<Geometry> {
         self.honors_direction = window.text_system().paragraph_support().supports_layout();
         let layout = match self.layout(viewport.size.width, look, window) {
             Ok(layout) => {
@@ -1334,7 +1363,7 @@ impl Render for ParleyTextField {
                     if let Some(marked) = &marked
                         && let Ok(rects) = layout.selection_bounds(at(marked.start), at(marked.end))
                     {
-                        let thickness = px(look.helper_geometry.composition_underline_width.max(1.0));
+                        let thickness = px(look.composition_underline_width.max(1.0));
                         for rect in rects {
                             window.paint_quad(fill(
                                 Bounds::new(
@@ -1453,7 +1482,7 @@ impl ParleyTextField {
     fn render_with_template(
         &self,
         text: impl IntoElement,
-        look: TextFieldLook,
+        look: Face,
         focus_gap: f32,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -1472,13 +1501,7 @@ impl ParleyTextField {
             invalid: self.invalid,
             ..TextFieldState::default()
         };
-        // The look (the field's own overrides included) as style overrides over the template's style.
-        let base = TextFieldLook::from_resolved(&self.template.resolve_style(
-            state,
-            self.enabled,
-            &xgpui_luma::style::lss::Overrides::new(),
-        ));
-        let style = self.template.resolve_style(state, self.enabled, &TextFieldLook::overrides_between(&base, &look));
+        let style = self.style_in(state);
         let model = TextFieldRenderModel {
             id: &self.id,
             placeholder: &placeholder,
@@ -1660,3 +1683,60 @@ mod tests;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "text_field/sdk_parity_tests.rs"]
 mod sdk_parity_tests;
+
+/// What the Parley field reads of its resolved style (#433).
+#[derive(Clone)]
+pub(super) struct Face {
+    pub(super) composition_underline_width: f32,
+    pub(super) caret_width: f32,
+    pub(super) opacity: f32,
+    pub(super) background: gpui::Hsla,
+    pub(super) foreground: gpui::Hsla,
+    pub(super) border: gpui::Hsla,
+    pub(super) focus_border: gpui::Hsla,
+    pub(super) placeholder: gpui::Hsla,
+    pub(super) selection_background: gpui::Hsla,
+    pub(super) selection_foreground: gpui::Hsla,
+    pub(super) caret: gpui::Hsla,
+    pub(super) shadow: Option<Vec<gpui::BoxShadow>>,
+    pub(super) typography: xgpui_luma::theme::LumaTextStyle,
+    pub(super) font_family: SharedString,
+    pub(super) min_height: f32,
+    pub(super) padding_x: f32,
+    pub(super) padding_y: f32,
+    pub(super) gap: f32,
+    pub(super) radius: f32,
+    pub(super) border_width: f32,
+    pub(super) icon_size: f32,
+}
+
+impl Face {
+    fn read(resolved: &Resolved) -> Self {
+        use xgpui_luma::style::PartRead;
+        let root = resolved.root();
+        Self {
+            composition_underline_width: xgpui_luma::theme::stylesheet::SharedGeometry::sdk()
+                .composition_underline_width,
+            caret_width: root.number("caret_width"),
+            opacity: root.opacity(),
+            background: root.color("background"),
+            foreground: root.color("foreground"),
+            border: root.color("border"),
+            focus_border: root.color("focus_border"),
+            placeholder: root.color("placeholder"),
+            selection_background: root.color("selection_background"),
+            selection_foreground: root.color("selection_foreground"),
+            caret: root.color("caret"),
+            shadow: root.box_shadow_opt(),
+            typography: xgpui_luma::controls::text::input_typography(root),
+            font_family: root.font_family_name(),
+            min_height: root.height().unwrap_or(0.0),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.gap().unwrap_or(0.0),
+            radius: root.radius().unwrap_or(0.0),
+            border_width: root.number("border_width"),
+            icon_size: root.number("icon_size"),
+        }
+    }
+}
