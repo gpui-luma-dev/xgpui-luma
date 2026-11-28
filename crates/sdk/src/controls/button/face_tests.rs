@@ -121,12 +121,16 @@ fn a_disabled_popup_menu_fades(cx: &mut TestAppContext) {
 #[test]
 fn the_sdk_chevron_dims_when_disabled() {
     use crate::controls::selector::{SelectorTriggerStyle, default_selector_theme};
-    use crate::theme::{InteractionState, StandardBoxScale};
+    use crate::controls::selector::{SelectorLook, SelectorVisualState, resolve_selector_trigger};
+    use crate::theme::InteractionState;
     let theme = default_selector_theme();
-    let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
     let look = |disabled| {
-        let state = InteractionState { disabled, ..Default::default() };
-        theme.resolve_look(SelectorTriggerStyle::Outline, state, &scale, false)
+        let visual = SelectorVisualState {
+            interaction: InteractionState { disabled, ..Default::default() },
+            ..Default::default()
+        };
+        let resolved = resolve_selector_trigger(&theme.style(), SelectorTriggerStyle::Outline, visual, 1.0);
+        SelectorLook::from_resolved(&resolved, theme.items_panel(), false)
     };
     let (resting, disabled) = (look(false), look(true));
     assert_ne!(resting.trigger_icon, disabled.trigger_icon);
@@ -172,16 +176,15 @@ fn the_open_state_reaches_every_trigger(cx: &mut TestAppContext) {
     assert!(!close(fill(false, cx), red()), "a closed trigger button");
 
     use crate::controls::popup_menu::PopupMenuTriggerStyle;
-    use crate::controls::selector::{SelectorTheme, SelectorTriggerStyle, SelectorVisualState};
-    use crate::theme::{InteractionState, StandardBoxScale};
+    use crate::controls::selector::{SelectorTheme, SelectorTriggerStyle, SelectorVisualState, resolve_selector_trigger};
+    use crate::theme::InteractionState;
     let panel = Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default()));
     let selector = StyledSelectorTheme::new(ThemeSource::Fixed(open_theme()), panel);
-    let scale = StandardBoxScale::compute(&selector.metrics(), 1.0);
     let at = |open| {
         let visual = SelectorVisualState { open, ..Default::default() };
-        selector
-            .resolve_visual_look(SelectorTriggerStyle::Outline, visual, &scale, false)
-            .trigger_background
+        resolve_selector_trigger(&selector.style(), SelectorTriggerStyle::Outline, visual, 1.0)
+            .root()
+            .color("background")
     };
     assert!(close(at(true), red()), "an open selector");
     assert!(!close(at(false), red()), "a closed selector");

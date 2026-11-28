@@ -1,13 +1,9 @@
 use gpui::{AnyElement, App, div, prelude::*, px};
 
-use super::{SelectorRenderModel, theme::SelectorLook};
+use super::SelectorRenderModel;
 use crate::controls::selector_list::{SelectorItemLike, SelectorItemRenderModel};
 
-pub(super) fn render_item_content<T>(
-    model: &SelectorRenderModel<'_, T>,
-    look: &SelectorLook,
-    cx: &mut App,
-) -> AnyElement
+pub(super) fn render_item_content<T>(model: &SelectorRenderModel<'_, T>, gap: f32, cx: &mut App) -> AnyElement
 where
     T: SelectorItemLike + 'static,
 {
@@ -27,5 +23,5 @@ where
         return item_template(&item_model, cx);
     }
 
-    div().flex().items_center().gap(px(look.trigger_gap)).child(model.label.clone()).into_any_element()
+    div().flex().items_center().gap(px(gap)).child(model.label.clone()).into_any_element()
 }

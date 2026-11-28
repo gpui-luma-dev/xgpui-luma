@@ -269,16 +269,19 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
 pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {
     use crate::controls::search_selector::*;
     use crate::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use crate::theme::StandardBoxScale;
     for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
         let theme = theme.clone();
         assert_stable_layout_with_content(
             move |state, selected, window, cx| {
-                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-                let trigger_look = theme.resolve_visual_look(
-                    style,
-                    SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
-                    &scale,
+                let _ = window;
+                let trigger_look = crate::controls::selector::SelectorLook::from_resolved(
+                    &crate::controls::selector::resolve_selector_trigger(
+                        &theme.style(),
+                        style,
+                        SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
+                        1.0,
+                    ),
+                    theme.items_panel(),
                     true,
                 );
                 let model = SearchSelectorRenderModel {

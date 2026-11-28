@@ -40,7 +40,7 @@ mod control;
 mod item_template;
 mod model;
 mod styled;
-pub use styled::{ItemsPanelSource, StyledSelectorTheme};
+pub use styled::{ItemsPanelSource, StyledSelectorTheme, resolve_trigger as resolve_selector_trigger, selector_look};
 mod template;
 pub(crate) mod theme;
 

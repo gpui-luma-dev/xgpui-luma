@@ -4,7 +4,7 @@
 mod tests {
     use gpui::Hsla;
     use xgpui_luma::controls::selector::{SelectorLook, SelectorTriggerStyle, SelectorVisualState};
-    use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::ShadcnLook;
 
@@ -25,7 +25,7 @@ mod tests {
 
     fn trigger(look: &ShadcnLook, style: SelectorTriggerStyle, state: SelectorVisualState, flat: bool) -> SelectorLook {
         let theme = look.selector_theme();
-        theme.resolve_visual_look(style, state, &StandardBoxScale::compute(&theme.metrics(), 1.0), flat)
+        xgpui_luma::controls::selector::selector_look(&*theme, style, state, flat)
     }
 
     fn with(interaction: InteractionState) -> SelectorVisualState {

@@ -6,10 +6,10 @@ use crate::style::PartRead;
 use std::sync::Arc;
 
 use super::model::SelectorTriggerStyle;
-use super::theme::{SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState};
+use super::theme::{SelectorTheme, SelectorVisualState};
 use crate::controls::selector_list::SelectorItemsPanelLook;
 use crate::style::{StyleBinding, ThemeSource};
-use crate::theme::{FocusMetricTokens, InteractionState, MetricTokens, StandardBoxScale};
+use crate::theme::{FocusMetricTokens, MetricTokens};
 
 /// Supplies the selector's popup panel look.
 pub type ItemsPanelSource = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync>;
@@ -41,108 +41,61 @@ impl StyledSelectorTheme {
     pub fn with(self, f: impl FnOnce(StyleBinding) -> StyleBinding) -> Self {
         Self { binding: f(self.binding), ..self }
     }
-
-    /// The trigger in `state`; `open` sets the `open` state (the trigger styles of `trigger_button.lss`).
-    fn resolve_root(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        open: bool,
-    ) -> Arc<xgpui_luma_style::Resolved> {
-        let variant = match style {
-            SelectorTriggerStyle::Outline => "outline",
-            SelectorTriggerStyle::Ghost => "ghost",
-        };
-        let states = StyleStates::new(state).open(open);
-        self.binding.resolve_states_for(&[("variant", variant)], states, 1.0)
-    }
 }
 
 impl SelectorTheme for StyledSelectorTheme {
-    fn resolve(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        without_elevation: bool,
-    ) -> SelectorPalette {
-        let look = self.resolve_look(style, state, &StandardBoxScale::compute(&self.metrics(), 1.0), without_elevation);
-        SelectorPalette {
-            trigger_focus_border: look.trigger_focus_border,
-            trigger_background: look.trigger_background,
-            trigger_foreground: look.trigger_foreground,
-            trigger_icon: look.trigger_icon,
-            trigger_border: look.trigger_border,
-            trigger_shadow: look.trigger_shadow,
-            trigger_typography: look.trigger_typography,
-            items_panel: look.items_panel,
-        }
+    fn style(&self) -> StyleBinding {
+        self.binding.clone()
     }
 
-    /// The focus geometry and border width, for templates that read them from the theme's metrics.
-    fn metrics(&self) -> MetricTokens {
-        let resolved = self.resolve_root(SelectorTriggerStyle::Outline, InteractionState::default(), false);
-        let root = resolved.root();
-        MetricTokens {
-            border_width: root.number("border_width"),
-            focus: FocusMetricTokens {
-                gap: root.number("focus_gap"),
-                width: root.number("focus_width"),
-                offset: root.number("focus_offset"),
-            },
-            ..MetricTokens::default()
-        }
-    }
-
-    fn resolve_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        _scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.trigger_look(style, state, false, without_elevation)
-    }
-
-    /// The trigger as drawn: open looks hovered and sets the `open` state.
-    fn resolve_visual_look(
-        &self,
-        style: SelectorTriggerStyle,
-        visual: SelectorVisualState,
-        _scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.trigger_look(style, visual.resolved_interaction(), visual.open, without_elevation)
+    fn items_panel(&self) -> SelectorItemsPanelLook {
+        (self.items_panel)()
     }
 }
 
-impl StyledSelectorTheme {
-    fn trigger_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        open: bool,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        let resolved = self.resolve_root(style, state, open);
-        let root = resolved.root();
-        let transparent = gpui::transparent_black();
-        SelectorLook {
-            trigger_background: root.color_opt("background").unwrap_or(transparent),
-            trigger_foreground: root.color_opt("foreground").unwrap_or(transparent),
-            trigger_icon: root.color_opt("icon").unwrap_or(transparent),
-            trigger_border: root.color_opt("border"),
-            trigger_shadow: if without_elevation { None } else { root.box_shadow_opt() },
-            trigger_typography: root.typography(14.0, 20.0),
-            trigger_radius: root.radius().unwrap_or(0.0),
-            trigger_padding_x: root.number("padding_x"),
-            trigger_padding_y: root.number("padding_y"),
-            trigger_gap: root.gap().unwrap_or(0.0),
-            trigger_height: root.height().unwrap_or(0.0),
-            trigger_icon_size: root.number("icon_size"),
-            trigger_focus_border: root.color_opt("focus_border").unwrap_or(transparent),
-            trigger_opacity: root.opacity(),
-            menu_offset_y: root.number("menu_offset_y"),
-            items_panel: (self.items_panel)(),
-        }
+/// The trigger's resolved style in `trigger_style` and `visual` state (#433): what the template draws from. An open
+/// trigger draws hovered and sets the `open` state (the trigger styles of `trigger_button.lss`). Read its parts for
+/// the trigger's values (`background`, `foreground`, `icon`, `icon_size`, …).
+pub fn resolve_trigger(
+    binding: &StyleBinding,
+    trigger_style: SelectorTriggerStyle,
+    visual: SelectorVisualState,
+    scale: f32,
+) -> Arc<xgpui_luma_style::Resolved> {
+    let variant = match trigger_style {
+        SelectorTriggerStyle::Outline => "outline",
+        SelectorTriggerStyle::Ghost => "ghost",
+    };
+    let states = StyleStates::new(visual.resolved_interaction()).open(visual.open);
+    binding.resolve_states_for(&[("variant", variant)], states, scale)
+}
+
+/// The trigger's border width and focus geometry at rest.
+pub(crate) fn metrics(binding: &StyleBinding) -> MetricTokens {
+    let resolved = resolve_trigger(binding, SelectorTriggerStyle::Outline, SelectorVisualState::default(), 1.0);
+    let root = resolved.root();
+    MetricTokens {
+        border_width: root.number("border_width"),
+        focus: FocusMetricTokens {
+            gap: root.number("focus_gap"),
+            width: root.number("focus_width"),
+            offset: root.number("focus_offset"),
+        },
+        ..MetricTokens::default()
     }
+}
+
+/// The trigger's look in `trigger_style` and `visual` state, built from `theme`'s resolved style (#433): for code
+/// that still reads a [`SelectorLook`](super::SelectorLook). Templates read the resolved style directly.
+pub fn selector_look<T: SelectorTheme + ?Sized>(
+    theme: &T,
+    trigger_style: SelectorTriggerStyle,
+    visual: SelectorVisualState,
+    without_elevation: bool,
+) -> super::SelectorLook {
+    super::SelectorLook::from_resolved(
+        &resolve_trigger(&theme.style(), trigger_style, visual, 1.0),
+        theme.items_panel(),
+        without_elevation,
+    )
 }

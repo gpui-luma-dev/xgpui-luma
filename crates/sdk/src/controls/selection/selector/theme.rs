@@ -65,34 +65,113 @@ impl SelectorVisualState {
     }
 }
 
+impl SelectorLook {
+    /// The look `resolved` (a trigger's resolved style) describes, with `items_panel` as the popup: the
+    /// compatibility path for code that still reads a `SelectorLook`. Templates read the resolved style
+    /// directly (#433).
+    pub fn from_resolved(
+        resolved: &xgpui_luma_style::Resolved,
+        items_panel: SelectorItemsPanelLook,
+        without_elevation: bool,
+    ) -> Self {
+        use crate::style::PartRead;
+        let root = resolved.root();
+        Self {
+            trigger_background: root.color("background"),
+            trigger_foreground: root.color("foreground"),
+            trigger_icon: root.color("icon"),
+            trigger_border: root.color_opt("border"),
+            trigger_shadow: if without_elevation { None } else { root.box_shadow_opt() },
+            trigger_typography: root.typography(14.0, 20.0),
+            trigger_radius: root.number("radius"),
+            trigger_padding_x: root.number("padding_x"),
+            trigger_padding_y: root.number("padding_y"),
+            trigger_gap: root.number("gap"),
+            trigger_height: root.number("height"),
+            trigger_icon_size: root.number("icon_size"),
+            trigger_focus_border: root.color("focus_border"),
+            trigger_opacity: root.opacity(),
+            menu_offset_y: root.number("menu_offset_y"),
+            items_panel,
+        }
+    }
+}
+
 pub trait SelectorTheme: Send + Sync {
+    /// The trigger's style (#433): the binding the template resolves in the trigger's style and state and draws
+    /// from (see [`resolve_selector_trigger`](super::resolve_selector_trigger)).
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("selector")
+    }
+
+    /// The popup panel the trigger opens.
+    fn items_panel(&self) -> SelectorItemsPanelLook {
+        crate::controls::selector_list::default_selector_items_panel_look(&Default::default())
+    }
+
+    /// The trigger's colors, built from [`Self::style`] for code that still reads a [`SelectorPalette`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_selector_trigger` (#433)")]
     fn resolve(
         &self,
         trigger_style: SelectorTriggerStyle,
         state: InteractionState,
         without_elevation: bool,
-    ) -> SelectorPalette;
+    ) -> SelectorPalette {
+        let visual = SelectorVisualState { interaction: state, ..Default::default() };
+        let look = SelectorLook::from_resolved(
+            &super::styled::resolve_trigger(&self.style(), trigger_style, visual, 1.0),
+            self.items_panel(),
+            without_elevation,
+        );
+        SelectorPalette {
+            trigger_focus_border: look.trigger_focus_border,
+            trigger_background: look.trigger_background,
+            trigger_foreground: look.trigger_foreground,
+            trigger_icon: look.trigger_icon,
+            trigger_border: look.trigger_border,
+            trigger_shadow: look.trigger_shadow,
+            trigger_typography: look.trigger_typography,
+            items_panel: look.items_panel,
+        }
+    }
 
-    fn metrics(&self) -> MetricTokens;
+    /// The trigger's border width and focus geometry at rest.
+    fn metrics(&self) -> MetricTokens {
+        super::styled::metrics(&self.style())
+    }
 
+    /// The trigger's look in `state`, built from [`Self::style`] for code that still reads a [`SelectorLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_selector_trigger` (#433)")]
     fn resolve_look(
         &self,
         trigger_style: SelectorTriggerStyle,
         state: InteractionState,
-        scale: &StandardBoxScale,
+        _scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        compose_selector_look(&self.resolve(trigger_style, state, without_elevation), scale)
+        let visual = SelectorVisualState { interaction: state, ..Default::default() };
+        SelectorLook::from_resolved(
+            &super::styled::resolve_trigger(&self.style(), trigger_style, visual, 1.0),
+            self.items_panel(),
+            without_elevation,
+        )
     }
 
+    /// The trigger as drawn (an open trigger looks hovered), built from [`Self::style`] for code that still reads
+    /// a [`SelectorLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_selector_trigger` (#433)")]
     fn resolve_visual_look(
         &self,
         trigger_style: SelectorTriggerStyle,
         visual_state: SelectorVisualState,
-        scale: &StandardBoxScale,
+        _scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        self.resolve_look(trigger_style, visual_state.resolved_interaction(), scale, without_elevation)
+        SelectorLook::from_resolved(
+            &super::styled::resolve_trigger(&self.style(), trigger_style, visual_state, 1.0),
+            self.items_panel(),
+            without_elevation,
+        )
     }
 }
 
@@ -126,31 +205,9 @@ pub(crate) fn selector_face_look(
     }
 }
 
-/// A selector look from a palette at a box scale (themes that resolve colors only).
-pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardBoxScale) -> SelectorLook {
-    SelectorLook {
-        trigger_background: palette.trigger_background,
-        trigger_foreground: palette.trigger_foreground,
-        trigger_icon: palette.trigger_icon,
-        trigger_border: palette.trigger_border,
-        trigger_shadow: palette.trigger_shadow.clone(),
-        trigger_typography: palette.trigger_typography,
-        trigger_radius: scale.radius,
-        trigger_padding_x: scale.padding_x,
-        trigger_padding_y: scale.padding_y,
-        trigger_gap: scale.gap,
-        trigger_height: scale.height,
-        trigger_icon_size: scale.icon_size,
-        trigger_focus_border: palette.trigger_focus_border,
-        // Palette themes draw their own disabled colors; only `.lss` themes fade.
-        trigger_opacity: 1.0,
-        // The SDK `.lss` offset as a share of its gap, applied to this theme's gap.
-        menu_offset_y: scale.gap * crate::style::sdk_menu_offset_share("selector"),
-        items_panel: palette.items_panel.clone(),
-    }
-}
-
+/// These test the compatibility methods themselves, which build their looks from `style()`.
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

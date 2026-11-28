@@ -19,15 +19,14 @@ use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription
 use xgpui_luma::controls::context_menu::MenuItem;
 use xgpui_luma::controls::popup_menu::{PopupMenuTheme, StyledPopupMenuTheme};
 use xgpui_luma::controls::selector::{
-    Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorLook, SelectorPalette, SelectorTheme,
-    SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme, ThemedSelectorTemplate,
+    Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorTheme, StyledSelectorTheme, ThemedSelectorTemplate,
 };
 use xgpui_luma::controls::split_button::{SplitButton, SplitButtonBuilder, SplitButtonEvent, ThemedSplitButtonTemplate};
 use xgpui_luma::controls::floating_menu::floating_menu_source;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, selector_list};
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 use xgpui_luma::style::lss::Theme;
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::MetricTokens;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -65,11 +64,6 @@ impl Cells {
     }
 }
 
-/// `state`, or the picked states when some are pinned.
-fn pin(pinned: &Option<StateSet>, state: InteractionState) -> InteractionState {
-    pinned.as_ref().map_or(state, StateSet::interaction)
-}
-
 // --- Selector ----------------------------------------------------------------------------------------------
 
 struct PinnedSelectorTheme {
@@ -78,35 +72,24 @@ struct PinnedSelectorTheme {
 }
 
 impl SelectorTheme for PinnedSelectorTheme {
-    fn resolve(&self, style: SelectorTriggerStyle, state: InteractionState, flat: bool) -> SelectorPalette {
-        self.base.resolve(style, pin(&self.pinned, state), flat)
+    /// The base style with the pinned states set in its key (#433), so Design mode draws them however the
+    /// pointer moves.
+    fn style(&self) -> StyleBinding {
+        let base = self.base.style();
+        let Some(pinned) = &self.pinned else {
+            return base;
+        };
+        ["hover", "pressed", "focused", "disabled", "invalid"]
+            .into_iter()
+            .fold(base, |binding, name| binding.state(name, pinned.has(name)))
+    }
+
+    fn items_panel(&self) -> xgpui_luma::controls::selector_list::SelectorItemsPanelLook {
+        self.base.items_panel()
     }
 
     fn metrics(&self) -> MetricTokens {
         self.base.metrics()
-    }
-
-    fn resolve_look(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        flat: bool,
-    ) -> SelectorLook {
-        self.base.resolve_look(style, pin(&self.pinned, state), scale, flat)
-    }
-
-    fn resolve_visual_look(
-        &self,
-        style: SelectorTriggerStyle,
-        visual: SelectorVisualState,
-        scale: &StandardBoxScale,
-        flat: bool,
-    ) -> SelectorLook {
-        match &self.pinned {
-            Some(states) => self.base.resolve_look(style, states.interaction(), scale, flat),
-            None => self.base.resolve_visual_look(style, visual, scale, flat),
-        }
     }
 }
 
@@ -782,6 +765,8 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
 
     use super::*;
+    use xgpui_luma::controls::selector::SelectorTriggerStyle;
+    use xgpui_luma::theme::InteractionState;
     use crate::workshop::surface_page::WorkMode;
     use crate::workshop::tests_support::open_surface;
 
@@ -803,9 +788,10 @@ mod tests {
             want.background,
             "popup menu and split button"
         );
-        let selector = search_selector_trigger(dark.clone(), None).resolve(
+        let selector = xgpui_luma::controls::selector::selector_look(
+            &*search_selector_trigger(dark.clone(), None),
             SelectorTriggerStyle::default(),
-            InteractionState::default(),
+            Default::default(),
             false,
         );
         assert_eq!(selector.items_panel.background, want.background, "selector");
@@ -969,9 +955,13 @@ mod tests {
         assert!(pinned.has("hover"), "{pinned:?}");
         let theme = xgpui_luma::style::default_theme();
         let background = |pinned: Option<StateSet>| {
-            search_selector_trigger(theme.clone(), pinned)
-                .resolve(SelectorTriggerStyle::default(), InteractionState::default(), false)
-                .trigger_background
+            xgpui_luma::controls::selector::selector_look(
+                &*search_selector_trigger(theme.clone(), pinned),
+                SelectorTriggerStyle::default(),
+                Default::default(),
+                false,
+            )
+            .trigger_background
         };
         assert_ne!(background(Some(pinned)), background(None), "the pinned trigger draws its hover background");
         side.update(cx, |side, cx| side.show_matrix(cx));
@@ -985,9 +975,16 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "search-selector");
         let side = cx.update(|_, cx| page.read(cx).side());
-        let ring = search_selector_trigger(xgpui_luma::style::default_theme(), None)
-            .resolve(SelectorTriggerStyle::default(), InteractionState { focused: true, ..Default::default() }, false)
-            .trigger_focus_border;
+        let ring = xgpui_luma::controls::selector::selector_look(
+            &*search_selector_trigger(xgpui_luma::style::default_theme(), None),
+            SelectorTriggerStyle::default(),
+            xgpui_luma::controls::selector::SelectorVisualState {
+                interaction: InteractionState { focused: true, ..Default::default() },
+                ..Default::default()
+            },
+            false,
+        )
+        .trigger_focus_border;
         let ring_painted = |cx: &mut gpui::VisualTestContext| {
             cx.update(|window, _| window.painted_quads().iter().any(|quad| quad.border_color == ring))
         };
