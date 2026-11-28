@@ -13,6 +13,7 @@ pub fn tooltip_theme(look: &ShadcnLook) -> Arc<dyn TooltipTheme> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ShadcnToken;

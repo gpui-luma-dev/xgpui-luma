@@ -209,6 +209,7 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
 }
 
 #[cfg(all(test, feature = "test-support"))]
+#[allow(deprecated)]
 mod resolved_style_tests {
     use gpui::{MouseMoveEvent, TestAppContext, point, px};
 

@@ -13,7 +13,7 @@ use gpui::{
 };
 use xgpui_luma::controls::button::HasPresenter;
 use xgpui_luma::controls::checkbox::Checkbox;
-use xgpui_luma::controls::popover_button::{PopoverMotion, PopoverPanelLook};
+use xgpui_luma::controls::popover_button::{PopoverMotion, resolve_popover_panel, show_popover_panel, wrap_popover_panel};
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
@@ -28,9 +28,9 @@ const BODY: &str = "Pick a day, and we'll keep you posted by email.";
 
 /// The popover panel `theme` draws, turned on, around plain text.
 fn panel(theme: &Theme) -> AnyElement {
-    let look = PopoverPanelLook::from_binding(&StyleBinding::new("popover", ThemeSource::Fixed(theme.clone())));
+    let binding = show_popover_panel(StyleBinding::new("popover", ThemeSource::Fixed(theme.clone())), true);
     let content = div().w(px(236.)).flex().flex_col().gap(px(4.)).child(HEADING).child(BODY);
-    look.shown(true).wrap(content)
+    wrap_popover_panel(&resolve_popover_panel(&binding), content)
 }
 
 /// Draws the panel from the theme last bound, opening and closing with the popover's motion.
@@ -170,8 +170,13 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "popover");
         let panel = cx.debug_bounds("popover-panel").expect("the panel is open on the stage");
-        let look = PopoverPanelLook::sdk();
-        assert_eq!(panel.size.width, px(236. + 2. * look.padding + 2. * look.border_width), "text, padding, border");
+        let resolved = resolve_popover_panel(&StyleBinding::sdk("popover"));
+        let look = {
+            use xgpui_luma::style::PartRead;
+            let panel = resolved.part(xgpui_luma::style::lss::PartId::new("panel"));
+            (panel.number("padding"), panel.number("border_width"))
+        };
+        assert_eq!(panel.size.width, px(236. + 2. * look.0 + 2. * look.1), "text, padding, border");
         assert!(cx.debug_bounds("workshop-sdk-popover-trigger").is_none(), "no trigger");
         let side = cx.update(|_, cx| page.read(cx).side());
         side.update(cx, |side, cx| side.show_matrix(cx));

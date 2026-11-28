@@ -1,5 +1,7 @@
 mod styled;
-pub use styled::{StyledStepperTheme, styled_stepper_look};
+#[allow(deprecated)]
+pub use styled::styled_stepper_look;
+pub use styled::{StyledStepperTheme, resolve_stepper};
 mod control;
 mod model;
 mod template;
@@ -10,7 +12,9 @@ pub use model::{
     StepperRenderModel,
 };
 pub use template::{StepperTemplate, ThemedStepperTemplate, default_stepper_template};
-pub use theme::{StepperLook, StepperTheme, default_stepper_theme};
+#[allow(deprecated)]
+pub use theme::StepperLook;
+pub use theme::{StepperTheme, default_stepper_theme};
 
 use gpui::{Entity, SharedString};
 

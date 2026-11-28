@@ -4,7 +4,11 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, Stateful, Window, div, px, prelude::*};
 
-use super::{OverlayWindowLook, OverlayWindowRenderModel, OverlayWindowTheme, default_overlay_window_theme};
+#[allow(deprecated)]
+use super::OverlayWindowLook;
+use super::{OverlayWindowRenderModel, OverlayWindowTheme, default_overlay_window_theme, resolve_overlay_window};
+use crate::style::PartRead;
+use xgpui_luma_style::{PartView, Resolved};
 
 pub type OverlayWindowMouseDownHandler = Box<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
 pub type OverlayWindowKeyDownHandler = Box<dyn Fn(&KeyDownEvent, &mut Window, &mut App) + 'static>;
@@ -25,14 +29,24 @@ pub struct OverlayWindowTemplateParts {
 }
 
 pub trait OverlayWindowTemplate: Send + Sync {
-    /// Resolve shell and placement styling together for the active template.
-    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        default_overlay_window_theme().resolve(mode)
+    /// The shell and placement style in `mode` (#433): what the control places and [`Self::render`] draws from.
+    fn resolve_style(&self, mode: super::OverlayWindowMode) -> Arc<Resolved> {
+        resolve_overlay_window(&default_overlay_window_theme().style(), mode)
     }
+
+    /// The shell and placement look, built from [`Self::resolve_style`] for code that still reads an
+    /// [`OverlayWindowLook`].
+    #[deprecated(note = "the control draws from `resolve_style()` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
+        OverlayWindowLook::from_resolved(&self.resolve_style(mode))
+    }
+
+    /// The shell for `model`, drawn from `look`, the root of [`Self::resolve_style`].
     fn render(
         &self,
         model: &OverlayWindowRenderModel<'_>,
-        look: &OverlayWindowLook,
+        look: PartView<'_>,
         parts: OverlayWindowTemplateParts,
         window: &mut Window,
         cx: &mut App,
@@ -81,13 +95,13 @@ where
 }
 
 impl OverlayWindowTemplate for ModifiedTemplate<dyn OverlayWindowTemplate> {
-    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        self.base.resolve_look(mode)
+    fn resolve_style(&self, mode: super::OverlayWindowMode) -> Arc<Resolved> {
+        self.base.resolve_style(mode)
     }
     fn render(
         &self,
         model: &OverlayWindowRenderModel<'_>,
-        look: &OverlayWindowLook,
+        look: PartView<'_>,
         parts: OverlayWindowTemplateParts,
         window: &mut Window,
         cx: &mut App,
@@ -98,13 +112,13 @@ impl OverlayWindowTemplate for ModifiedTemplate<dyn OverlayWindowTemplate> {
 }
 
 impl OverlayWindowTemplate for ThemedOverlayWindowTemplate {
-    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        self.theme.resolve(mode)
+    fn resolve_style(&self, mode: super::OverlayWindowMode) -> Arc<Resolved> {
+        resolve_overlay_window(&self.theme.style(), mode)
     }
     fn render(
         &self,
         model: &OverlayWindowRenderModel<'_>,
-        look: &OverlayWindowLook,
+        look: PartView<'_>,
         parts: OverlayWindowTemplateParts,
         window: &mut Window,
         cx: &mut App,
@@ -114,26 +128,26 @@ impl OverlayWindowTemplate for ThemedOverlayWindowTemplate {
             handlers;
 
         let shell_width = match model.width {
-            Some(width) => width.max(look.min_width),
-            None => look.min_width.clamp(look.min_width, look.max_width),
+            Some(width) => width.max(look.number("min_width")),
+            None => look.number("min_width").clamp(look.number("min_width"), look.number("max_width")),
         };
 
         let mut shell = div()
             .id(model.id.clone())
             .relative()
             .w(px(shell_width))
-            .when(model.width.is_none(), |shell| shell.max_w(px(look.max_width)))
-            .p(px(look.padding))
-            .bg(look.background)
-            .border(px(look.border_width))
-            .border_color(look.border)
-            .rounded(px(look.radius))
-            .shadow(look.shadow.clone())
-            .text_color(look.foreground)
-            .font_family(look.font_family.clone())
-            .text_size(px(look.body.size))
-            .line_height(px(look.body.line_height))
-            .font_weight(look.body.weight)
+            .when(model.width.is_none(), |shell| shell.max_w(px(look.number("max_width"))))
+            .p(px(look.number("padding")))
+            .bg(look.color("background"))
+            .border(px(look.number("border_width")))
+            .border_color(look.color("border"))
+            .rounded(px(look.number("radius")))
+            .shadow(look.box_shadow())
+            .text_color(look.color("foreground"))
+            .font_family(look.font_family_name())
+            .text_size(px(look.typography(14.0, 20.0).size))
+            .line_height(px(look.typography(14.0, 20.0).line_height))
+            .font_weight(look.typography(14.0, 20.0).weight)
             .on_key_down(key_down)
             .on_mouse_down(MouseButton::Left, shell_mouse_down)
             .on_mouse_down_out(shell_mouse_down_out);

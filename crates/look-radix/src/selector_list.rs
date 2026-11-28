@@ -56,6 +56,7 @@ pub fn selector_items_panel_look_for(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::style::ThemeSource;
@@ -110,6 +111,7 @@ mod tests {
 
 /// The panel style draws the border width the old look took from the size's metrics, at every size (#433).
 #[cfg(test)]
+#[allow(deprecated)]
 mod parity_tests {
     use super::*;
     use xgpui_luma::style::PartRead;

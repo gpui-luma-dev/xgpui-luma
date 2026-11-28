@@ -1,7 +1,12 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
+#[deprecated(
+    note = "the stepper template draws from `StepperTheme::style()`; resolve it with `resolve_stepper` (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct StepperLook {
     pub number_weight: gpui::FontWeight,
@@ -21,7 +26,17 @@ pub struct StepperLook {
 }
 
 pub trait StepperTheme: Send + Sync {
-    fn resolve(&self, enabled: bool) -> StepperLook;
+    /// The stepper's style (#433): the binding the template resolves (see
+    /// [`resolve_stepper`](super::resolve_stepper)) and draws from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("stepper")
+    }
+
+    /// The stepper's look, built from [`Self::style`] for code that still reads a [`StepperLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_stepper` (#433)")]
+    fn resolve(&self, enabled: bool) -> StepperLook {
+        StepperLook::from_resolved(&super::styled::resolve_stepper(&self.style(), enabled))
+    }
 }
 
 pub fn default_stepper_theme() -> Arc<dyn StepperTheme> {

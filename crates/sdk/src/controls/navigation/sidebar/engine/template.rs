@@ -20,6 +20,8 @@ use crate::controls::floating_menu::{FloatingMenuTheme, default_floating_menu_th
 use crate::infra::icon::{DisclosureIcons, render_disclosure_icon, render_icon_source};
 use crate::infra::ElementExt;
 use super::{SidebarTheme, default_sidebar_theme};
+use crate::style::PartRead;
+use xgpui_luma_style::PartId;
 
 const CHILD_DEPTH_INDENT_MULTIPLIER: f32 = 1.0;
 const SCROLL_REGION_MIN_HEIGHT: f32 = 0.0;
@@ -555,16 +557,18 @@ fn render_row(input: RowRenderInput, handlers: RowHandlers, theme: &Arc<dyn Side
 }
 
 fn render_section_row(label: SharedString, theme: &Arc<dyn SidebarTheme>) -> Div {
-    let look = theme.resolve_section();
+    let resolved = super::resolve_sidebar_row(&theme.style(), false, InteractionState::default());
+    let look = resolved.part(PartId::new("section"));
+    let typography = look.typography(12.5, 18.0);
 
     div()
-        .min_h(px(look.height))
+        .min_h(px(look.number("height")))
         .pt(px(theme.geometry().section_padding_top))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
-        .font_weight(look.typography.weight)
+        .text_size(px(typography.size))
+        .line_height(px(typography.line_height))
+        .font_weight(typography.weight)
         .font_features(theme.section_font_features())
-        .text_color(look.label_color)
+        .text_color(look.color("foreground"))
         .child(label)
 }
 
@@ -593,32 +597,30 @@ fn render_item_row(
         disabled: state.disabled,
         invalid: false,
     };
-    let look = if has_children {
-        theme.resolve_branch(interaction)
-    } else {
-        theme.resolve_item(state.selected, interaction)
-    };
-    let depth_indent = (look.icon_size + look.gap) * CHILD_DEPTH_INDENT_MULTIPLIER;
-    let padding_left = look.padding_x + state.depth as f32 * depth_indent;
+    // A branch row is never the current page.
+    let resolved = super::resolve_sidebar_row(&theme.style(), !has_children && state.selected, interaction);
+    let (root, look) = (resolved.root(), resolved.part(PartId::new("item")));
+    let depth_indent = (root.number("item_icon_size") + look.number("gap")) * CHILD_DEPTH_INDENT_MULTIPLIER;
+    let padding_left = look.number("padding_x") + state.depth as f32 * depth_indent;
     let mut row = div()
         .id((id.clone(), 0usize))
         .role(gpui::Role::Button)
         .aria_label(label.clone().unwrap_or(id.clone()))
         .w_full()
-        .min_h(px(look.height))
+        .min_h(px(look.number("height")))
         .flex()
         .items_center()
-        .gap(px(look.gap))
+        .gap(px(look.number("gap")))
         .pl(px(padding_left))
-        .pr(px(look.padding_x))
-        .rounded(px(look.radius))
-        .text_size(px(look.typography.size))
-        .line_height(px(look.typography.line_height))
-        .text_color(look.foreground)
-        .font_weight(look.typography.weight);
+        .pr(px(look.number("padding_x")))
+        .rounded(px(look.number("radius")))
+        .text_size(px(look.typography(12.5, 18.0).size))
+        .line_height(px(look.typography(12.5, 18.0).line_height))
+        .text_color(look.color("foreground"))
+        .font_weight(look.typography(12.5, 18.0).weight);
 
     if let Some(icon) = icon {
-        row = row.child(render_lucide_icon(icon, look.icon_color, look.icon_size));
+        row = row.child(render_lucide_icon(icon, look.color("foreground"), root.number("item_icon_size")));
     }
 
     row = row.child(div().flex_1().child(label.unwrap_or(id)));
@@ -627,19 +629,19 @@ fn render_item_row(
         row = row.child(render_disclosure_icon(
             &disclosure_icons,
             expansion_progress,
-            look.icon_color,
+            look.color("foreground"),
             theme.geometry().disclosure_icon_size,
         ));
     }
 
-    if let Some(background) = look.background {
+    if let Some(background) = look.painted("background") {
         row = row.bg(background);
     }
 
     row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
-        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        look.painted("focus_border").unwrap_or_else(gpui::transparent_black),
         !interaction.disabled,
-        look.radius,
+        look.number("radius"),
         true,
     ));
 
@@ -647,7 +649,7 @@ fn render_item_row(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    row = crate::style::fade(row, look.opacity);
+    row = crate::style::fade(row, look.opacity());
 
     let RowHandlers { hover, mouse_down, mouse_up, mouse_up_out, click, .. } = handlers;
     let mut row = row;
@@ -693,69 +695,67 @@ fn render_collapsed_rail_node(
         disabled: state.disabled,
         invalid: false,
     };
-    let look = if has_children {
-        theme.resolve_branch(interaction)
-    } else {
-        theme.resolve_item(state.selected, interaction)
-    };
+    // A branch row is never the current page.
+    let resolved = super::resolve_sidebar_row(&theme.style(), !has_children && state.selected, interaction);
+    let (root, look) = (resolved.root(), resolved.part(PartId::new("item")));
     let row_width = if has_children {
-        rail_branch_button_width(look.height, &theme.geometry())
+        rail_branch_button_width(look.number("height"), &theme.geometry())
     } else {
-        look.height
+        look.number("height")
     };
     let mut row = div()
         .id((id.clone(), 1usize))
         .role(gpui::Role::Button)
         .aria_label(label.unwrap_or(id.clone()))
         .w(px(row_width))
-        .h(px(look.height))
+        .h(px(look.number("height")))
         .flex_none()
         .flex()
         .relative()
         .items_center()
         .justify_center()
-        .rounded(px(look.radius))
-        .text_color(look.foreground);
+        .rounded(px(look.number("radius")))
+        .text_color(look.color("foreground"));
 
     if has_children {
         row = row.child(
             div()
                 .absolute()
-                .left(px(centered_icon_left(look.height, look.icon_size)))
-                .top(px(centered_icon_left(look.height, look.icon_size)))
+                .left(px(centered_icon_left(look.number("height"), root.number("item_icon_size"))))
+                .top(px(centered_icon_left(look.number("height"), root.number("item_icon_size"))))
                 .child(render_lucide_icon(
                     icon.expect("collapsed rail nodes always have icons"),
-                    look.icon_color,
-                    look.icon_size,
+                    look.color("foreground"),
+                    root.number("item_icon_size"),
                 )),
         );
         row = row.child(
             div()
                 .absolute()
-                .left(px(rail_branch_indicator_left(look.height, &theme.geometry())))
-                .top(px(centered_icon_left(look.height, theme.geometry().rail_branch_indicator_size)))
+                .left(px(rail_branch_indicator_left(look.number("height"), &theme.geometry())))
+                .top(px(centered_icon_left(look.number("height"), theme.geometry().rail_branch_indicator_size)))
                 .child(render_icon_source(
                     &disclosure_icons.collapsed,
-                    look.icon_color,
+                    look.color("foreground"),
                     theme.geometry().rail_branch_indicator_size,
                 )),
         );
     } else {
         row = row.child(render_lucide_icon(
             icon.expect("collapsed rail nodes always have icons"),
-            look.icon_color,
-            look.icon_size,
+            look.color("foreground"),
+            root.number("item_icon_size"),
         ));
     }
 
-    if let Some(background) = look.background {
+    if let Some(background) = look.painted("background") {
         row = row.bg(background);
     }
 
     row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
-        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        look.painted("focus_border").unwrap_or_else(gpui::transparent_black),
         !interaction.disabled,
-        look.radius,
+        look.number("radius"),
         true,
     ));
 
@@ -763,7 +763,7 @@ fn render_collapsed_rail_node(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    row = crate::style::fade(row, look.opacity);
+    row = crate::style::fade(row, look.opacity());
 
     let RowHandlers { bounds, hover, mouse_down, mouse_up, mouse_up_out, click } = handlers;
     if state.enabled {

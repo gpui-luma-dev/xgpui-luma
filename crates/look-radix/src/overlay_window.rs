@@ -20,6 +20,7 @@ pub fn overlay_window_theme(look: &Look) -> Arc<dyn OverlayWindowTheme> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::controls::overlay_window::OverlayWindowMode;

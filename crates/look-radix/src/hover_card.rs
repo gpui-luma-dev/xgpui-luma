@@ -7,16 +7,32 @@ use gpui::{
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::infra::popup_dismiss::PopupDismiss;
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent};
-use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode};
+#[allow(deprecated)]
+use xgpui_luma::controls::overlay_window::OverlayWindowLook;
+use xgpui_luma::controls::overlay_window::{OverlayWindowMode, resolve_overlay_window};
+use xgpui_luma::style::PartRead;
+use xgpui_luma::style::lss::{Overrides, PartId, Prop, Resolved};
 use xgpui_luma::theme::{ThemeMode};
 use crate::{Look, ScaleFamily};
 use crate::look::resolve_look;
 
+/// Raised popup surface, distinct from the gray-step-2 page panels: the modeless overlay window's resolved style
+/// with a gray 1 (light) or gray 3 (dark) fill (#433).
+pub fn hover_card_style(look: &Look) -> Arc<Resolved> {
+    let fill = look.resolve_step(ScaleFamily::Gray, if look.mode() == ThemeMode::Dark { 3 } else { 1 }).hsla();
+    let binding = crate::overlay_window_theme(look).style().with_overrides(&Overrides::new().set(
+        PartId::ROOT,
+        Prop::new("background"),
+        xgpui_luma::style::lss_color(fill),
+    ));
+    resolve_overlay_window(&binding, OverlayWindowMode::Modeless)
+}
+
 /// Raised popup surface, distinct from the gray-step-2 page panels.
+#[deprecated(note = "the hover card draws from `hover_card_style` (#433)")]
+#[allow(deprecated)]
 pub fn hover_card_look(look: &Look) -> OverlayWindowLook {
-    let mut style = crate::overlay_window_theme(look).resolve(OverlayWindowMode::Modeless);
-    style.background = look.resolve_step(ScaleFamily::Gray, if look.mode() == ThemeMode::Dark { 3 } else { 1 }).hsla();
-    style
+    OverlayWindowLook::from_resolved(&hover_card_style(look))
 }
 
 /// Hover lifecycle events. Content can use these to update a shared detail view.
@@ -143,18 +159,19 @@ impl HoverCardBuilder {
                     .typed(())
                     .trigger(move |_, _| trigger.clone().into_any_element())
                     .content(move |_, window, cx| {
-                        let style = hover_card_look(&look);
+                        let resolved = hover_card_style(&look);
+                        let style = resolved.root();
                         let weak = weak.clone();
                         div()
                             .id("hover-card-content")
-                            .bg(style.background)
+                            .bg(style.color("background"))
                             .border_1()
-                            .border_color(style.border)
-                            .rounded(px(style.radius))
-                            .shadow(style.shadow)
-                            .p(px(style.padding))
-                            .text_color(style.foreground)
-                            .font_family(style.font_family)
+                            .border_color(style.color("border"))
+                            .rounded(px(style.number("radius")))
+                            .shadow(style.box_shadow())
+                            .p(px(style.number("padding")))
+                            .text_color(style.color("foreground"))
+                            .font_family(style.font_family_name())
                             .on_hover(move |hovered, _, cx| {
                                 let _ = weak.update(cx, |card: &mut HoverCard, cx| {
                                     card.over_content = *hovered;
@@ -219,10 +236,11 @@ mod tests {
         let look = Look::built_in();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let popup = hover_card_look(&look);
-            assert_ne!(popup.background, look.resolve_role(crate::SemanticRole::Surface).hsla());
-            assert!(popup.border.a > 0.0);
-            assert!(!popup.shadow.is_empty());
+            let resolved = hover_card_style(&look);
+            let popup = resolved.root();
+            assert_ne!(popup.color("background"), look.resolve_role(crate::SemanticRole::Surface).hsla());
+            assert!(popup.color("border").a > 0.0);
+            assert!(!popup.box_shadow().is_empty());
         }
     }
 }

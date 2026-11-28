@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xgpui_luma::controls::stepper::{StepperTheme, ThemedStepperTemplate};
 
-use crate::controls::stepper::stepper_look;
+use crate::controls::stepper::stepper_style;
 use crate::look::ShadcnLook;
 
 struct ShadcnStepperTheme {
@@ -10,10 +10,8 @@ struct ShadcnStepperTheme {
 }
 
 impl StepperTheme for ShadcnStepperTheme {
-    fn resolve(&self, enabled: bool) -> xgpui_luma::controls::stepper::StepperLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        stepper_look(tokens.as_ref(), enabled, size)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        stepper_style(self.theme.mode_tokens().as_ref(), self.theme.size())
     }
 }
 

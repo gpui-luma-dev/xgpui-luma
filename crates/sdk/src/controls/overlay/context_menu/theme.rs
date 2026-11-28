@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -7,6 +9,9 @@ use crate::style::{PartRead, StyleBinding, StyleStates};
 use crate::theme::{InteractionState, LumaTextStyle, MetricTokens};
 use xgpui_luma_style::Resolved;
 
+#[deprecated(
+    note = "context menus draw from `ContextMenuTheme::style()`; resolve that binding and read its parts (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct ContextMenuLook {
     /// Target stroke thickness in pixels.

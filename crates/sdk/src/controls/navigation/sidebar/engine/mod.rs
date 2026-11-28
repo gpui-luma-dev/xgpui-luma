@@ -7,7 +7,7 @@
 #![allow(unused_imports)]
 
 mod styled;
-pub use styled::{StyledSidebar, StyledSidebarTheme};
+pub use styled::{StyledSidebar, StyledSidebarTheme, resolve_sidebar_row};
 mod control;
 mod model;
 mod template;
@@ -22,7 +22,9 @@ pub use template::{
     default_sidebar_panel_template,
 };
 pub(crate) use template::modified_sidebar_panel_template;
-pub use theme::{SidebarItemLook, SidebarSectionLook, SidebarTheme, default_sidebar_theme};
+#[allow(deprecated)]
+pub use theme::{SidebarItemLook, SidebarSectionLook};
+pub use theme::{SidebarTheme, default_sidebar_theme};
 
 // Public presentation contracts; the retained engine remains internal.
 pub use model::{NavNodeKind, NavNodeState, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};

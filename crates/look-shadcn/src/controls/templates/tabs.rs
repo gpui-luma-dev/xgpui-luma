@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::tabs::{StyledTabs, TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use xgpui_luma::theme::{InteractionState};
 
 use crate::look::ShadcnLook;
 
@@ -16,12 +15,8 @@ impl TabsTheme for ShadcnTabsTheme {
         super::drag::drag_look(&self.theme)
     }
 
-    fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::tabs::TabsListLook {
-        self.styled.list(enabled)
-    }
-
-    fn resolve_item(&self, active: bool, state: InteractionState) -> xgpui_luma::controls::tabs::TabsItemLook {
-        self.styled.item(active, state)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.styled.binding()
     }
 
     fn font_family(&self) -> gpui::SharedString {

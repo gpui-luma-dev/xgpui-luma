@@ -35,7 +35,8 @@ pub struct PopoverPanelModel {
     pub(crate) focus_on_open: bool,
     pub(crate) initial_content_size: Option<Size<Pixels>>,
     /// The panel drawn around the content (`popover.lss`'s `panel` part).
-    pub(crate) look: super::PopoverPanelLook,
+    /// The panel's style: a `popover` control (#433).
+    pub(crate) style: crate::style::StyleBinding,
 }
 
 pub struct PopoverPanelRenderModel<'a> {
@@ -79,7 +80,7 @@ impl PopoverPanelBuilder {
                 window_margin: gpui::px(geometry.window_margin),
                 focus_on_open: true,
                 initial_content_size: None,
-                look: super::PopoverPanelLook::sdk(),
+                style: crate::style::StyleBinding::sdk("popover"),
             },
         }
     }
@@ -140,9 +141,9 @@ impl PopoverPanelBuilder {
         self
     }
 
-    /// The panel drawn around the content; the SDK's (off) by default.
-    pub fn look(mut self, look: super::PopoverPanelLook) -> Self {
-        self.model.look = look;
+    /// The panel drawn around the content: a `popover` style (#433); the SDK's (off) by default.
+    pub fn style(mut self, style: crate::style::StyleBinding) -> Self {
+        self.model.style = style;
         self
     }
 

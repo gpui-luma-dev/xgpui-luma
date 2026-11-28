@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::sidebar::*;
-use xgpui_luma::theme::{InteractionState, MetricTokens};
+use xgpui_luma::theme::MetricTokens;
 use crate::{Look, PopupMenuVariant, Tone};
 /// The Radix sidebar: rows and section labels from `.lss` (`style/sidebar.lss`); the shell layout,
 /// typography roles, section font features and drag preview from the look.
@@ -25,17 +25,8 @@ impl SidebarTheme for SidebarThemeAdapter {
             crate::textfield::live_source(&self.look),
         ))
     }
-    fn foreground(&self) -> gpui::Hsla {
-        self.styled.foreground()
-    }
-    fn resolve_section(&self) -> SidebarSectionLook {
-        self.styled.section()
-    }
-    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
-        self.styled.branch(state)
-    }
-    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        self.styled.item(selected, state)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.styled.binding()
     }
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())

@@ -1,4 +1,6 @@
 //! Look-owned chrome for shared listbox composition.
+// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
+#![allow(deprecated)]
 
 use gpui::{App, Div, ElementId, Hsla, Stateful};
 use crate::controls::tooltip::TooltipLook;

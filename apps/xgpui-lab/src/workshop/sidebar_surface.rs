@@ -6,18 +6,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{AnyElement, AnyView, App, Context, Entity, Hsla, SharedString, Subscription, Window, div, prelude::*};
+use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*};
 use xgpui_luma::controls::scroll_container::ScrollContainer;
 use xgpui_luma::controls::scrollbar::default_scrollbar_template;
 use xgpui_luma::controls::sidebar::{
-    self, SidebarControl, SidebarEvent, SidebarItemLook, SidebarNodeKind, SidebarNodeState, SidebarPanelRenderModel,
-    SidebarPanelTemplate, SidebarPanelTemplateHandlers, SidebarRenderedNode, SidebarSectionLook, SidebarTheme,
-    StyledSidebar, ThemedSidebarPanelTemplate,
+    self, SidebarControl, SidebarEvent, SidebarNodeKind, SidebarNodeState, SidebarPanelRenderModel,
+    SidebarPanelTemplate, SidebarPanelTemplateHandlers, SidebarRenderedNode, SidebarTheme, StyledSidebar,
+    ThemedSidebarPanelTemplate,
 };
 use xgpui_luma::infra::icon::DisclosureIcons;
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
-use xgpui_luma::theme::InteractionState;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -88,20 +87,8 @@ impl SidebarSurface {
 struct LssSidebarTheme(StyledSidebar);
 
 impl SidebarTheme for LssSidebarTheme {
-    fn foreground(&self) -> Hsla {
-        self.0.foreground()
-    }
-
-    fn resolve_section(&self) -> SidebarSectionLook {
-        self.0.section()
-    }
-
-    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
-        self.0.branch(state)
-    }
-
-    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        self.0.item(selected, state)
+    fn style(&self) -> StyleBinding {
+        self.0.binding()
     }
 }
 

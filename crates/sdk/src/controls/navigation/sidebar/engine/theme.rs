@@ -1,9 +1,17 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
+use xgpui_luma_style::PartId;
 
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use super::styled::resolve_sidebar_row;
+use crate::style::{PartRead, StyleBinding};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
+#[deprecated(
+    note = "the sidebar template draws from `SidebarTheme::style()`; resolve it with `resolve_sidebar_row` (#433)"
+)]
 #[derive(Clone, Copy, Debug)]
 pub struct SidebarSectionLook {
     pub label_color: Hsla,
@@ -11,6 +19,9 @@ pub struct SidebarSectionLook {
     pub height: f32,
 }
 
+#[deprecated(
+    note = "the sidebar template draws from `SidebarTheme::style()`; resolve it with `resolve_sidebar_row` (#433)"
+)]
 #[derive(Clone, Copy, Debug)]
 pub struct SidebarItemLook {
     pub background: Option<Hsla>,
@@ -27,7 +38,48 @@ pub struct SidebarItemLook {
     pub opacity: f32,
 }
 
+impl SidebarSectionLook {
+    /// The look `resolved` (a sidebar's resolved style, see [`resolve_sidebar_row`]) describes for its section
+    /// labels: the compatibility path for code that still reads a `SidebarSectionLook` (#433).
+    pub fn from_resolved(resolved: &xgpui_luma_style::Resolved) -> Self {
+        let section = resolved.part(PartId::new("section"));
+        Self {
+            label_color: section.color("foreground"),
+            typography: section.typography(12.5, 18.0),
+            height: section.number("height"),
+        }
+    }
+}
+
+impl SidebarItemLook {
+    /// The look `resolved` (a row's resolved style, see [`resolve_sidebar_row`]) describes: the compatibility path
+    /// for code that still reads a `SidebarItemLook` (#433).
+    pub fn from_resolved(resolved: &xgpui_luma_style::Resolved) -> Self {
+        let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
+        let foreground = item.color("foreground");
+        Self {
+            background: item.painted("background"),
+            focus_border: item.painted("focus_border"),
+            foreground,
+            icon_color: foreground,
+            typography: item.typography(12.5, 18.0),
+            radius: item.number("radius"),
+            height: item.number("height"),
+            padding_x: item.number("padding_x"),
+            gap: item.number("gap"),
+            icon_size: root.number("item_icon_size"),
+            opacity: item.opacity(),
+        }
+    }
+}
+
 pub trait SidebarTheme: Send + Sync {
+    /// The sidebar's style (#433): the binding the template resolves for its rows and section labels (see
+    /// [`resolve_sidebar_row`]) and draws from.
+    fn style(&self) -> StyleBinding {
+        StyleBinding::sdk("sidebar")
+    }
+
     /// Shared title/subtitle typography and section OpenType treatment.
     fn typography(&self) -> crate::theme::LumaTypography {
         crate::theme::LumaTypography::default()
@@ -44,20 +96,41 @@ pub trait SidebarTheme: Send + Sync {
     /// Appearance of native drag previews and insertion feedback.
     fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
         let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default());
-        let item = self.resolve_item(true, InteractionState { focused: true, ..Default::default() });
-        drag.background = item.background.unwrap_or(drag.background);
-        drag.foreground = item.foreground;
-        drag.valid_marker = item.focus_border.unwrap_or(item.foreground);
-        drag.invalid_marker =
-            self.resolve_item(false, InteractionState { invalid: true, ..Default::default() }).foreground;
-        drag.radius = item.radius;
-        drag.typography = item.typography;
+        let row = resolve_sidebar_row(&self.style(), true, InteractionState { focused: true, ..Default::default() });
+        let item = row.part(PartId::new("item"));
+        let foreground = item.color("foreground");
+        let invalid =
+            resolve_sidebar_row(&self.style(), false, InteractionState { invalid: true, ..Default::default() });
+        drag.background = item.painted("background").unwrap_or(drag.background);
+        drag.foreground = foreground;
+        drag.valid_marker = item.painted("focus_border").unwrap_or(foreground);
+        drag.invalid_marker = invalid.part(PartId::new("item")).color("foreground");
+        drag.radius = item.number("radius");
+        drag.typography = item.typography(12.5, 18.0);
         drag
     }
-    fn foreground(&self) -> Hsla;
-    fn resolve_section(&self) -> SidebarSectionLook;
-    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook;
-    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook;
+    /// The rows' text color at rest.
+    fn foreground(&self) -> Hsla {
+        resolve_sidebar_row(&self.style(), false, InteractionState::default())
+            .part(PartId::new("item"))
+            .color("foreground")
+    }
+    /// The section labels, built from [`Self::style`] for code that still reads a [`SidebarSectionLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_sidebar_row` (#433)")]
+    fn resolve_section(&self) -> SidebarSectionLook {
+        SidebarSectionLook::from_resolved(&resolve_sidebar_row(&self.style(), false, InteractionState::default()))
+    }
+    /// A branch row (never the current page), built from [`Self::style`] for code that still reads a
+    /// [`SidebarItemLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_sidebar_row` (#433)")]
+    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
+        SidebarItemLook::from_resolved(&resolve_sidebar_row(&self.style(), false, state))
+    }
+    /// A row, built from [`Self::style`] for code that still reads a [`SidebarItemLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_sidebar_row` (#433)")]
+    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
+        SidebarItemLook::from_resolved(&resolve_sidebar_row(&self.style(), selected, state))
+    }
 
     fn metrics(&self) -> MetricTokens {
         MetricTokens::default()
