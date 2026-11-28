@@ -241,15 +241,17 @@ mod render_tests {
                             });
                             cx.run_until_parked();
                             cx.update(|window, _| {
-                                let colors =
-                                    progress_theme_with(&look.with_size(size), variant, Paint::accent()).resolve(true);
+                                use xgpui_luma::style::PartRead;
+                                let theme = progress_theme_with(&look.with_size(size), variant, Paint::accent());
+                                let resolved = xgpui_luma::controls::progress::resolve_progress(&theme.style(), true);
+                                let part =
+                                    |name| resolved.part(xgpui_luma::style::lss::PartId::new(name)).color("background");
+                                let (track_color, progress_color) = (part("track"), part("fill"));
                                 let quads = window.painted_quads();
                                 let track =
-                                    quads.iter().find(|q| q.background.as_solid() == Some(colors.track_color)).unwrap();
-                                let fills: Vec<_> = quads
-                                    .iter()
-                                    .filter(|q| q.background.as_solid() == Some(colors.progress_color))
-                                    .collect();
+                                    quads.iter().find(|q| q.background.as_solid() == Some(track_color)).unwrap();
+                                let fills: Vec<_> =
+                                    quads.iter().filter(|q| q.background.as_solid() == Some(progress_color)).collect();
                                 if percentage == 0.0 {
                                     assert!(fills.is_empty());
                                 } else {

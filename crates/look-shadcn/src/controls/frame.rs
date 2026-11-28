@@ -71,8 +71,6 @@ mod tests {
 
     #[test]
     fn generic_and_sidebar_presets_resolve_independently_after_theme_changes() {
-        // Frame colors pass through an `.lss` color, as the style draws them (#433).
-        let lss = |color: gpui::Hsla| gpui::Hsla::from(xgpui_luma::style::lss_color(color));
         let app = TestAppContext::single();
         let look = crate::test_support::fallback_look();
         let panel = app.update(|cx| Frame::new("panel").look(&look).into_sdk_builder(cx));
@@ -83,11 +81,16 @@ mod tests {
                 let mut panel_root = panel.render(cx);
                 let mut sidebar_root = sidebar.render(cx);
                 let sidebar_defaults = sidebar_container_look(look.mode_tokens().as_ref());
-                assert_eq!(panel_root.style().background, Some(lss(look.chrome().panel_background).into()));
-                assert_eq!(sidebar_root.style().background, Some(lss(sidebar_defaults.background).into()));
+                // The `.lss` and the Rust palette agree to float rounding, not bit for bit.
+                let solid = |fill: Option<gpui::Fill>| match fill {
+                    Some(gpui::Fill::Color(color)) => color.as_solid().expect("a solid fill"),
+                    other => panic!("expected a solid fill, got {other:?}"),
+                };
+                crate::assert_close(solid(panel_root.style().background.clone()), look.chrome().panel_background);
+                crate::assert_close(solid(sidebar_root.style().background.clone()), sidebar_defaults.background);
                 assert_ne!(panel_root.style().background, sidebar_root.style().background);
-                assert_eq!(panel_root.style().border_color, Some(lss(look.chrome().border)));
-                assert_eq!(sidebar_root.style().border_color, Some(lss(sidebar_defaults.border)));
+                crate::assert_close(panel_root.style().border_color.unwrap(), look.chrome().border);
+                crate::assert_close(sidebar_root.style().border_color.unwrap(), sidebar_defaults.border);
                 assert_eq!(panel_root.style().corner_radii.top_left, Some(px(look.radius(ShadcnRadius::Lg)).into()));
             });
         }

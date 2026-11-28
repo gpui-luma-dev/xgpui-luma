@@ -605,14 +605,15 @@ mod tests {
                     crate::ButtonSize::Two,
                 )
                 .variant("icon_group")
-                .look(
+                .resolve_face(
                     ButtonFamilyRole::Toggle { selected: true },
                     InteractionState { hovered, ..Default::default() },
                     1.0,
                 );
+                use xgpui_luma::style::PartRead;
                 let field = crate::textfield::textfield_theme_with(&look, crate::TextFieldVariant::Soft)
                     .resolve(xgpui_luma::controls::textfield::TextFieldState { hovered, ..Default::default() }, true);
-                crate::control_group::assert_close(toggle.background, field.background);
+                crate::control_group::assert_close(toggle.root().color("background"), field.background);
                 // The group draws the ring in the focus role, as the soft field does.
                 crate::control_group::assert_close(look.resolve_role(SemanticRole::Focus).hsla(), field.focus_border);
             }

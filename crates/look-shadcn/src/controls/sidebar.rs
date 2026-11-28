@@ -31,11 +31,7 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
             .map(gpui::Hsla::from)
             .unwrap_or_else(gpui::transparent_black)
     };
-    SidebarContainerLook {
-        background: color("container_background"),
-        border: color("container_border"),
-        radius: mode.radii.large,
-    }
+    SidebarContainerLook { background: color("container_background"), border: color("container_border") }
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -44,5 +40,4 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
 pub struct SidebarContainerLook {
     pub background: gpui::Hsla,
     pub border: gpui::Hsla,
-    pub radius: f32,
 }

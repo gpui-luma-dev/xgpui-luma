@@ -315,7 +315,6 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
 
     use super::*;
-    use xgpui_luma::controls::slider::SliderTheme;
     use crate::workshop::surface_page::WorkMode;
     use crate::workshop::tests_support::open_surface;
 
@@ -364,8 +363,15 @@ mod tests {
         assert_eq!(control.size.width, px(STAGE_WIDTH), "linear takes the stage's width again");
 
         // The track the templates outline has a border in the SDK theme.
-        let look = StyledSliderTheme::sdk().resolve(InteractionState::default());
-        assert!(look.track_border_width > 0.0, "the SDK slider track has an outline");
+        let look = xgpui_luma::controls::slider::resolve_slider(
+            &xgpui_luma::style::StyleBinding::sdk("slider"),
+            InteractionState::default(),
+        );
+        use xgpui_luma::style::PartRead;
+        assert!(
+            look.part(xgpui_luma::style::lss::PartId::new("track")).number("border_width") > 0.0,
+            "the SDK slider track has an outline"
+        );
     }
 
     #[test]
