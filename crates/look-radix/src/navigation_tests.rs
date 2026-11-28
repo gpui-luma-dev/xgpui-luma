@@ -1,6 +1,6 @@
 //! Radix ownership, state precedence, and shared geometry contracts.
 // These contracts read the compatibility Looks, which build from the resolved styles (#433).
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
+#![allow(deprecated)] // Parity tests still read the deprecated Looks (#433).
 use super::*;
 use xgpui_luma::style::PartRead;
 use xgpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};
@@ -31,9 +31,9 @@ fn group_rows_reuse_radix_button_colors_across_modes_palettes_sizes_and_states()
                             ButtonVariant::Ghost,
                             crate::Paint::accent(),
                         )
-                        .look(ButtonFamilyRole::Toggle { selected }, state, 1.0);
-                        crate::control_group::assert_close(item.background, button.background);
-                        crate::control_group::assert_close(item.foreground, button.foreground);
+                        .resolve_face(ButtonFamilyRole::Toggle { selected }, state, 1.0);
+                        crate::control_group::assert_close(item.background, button.root().color("background"));
+                        crate::control_group::assert_close(item.foreground, button.root().color("foreground"));
                     }
                 }
             }

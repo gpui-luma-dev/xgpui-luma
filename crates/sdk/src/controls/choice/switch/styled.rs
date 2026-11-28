@@ -2,14 +2,13 @@
 //!
 //! Values come from `.lss` (`switch.lss`); an instance's model can still override the track and thumb
 //! size, the extra track length, the orientation and the radius.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use crate::style::PartRead;
 use gpui::{App, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, px};
 use xgpui_luma_style::{PartId, PartView, box_shadows};
 
-use crate::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use crate::controls::button::{ButtonContentFace, ButtonRenderModel, ButtonTemplate, button_content_context};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::choice::styled::{
     ChoiceData, StyledChoiceTemplate, focus_adorner, hsl, label_style, length, transparent,
 };
@@ -111,8 +110,7 @@ impl ChoiceData for SwitchData {
             thumb = thumb.shadow(shadow);
         }
 
-        let content_look = ButtonFamilyLook {
-            focus_border: transparent(),
+        let content_look = ButtonContentFace {
             background: track_background,
             foreground: label_color,
             muted_foreground: label_color,
@@ -120,12 +118,9 @@ impl ChoiceData for SwitchData {
             typography,
             font_family: font_family.clone(),
             radius: track_radius,
-            padding_x: 0.0,
-            padding_y: 0.0,
             gap,
             height: track_height,
             icon_size: thumb_size,
-            shadow: None,
         };
         let content_model = button_content_context(model, content_look);
         if let Some(content) = &model.switch_thumb_content {

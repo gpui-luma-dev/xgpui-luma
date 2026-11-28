@@ -2,7 +2,6 @@
 //!
 //! Only the mode is mutable. Both SDK snapshots and their default themes are
 //! prepared once; controls delegate to the selected snapshot at resolve time.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -182,12 +181,13 @@ mod tests {
                 let theme = theme.clone();
                 move || theme.style_theme()
             }))
-            .look(ButtonFamilyRole::Text, state, 1.0);
+            .resolve_face(ButtonFamilyRole::Text, state, 1.0);
             let style = theme.style_theme();
             let sdk = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
             let expected_button =
-                StyledButtonTemplate::<()>::new(style.clone()).look(ButtonFamilyRole::Text, state, 1.0);
-            assert_eq!(button.background, expected_button.background);
+                StyledButtonTemplate::<()>::new(style.clone()).resolve_face(ButtonFamilyRole::Text, state, 1.0);
+            use xgpui_luma::style::PartRead;
+            assert_eq!(button.root().color("background"), expected_button.root().color("background"));
             let radio_label = theme
                 .style_theme()
                 .resolve(&xgpui_luma::style::lss::StyleKey::new(xgpui_luma::style::lss::ControlId::new("radio")))
@@ -236,7 +236,7 @@ mod tests {
             let got = tip.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "tooltip follows the mode: {got:?} != {expected:?}");
             colors.push([
-                button.foreground,
+                xgpui_luma::style::PartRead::color(&button.root(), "foreground"),
                 radio_label,
                 label(&tabs.style()),
                 selector_background,

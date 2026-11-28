@@ -112,7 +112,7 @@ impl<D: Clone + 'static> Button<D> {
             switch_orientation: self.model.switch_orientation,
             switch_track_content: self.model.switch_track_content.clone(),
             switch_thumb_content: self.model.switch_thumb_content.clone(),
-            look: self.model.look.clone(),
+            overrides: self.model.overrides.clone(),
         }
     }
 

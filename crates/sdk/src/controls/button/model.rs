@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::cell::Cell;
 use std::sync::Arc;
 
@@ -9,7 +7,8 @@ use super::control::Button;
 use super::{ButtonCallbacks, ButtonEvent};
 use super::template::{ButtonTemplate, modified_button_template};
 pub use crate::infra::presenter::{ControlPresenter, HasPresenter};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use crate::controls::button_family::ButtonFamilyRole;
+use crate::style::lss::Overrides;
 use crate::theme::InteractionState;
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -25,67 +24,62 @@ impl From<LucideIcon> for ControlIcon {
     }
 }
 
-#[deprecated(note = "set style overrides on the template instead (#433)")]
-pub type ButtonLookSource<D> = Arc<dyn Fn(&ButtonRenderModel<D>) -> ButtonFamilyLook + Send + Sync>;
-
 #[derive(Clone)]
 pub struct ButtonContentContext<D> {
     pub id: SharedString,
     pub data: D,
     pub state: InteractionState,
     pub role: ButtonFamilyRole,
-    #[deprecated(note = "read the content context's accessors (`foreground()`, `icon_size()`, ...) instead (#433)")]
-    pub look: ButtonFamilyLook,
+    pub(crate) face: ButtonContentFace,
 }
 
-#[allow(deprecated)]
 impl<D> ButtonContentContext<D> {
     /// The face's label color.
     pub fn foreground(&self) -> gpui::Hsla {
-        self.look.foreground
+        self.face.foreground
     }
 
     /// The face's dimmed label color.
     pub fn muted_foreground(&self) -> gpui::Hsla {
-        self.look.muted_foreground
+        self.face.muted_foreground
     }
 
     /// The face's fill.
     pub fn background(&self) -> gpui::Hsla {
-        self.look.background
+        self.face.background
     }
 
     /// The face's label text style.
     pub fn typography(&self) -> crate::theme::LumaTextStyle {
-        self.look.typography
+        self.face.typography
     }
 
     /// The face's font family.
     pub fn font_family(&self) -> SharedString {
-        self.look.font_family.clone()
+        self.face.font_family.clone()
     }
 
     /// The face's icon size.
     pub fn icon_size(&self) -> f32 {
-        self.look.icon_size
+        self.face.icon_size
     }
 
     /// The face's gap between icon and label.
     pub fn gap(&self) -> f32 {
-        self.look.gap
+        self.face.gap
     }
 
     /// The face's height.
     pub fn height(&self) -> f32 {
-        self.look.height
+        self.face.height
     }
 }
 
 pub fn button_content_context<D: Clone>(
     model: &ButtonRenderModel<D>,
-    look: ButtonFamilyLook,
+    face: ButtonContentFace,
 ) -> ButtonContentContext<D> {
-    ButtonContentContext { id: model.id.clone(), data: model.data.clone(), state: model.state, role: model.role, look }
+    ButtonContentContext { id: model.id.clone(), data: model.data.clone(), state: model.state, role: model.role, face }
 }
 
 /// The face a custom template painted itself, for the presenter's content context (#433): what a presenter may read
@@ -94,10 +88,14 @@ pub fn button_content_context<D: Clone>(
 pub struct ButtonContentFace {
     pub background: gpui::Hsla,
     pub foreground: gpui::Hsla,
+    /// The dimmed label color.
+    pub muted_foreground: gpui::Hsla,
     pub border: Option<gpui::Hsla>,
     pub typography: crate::theme::LumaTextStyle,
     pub font_family: SharedString,
     pub radius: f32,
+    /// The gap between an icon and its label.
+    pub gap: f32,
     pub height: f32,
     pub icon_size: f32,
 }
@@ -107,25 +105,7 @@ pub fn button_content_context_painted<D: Clone>(
     model: &ButtonRenderModel<D>,
     face: ButtonContentFace,
 ) -> ButtonContentContext<D> {
-    button_content_context(
-        model,
-        ButtonFamilyLook {
-            focus_border: gpui::transparent_black(),
-            background: face.background,
-            foreground: face.foreground,
-            muted_foreground: face.foreground,
-            border: face.border,
-            typography: face.typography,
-            font_family: face.font_family,
-            radius: face.radius,
-            padding_x: 0.0,
-            padding_y: 0.0,
-            gap: 0.0,
-            height: face.height,
-            icon_size: face.icon_size,
-            shadow: None,
-        },
-    )
+    button_content_context(model, face)
 }
 
 /// The context a presenter draws a button's content in, from the settled face `resolved` (#433).
@@ -133,7 +113,7 @@ pub fn button_content_context_from<D: Clone>(
     model: &ButtonRenderModel<D>,
     resolved: &xgpui_luma_style::Resolved,
 ) -> ButtonContentContext<D> {
-    button_content_context(model, ButtonFamilyLook::from_resolved(resolved, model.role))
+    button_content_context(model, ButtonContentFace::from_resolved(resolved, model.role))
 }
 
 #[derive(Clone)]
@@ -155,7 +135,8 @@ pub struct ButtonModel<D = ()> {
     pub(crate) switch_orientation: crate::controls::switch::SwitchOrientation,
     pub(crate) switch_track_content: Option<ControlPresenter<ButtonContentContext<D>>>,
     pub(crate) switch_thumb_content: Option<ControlPresenter<ButtonContentContext<D>>>,
-    pub(crate) look: Option<ButtonLookSource<D>>,
+    /// Style overrides for this button, over its template's style (#433).
+    pub(crate) overrides: Overrides,
     pub(crate) template: Arc<dyn ButtonTemplate<D>>,
 }
 
@@ -177,7 +158,8 @@ pub struct ButtonRenderModel<D> {
     pub switch_orientation: crate::controls::switch::SwitchOrientation,
     pub switch_track_content: Option<ControlPresenter<ButtonContentContext<D>>>,
     pub switch_thumb_content: Option<ControlPresenter<ButtonContentContext<D>>>,
-    pub look: Option<ButtonLookSource<D>>,
+    /// Style overrides for this render, over the template's style (#433).
+    pub overrides: Overrides,
 }
 
 impl<D: Default> Default for ButtonRenderModel<D> {
@@ -200,7 +182,7 @@ impl<D: Default> Default for ButtonRenderModel<D> {
             switch_orientation: crate::controls::switch::SwitchOrientation::Horizontal,
             switch_track_content: None,
             switch_thumb_content: None,
-            look: None,
+            overrides: Overrides::new(),
         }
     }
 }
@@ -234,7 +216,7 @@ impl ButtonBuilder<()> {
                 switch_orientation: crate::controls::switch::SwitchOrientation::Horizontal,
                 switch_track_content: None,
                 switch_thumb_content: None,
-                look: None,
+                overrides: Overrides::new(),
                 template: super::styled::default_template(),
             },
         }
@@ -287,7 +269,7 @@ impl ButtonBuilder<()> {
                 switch_orientation: crate::controls::switch::SwitchOrientation::Horizontal,
                 switch_track_content: None,
                 switch_thumb_content: None,
-                look: None,
+                overrides: Overrides::new(),
                 template: super::template::default_button_template(),
             },
         }
@@ -388,12 +370,9 @@ impl<D: Clone + 'static> ButtonBuilder<D> {
         self
     }
 
-    #[deprecated(note = "set style overrides on the template instead; the closure is bridged to them (#433)")]
-    pub fn with_look<F>(mut self, resolve: F) -> Self
-    where
-        F: Fn(&ButtonRenderModel<D>) -> ButtonFamilyLook + Send + Sync + 'static,
-    {
-        self.model.look = Some(Arc::new(resolve));
+    /// Style overrides for this button (#433): values set over its template's style, such as `height` or `padding_x`.
+    pub fn overrides(mut self, overrides: Overrides) -> Self {
+        self.model.overrides = overrides;
         self
     }
 

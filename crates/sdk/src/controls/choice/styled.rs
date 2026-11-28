@@ -5,7 +5,6 @@
 //! hook. A control supplies its data type through [`ChoiceData`] and draws itself in
 //! [`ChoiceData::render`]. Controls drawn as an indicator box with a mark inside (checkbox, radio)
 //! implement [`IndicatorChoice`] and render with [`render_indicator`]; the switch draws a track and thumb.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 
 use crate::style::PartRead;
 use std::sync::Arc;
@@ -16,8 +15,8 @@ use xgpui_luma_style::{
     box_shadows,
 };
 
-use crate::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use crate::controls::button::{ButtonContentFace, ButtonRenderModel, ButtonTemplate, button_content_context};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::infra::focus_adorner::FocusAdorner;
 use crate::infra::shadow_layout::should_paint_shadow;
 use crate::infra::template::{Modifier, TemplateWithModifiers};
@@ -376,8 +375,7 @@ pub(crate) fn render_indicator<D: IndicatorChoice>(
         }
         control = control.child(indicator);
     } else {
-        let content_look = ButtonFamilyLook {
-            focus_border: transparent(),
+        let content_look = ButtonContentFace {
             background: control_background.unwrap_or_else(transparent),
             foreground: label_color,
             muted_foreground: label_color,
@@ -385,12 +383,9 @@ pub(crate) fn render_indicator<D: IndicatorChoice>(
             typography,
             font_family,
             radius: control_radius,
-            padding_x,
-            padding_y,
             gap,
             height,
             icon_size: mark_size,
-            shadow: None,
         };
         let content_model = button_content_context(model, content_look);
         let baseline = length(root, "label_baseline_shift");

@@ -230,7 +230,6 @@ fn render_choice_size_cell(
                 radius_override: std::cell::Cell::new(radius_override),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()
@@ -253,7 +252,6 @@ fn render_choice_size_cell(
                 radius_override: std::cell::Cell::new(radius_override),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()
@@ -276,7 +274,6 @@ fn render_choice_size_cell(
                 radius_override: std::cell::Cell::new(radius_override),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()
@@ -365,7 +362,6 @@ fn render_choice_variant_state_cell(
                 radius_override: std::cell::Cell::new(None),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()
@@ -387,7 +383,6 @@ fn render_choice_variant_state_cell(
                 radius_override: std::cell::Cell::new(None),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()
@@ -409,7 +404,6 @@ fn render_choice_variant_state_cell(
                 radius_override: std::cell::Cell::new(None),
                 elevation: style != ShadcnButtonStyle::ContentOnly,
                 compact: false,
-                look: None,
                 ..Default::default()
             };
             div()

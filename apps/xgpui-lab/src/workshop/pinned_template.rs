@@ -70,7 +70,7 @@ fn pinned_model<D: Clone>(model: &ButtonRenderModel<D>, pin: &Pin<D>) -> ButtonR
         switch_orientation: model.switch_orientation,
         switch_track_content: model.switch_track_content.clone(),
         switch_thumb_content: model.switch_thumb_content.clone(),
-        look: model.look.clone(),
+        overrides: model.overrides.clone(),
     }
 }
 

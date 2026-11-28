@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::cell::Cell;
@@ -6,12 +5,12 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use gpui::{
     AnyElement, App, Bounds, Div, MouseDownEvent, Pixels, SharedString, Size, Stateful, TextRun, Window, anchored,
-    deferred, div, font, hsla, px, prelude::*,
+    deferred, div, font, px, prelude::*,
 };
 
 use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::infra::ElementExt;
 use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::infra::lock;
@@ -25,7 +24,7 @@ use crate::infra::icon::{DisclosureIcons, IconSource, render_icon_source, render
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::controls::tabs::{TabsTheme, default_tabs_theme, resolve_tab, resolve_tabs_list};
 use crate::style::PartRead;
-use xgpui_luma_style::{PartId, Resolved};
+use xgpui_luma_style::{Overrides, PartId, Resolved};
 use crate::theme::InteractionState;
 
 pub type TabsClickHandler = ControlGroupClickHandler;
@@ -645,9 +644,12 @@ fn tab_button_model(
     let trailing_accessory = item.trailing_accessory.cloned();
     let disclosure_progress = item.disclosure_progress;
 
+    let data = TabsButtonData { style, padding_x, background, disclosure_icons };
+    let overrides = tab_button_overrides(&data, font_family);
+
     ButtonRenderModel {
         id: format!("{}-tab-{}", navigation_id, item.id).into(),
-        data: TabsButtonData { style, padding_x, background, disclosure_icons },
+        data,
         icon: None,
         content: Arc::new(move |model, _| {
             let mut label_content = div().flex().items_center().gap(px(model.data.accessory_gap()));
@@ -692,28 +694,37 @@ fn tab_button_model(
         switch_orientation: crate::controls::switch::SwitchOrientation::Horizontal,
         switch_track_content: None,
         switch_thumb_content: None,
-        look: Some(Arc::new(move |model| tab_button_look(&model.data, font_family.clone()))),
+        overrides,
     }
 }
 
-fn tab_button_look(data: &TabsButtonData, font_family: SharedString) -> ButtonFamilyLook {
+/// A tab button's face over the button template's: the tab's own colors, text, box and accessory sizes, no edge, ring or
+/// shadow (#433).
+fn tab_button_overrides(data: &TabsButtonData, font_family: SharedString) -> Overrides {
+    use crate::style::lss::{Color, Prop, ShadowLayer};
     let part = data.style.part(PartId::new("item"));
-    ButtonFamilyLook {
-        focus_border: gpui::transparent_black(),
-        background: data.background.unwrap_or_else(|| hsla(0.0, 0.0, 0.0, 0.0)),
-        foreground: data.label_color(),
-        muted_foreground: data.label_color(),
-        border: None,
-        typography: part.typography(14.0, 20.0),
-        font_family,
-        radius: part.number("radius"),
-        padding_x: data.padding_x,
-        padding_y: 0.0,
-        gap: data.accessory_gap(),
-        height: part.number("height"),
-        icon_size: data.accessory_size(),
-        shadow: None,
-    }
+    let text = part.typography(14.0, 20.0);
+    let clear = crate::style::lss_color(gpui::transparent_black());
+    let color = |value| crate::style::lss_color(value);
+    let root = PartId::ROOT;
+    let no_shadow: Arc<[ShadowLayer]> = Arc::from(Vec::new());
+    Overrides::new()
+        .set(root, Prop::<Color>::new("focus_border"), clear)
+        .set(root, Prop::<Color>::new("background"), data.background.map_or(clear, color))
+        .set(root, Prop::<Color>::new("foreground"), color(data.label_color()))
+        .set(root, Prop::<Color>::new("muted_foreground"), color(data.label_color()))
+        .set(root, Prop::<Color>::new("border"), clear)
+        .set(root, Prop::<f32>::new("font_size"), text.size)
+        .set(root, Prop::<f32>::new("line_height"), text.line_height)
+        .set(root, Prop::<f32>::new("font_weight"), text.weight.0)
+        .set(root, Prop::<Arc<str>>::new("font_family"), Arc::<str>::from(font_family.as_ref()))
+        .set(root, Prop::<f32>::new("radius"), part.number("radius"))
+        .set(root, Prop::<f32>::new("padding_x"), data.padding_x)
+        .set(root, Prop::<f32>::new("padding_y"), 0.0)
+        .set(root, Prop::<f32>::new("gap"), data.accessory_gap())
+        .set(root, Prop::<f32>::new("height"), part.number("height"))
+        .set(root, Prop::<f32>::new("text_icon_size"), data.accessory_size())
+        .set(root, Prop::<Arc<[ShadowLayer]>>::new("shadow"), no_shadow)
 }
 
 fn render_accessory(
