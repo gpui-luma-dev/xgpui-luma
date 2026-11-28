@@ -450,7 +450,6 @@ fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla, size: f32) -> AnyElem
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use gpui::{Anchor, Bounds, point, px, size};
 
@@ -470,65 +469,6 @@ mod tests {
         );
         let root = resolved.root();
         MenuAnchor { trigger_height: root.number("height"), offset_y: root.number("menu_offset_y"), menu: theme.menu() }
-    }
-
-    /// The template draws the trigger straight from the resolved style (#433), through the shared face reader,
-    /// with the values the `PopupMenuLook` compatibility type reads: at rest, hovered, pressed, disabled and open.
-    #[test]
-    fn the_trigger_face_matches_the_look() {
-        let theme = default_popup_menu_theme();
-        let rest = InteractionState::default();
-        for (state, open) in [
-            (rest, false),
-            (InteractionState { hovered: true, ..rest }, false),
-            (InteractionState { pressed: true, ..rest }, false),
-            (InteractionState { disabled: true, ..rest }, false),
-            (InteractionState { hovered: true, ..rest }, true),
-        ] {
-            let metrics = crate::controls::popup_menu::PopupMenuTriggerMetrics { open, ..Default::default() };
-            let look = super::super::styled::look(
-                &theme.style(),
-                theme.menu(),
-                PopupMenuTriggerStyle::Outline,
-                metrics,
-                state,
-                1.0,
-            );
-            let resolved =
-                super::super::styled::resolve_trigger(&theme.style(), PopupMenuTriggerStyle::Outline, state, open, 1.0);
-            let root = resolved.root();
-            let face = FaceLook::from_part(root);
-            let case = format!("{state:?} open {open}");
-            assert_eq!(
-                (face.background, face.foreground),
-                (look.trigger_background, look.trigger_foreground),
-                "{case}"
-            );
-            assert_eq!(
-                (face.border, face.shadow.clone()),
-                (look.trigger_border, look.trigger_shadow.clone()),
-                "{case}"
-            );
-            assert_eq!(face.typography, look.trigger_typography, "{case}");
-            assert_eq!(
-                (face.padding_x, face.padding_y, face.gap, face.height),
-                (look.trigger_padding_x, look.trigger_padding_y, look.trigger_gap, look.trigger_height),
-                "{case}"
-            );
-            assert_eq!((face.focus_border, face.opacity), (look.trigger_focus_border, look.trigger_opacity), "{case}");
-            assert_eq!(root.color_opt("icon").unwrap_or(face.foreground), look.trigger_icon, "{case}");
-            assert_eq!(
-                (root.number("radius"), root.number("icon_size")),
-                (look.trigger_radius, look.trigger_icon_size)
-            );
-        }
-        // Border width and focus geometry, read per state now, match the theme's metrics at rest.
-        let resolved =
-            super::super::styled::resolve_trigger(&theme.style(), PopupMenuTriggerStyle::Outline, rest, false, 1.0);
-        let face = FaceLook::from_part(resolved.root());
-        let metrics = theme.metrics();
-        assert_eq!(face.border_width, metrics.border_width);
-        assert_eq!(face.focus.extent(), crate::infra::focus_adorner::FocusAdorner::new(metrics.focus).extent());
     }
 
     #[test]

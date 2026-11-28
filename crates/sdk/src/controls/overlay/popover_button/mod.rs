@@ -12,8 +12,6 @@ pub use model::{
 mod callback;
 pub use callback::PopoverButtonEventExt;
 
-#[allow(deprecated)]
-pub use panel::PopoverPanelLook;
 pub use panel::{
     PopoverMotion, popover_panel_chrome_height, popover_panel_shown, resolve_popover_panel, show_popover_panel,
     wrap_popover_panel,

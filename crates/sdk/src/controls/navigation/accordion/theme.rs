@@ -83,13 +83,6 @@ pub trait AccordionTheme: Send + Sync {
         crate::infra::drag_drop::resolve_drag_preview(&crate::infra::drag_drop::sdk_drag_preview())
     }
 
-    /// Theme-owned preview and insertion feedback.
-    #[deprecated(note = "templates draw from the resolved style; use `drag_style` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
-    }
-
     /// Resolve pixel-snapped layout. Themes may share this result with inspection tools.
     /// Resolve against the selected theme snapshot; live looks refresh this on render.
     fn resolve_scale(&self, scale_factor: f32) -> AccordionScale {

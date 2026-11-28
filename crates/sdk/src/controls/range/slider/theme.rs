@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use crate::theme::stylesheet::{CommonStylesheet, PaletteRole, SliderMotionStylesheet, TransitionSpec};
 use std::collections::HashMap;
 

@@ -1,5 +1,4 @@
 //! Radix overlay-window theme for swatch info panels.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -23,17 +22,26 @@ pub fn overlay_window_theme(look: &Look) -> Arc<dyn OverlayWindowTheme> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::controls::overlay_window::OverlayWindowMode;
+    use xgpui_luma::controls::overlay_window::{OverlayWindowMode, resolve_overlay_window};
+    use xgpui_luma::style::PartRead;
 
     #[test]
     fn sizes_and_modes_match_the_radix_window() {
         let look = Look::built_in();
-        let at = |size, mode| overlay_window_theme(&look.with_size(size)).resolve(mode);
+        let at = |size, mode| {
+            let theme = overlay_window_theme(&look.with_size(size));
+            resolve_overlay_window(&theme.style(), mode)
+        };
         let modal = at(crate::RadixSize::Two, OverlayWindowMode::Modal);
-        assert_eq!((modal.radius, modal.padding, modal.min_width, modal.max_width), (8.0, 12.0, 360.0, 440.0));
-        assert!((modal.backdrop_background.a - 0.42).abs() < 1e-3);
-        assert_eq!(at(crate::RadixSize::Two, OverlayWindowMode::Modeless).backdrop_background.a, 0.0);
+        let m = modal.root();
+        assert_eq!(
+            (m.number("radius"), m.number("padding"), m.number("min_width"), m.number("max_width")),
+            (8.0, 12.0, 360.0, 440.0)
+        );
+        assert!((m.color("backdrop").a - 0.42).abs() < 1e-3);
+        assert_eq!(at(crate::RadixSize::Two, OverlayWindowMode::Modeless).root().color("backdrop").a, 0.0);
         let small = at(crate::RadixSize::One, OverlayWindowMode::Modeless);
-        assert_eq!((small.padding, small.min_width, small.estimated_height), (8.0, 280.0, 180.0));
+        let s = small.root();
+        assert_eq!((s.number("padding"), s.number("min_width"), s.number("estimated_height")), (8.0, 280.0, 180.0));
     }
 }

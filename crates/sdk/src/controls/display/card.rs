@@ -1,43 +1,11 @@
 //! The card read from `.lss` (issue #285): `card.lss`. Looks render the element from [`CardLook`].
 
 use crate::style::PartRead;
-use gpui::{AnyElement, BoxShadow, Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use xgpui_luma_style::{PartId, PartView, Value};
+use gpui::{AnyElement, Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
+use xgpui_luma_style::PartId;
 
 use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
-
-/// A card's surface, text and spacing.
-#[deprecated(note = "the card draws from `StyledCard::resolve` (#433)")]
-#[derive(Clone, Debug)]
-pub struct CardLook {
-    /// The surface fill, when it has color.
-    pub background: Option<Hsla>,
-    /// The edge, when it has color.
-    pub border: Option<Hsla>,
-    pub border_width: f32,
-    pub shadow: Vec<BoxShadow>,
-    pub radius: f32,
-    pub padding: f32,
-    pub section_gap: f32,
-    pub header_gap: f32,
-    pub body_gap: f32,
-    pub title_color: Hsla,
-    pub description_color: Hsla,
-    pub body_color: Hsla,
-    pub title: LumaTextStyle,
-    pub description: LumaTextStyle,
-    pub body: LumaTextStyle,
-    pub font_family: SharedString,
-}
-
-fn text(part: PartView<'_>) -> LumaTextStyle {
-    part.typography(14.0, 20.0)
-}
-
-fn opaque(color: Hsla) -> Option<Hsla> {
-    (color.a > 0.0).then_some(color)
-}
 
 /// The card's `.lss` values for one binding (the `card` control, with the look's variant and size).
 #[derive(Clone)]
@@ -58,38 +26,6 @@ impl StyledCard {
     /// The card's style for the binding's attributes and states (#433): the card draws from its parts.
     pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
         self.binding.resolve(&[], 1.0)
-    }
-
-    #[deprecated(note = "the card draws from `resolve()` (#433)")]
-    #[allow(deprecated)]
-    pub fn look(&self) -> CardLook {
-        let resolved = self.resolve();
-        let root = resolved.root();
-        let (title, description) = (resolved.part(PartId::new("title")), resolved.part(PartId::new("description")));
-        CardLook {
-            background: opaque(root.color("background")),
-            border: opaque(root.color("border")),
-            border_width: root.number("border_width"),
-            shadow: root
-                .value("shadow")
-                .and_then(|v| match v {
-                    Value::Shadow(layers) => Some(crate::style::lss::box_shadows(layers)),
-                    _ => None,
-                })
-                .unwrap_or_default(),
-            radius: root.number("radius"),
-            padding: root.number("padding_x"),
-            section_gap: root.number("section_gap"),
-            header_gap: root.number("header_gap"),
-            body_gap: root.number("body_gap"),
-            title_color: title.color("foreground"),
-            description_color: description.color("foreground"),
-            body_color: root.color("foreground"),
-            title: text(title),
-            description: text(description),
-            body: text(root),
-            font_family: root.font_family_name(),
-        }
     }
 }
 

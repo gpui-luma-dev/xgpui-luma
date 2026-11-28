@@ -1,30 +1,13 @@
 //! The autocomplete's status line and clear button read from `.lss` (issue #285): `autocomplete.lss`.
-#![allow(deprecated)] // `styled_autocomplete_look` builds the compatibility look.
 
-use crate::style::PartRead;
 use std::sync::Arc;
 
 use xgpui_luma_style::Value;
 
-use super::theme::{AutocompleteLook, AutocompleteTheme};
-use crate::controls::floating_menu::FloatingMenuLook;
+use super::theme::{AutocompleteTheme};
+
 use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
-
-/// The autocomplete for `binding` (the `autocomplete` control), with `menu` as its popup.
-#[deprecated(note = "read the `autocomplete` binding's resolved style instead (#433)")]
-pub fn styled_autocomplete_look(binding: &StyleBinding, menu: FloatingMenuLook) -> AutocompleteLook {
-    let resolved = binding.resolve(&[], 1.0);
-    let root = resolved.root();
-    AutocompleteLook {
-        status_color: root.color("status"),
-        status_typography: status_typography(root),
-        muted_text_color: root.color("muted_text"),
-        clear_icon_color: root.color("clear_icon"),
-        clear_icon_hover_color: root.color("clear_icon_hover"),
-        menu,
-    }
-}
 
 /// The status line's text in a resolved `autocomplete` root (#433).
 pub fn status_typography(root: xgpui_luma_style::PartView<'_>) -> LumaTextStyle {

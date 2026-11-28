@@ -1,6 +1,5 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 // Some baselines read the compatibility Looks, which build from the resolved styles (#433).
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use xgpui_luma::style::PartRead;
 use super::*;
 use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
@@ -72,9 +71,12 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             for variant in ProgressVariant::ALL {
                 for enabled in [true, false] {
                     assert_eq!(
-                        progress_theme_with(&look.with_size(sdk), variant, Paint::accent())
-                            .resolve(enabled)
-                            .track_height,
+                        {
+                            let theme = progress_theme_with(&look.with_size(sdk), variant, Paint::accent());
+                            xgpui_luma::controls::progress::resolve_progress(&theme.style(), enabled)
+                                .root()
+                                .number("track_height")
+                        },
                         progress_height
                     );
                 }
@@ -130,7 +132,7 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
     let _scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
-    assert_eq!(explicit_toolbar.resolve(true, ToolbarVariant::Outline).gap, 17.0);
+    assert_eq!(explicit_toolbar.resolve_style(true, ToolbarVariant::Outline).root().number("gap"), 17.0);
     // The card is drawn from `.lss`; `[common.card]` no longer reaches it.
     assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (12.0, -12.0));
     assert_eq!(explicit_card.resolve_style().padding, 21.0);

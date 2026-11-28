@@ -452,68 +452,6 @@ mod tests {
         );
     }
 
-    /// The face matches the selector's compatibility look in every state, except the border width, which is the
-    /// search selector's own.
-    #[test]
-    #[allow(deprecated)]
-    fn the_trigger_face_matches_the_selector_look() {
-        use crate::controls::selector::{
-            SelectorLook, SelectorTriggerStyle, SelectorVisualState, default_selector_theme, resolve_selector_trigger,
-        };
-        use crate::theme::InteractionState;
-        use crate::theme::stylesheet::SearchSelectorGeometry;
-
-        let theme = default_selector_theme();
-        let geometry = SearchSelectorGeometry::sdk();
-        let states = [
-            SelectorVisualState::default(),
-            SelectorVisualState {
-                interaction: InteractionState { hovered: true, ..Default::default() },
-                ..Default::default()
-            },
-            SelectorVisualState {
-                interaction: InteractionState { pressed: true, ..Default::default() },
-                ..Default::default()
-            },
-            SelectorVisualState {
-                interaction: InteractionState { disabled: true, ..Default::default() },
-                ..Default::default()
-            },
-            SelectorVisualState {
-                interaction: InteractionState { focused: true, ..Default::default() },
-                ..Default::default()
-            },
-            SelectorVisualState { open: true, ..Default::default() },
-            SelectorVisualState { invalid: true, ..Default::default() },
-        ];
-        for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
-            for visual in states {
-                for without_elevation in [false, true] {
-                    let resolved = resolve_selector_trigger(&theme.style(), style, visual, 1.0);
-                    let look = SelectorLook::from_resolved(
-                        &resolved,
-                        crate::controls::selector_list::SelectorItemsPanelLook::from_style(&theme.menu()),
-                        without_elevation,
-                    );
-                    let face = trigger_face_look(&resolved, &geometry, without_elevation, None);
-                    let case = format!("{style:?} {visual:?} without_elevation={without_elevation}");
-                    assert_eq!(face.background, look.trigger_background, "{case}");
-                    assert_eq!(face.foreground, look.trigger_foreground, "{case}");
-                    assert_eq!(face.border, look.trigger_border, "{case}");
-                    assert_eq!(face.border_width, geometry.border_width, "{case}");
-                    assert_eq!(face.shadow, look.trigger_shadow, "{case}");
-                    assert_eq!(face.typography, look.trigger_typography, "{case}");
-                    assert_eq!(face.padding_x, look.trigger_padding_x, "{case}");
-                    assert_eq!(face.padding_y, look.trigger_padding_y, "{case}");
-                    assert_eq!(face.gap, look.trigger_gap, "{case}");
-                    assert_eq!(face.height, look.trigger_height, "{case}");
-                    assert_eq!(face.focus_border, look.trigger_focus_border, "{case}");
-                    assert_eq!(face.opacity, look.trigger_opacity, "{case}");
-                }
-            }
-        }
-    }
-
     #[test]
     fn a_typography_override_replaces_the_styled_typography() {
         use crate::controls::selector::{default_selector_theme, resolve_selector_trigger};

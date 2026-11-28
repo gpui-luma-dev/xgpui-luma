@@ -10,8 +10,7 @@ mod builder;
 pub use builder::ListBoxBuilder;
 mod template;
 mod styled;
-#[allow(deprecated)]
-pub use styled::{ListBoxRowLook, ListBoxSurfaceLook, StyledListBox};
+pub use styled::{StyledListBox};
 mod themed;
 pub use themed::ThemedListBoxTemplate;
 pub use template::{ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxDragLook};

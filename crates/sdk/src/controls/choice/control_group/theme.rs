@@ -18,24 +18,6 @@ pub struct ControlGroupItemVisualContext {
     pub height: f32,
 }
 
-#[deprecated(note = "templates draw from the resolved style; use `ControlGroupTheme::resolve_list_style` (#433)")]
-#[derive(Clone, Copy, Debug)]
-pub struct ControlGroupListLook {
-    pub background: Hsla,
-    pub border: Hsla,
-    pub radius: f32,
-    pub padding_x: f32,
-    pub padding_y: f32,
-    pub gap: f32,
-    /// Vertical layout gap in logical pixels; independent of horizontal spacing.
-    pub vertical_gap: f32,
-    /// Shell border thickness in logical pixels; zero removes it.
-    pub border_width: f32,
-    /// A disabled default row's opacity: the `item` part's `:disabled { opacity }`. Custom item templates own
-    /// their opacity.
-    pub item_disabled_opacity: f32,
-}
-
 pub trait ControlGroupTheme: Send + Sync {
     /// The `control_group` binding the frame is read from.
     fn style(&self) -> StyleBinding {
@@ -46,12 +28,6 @@ pub trait ControlGroupTheme: Send + Sync {
     /// opacity.
     fn resolve_list_style(&self, enabled: bool) -> Arc<Resolved> {
         super::styled::resolve_control_group(&self.style(), enabled)
-    }
-
-    #[deprecated(note = "templates draw from the resolved style; use `resolve_list_style` (#433)")]
-    #[allow(deprecated)]
-    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook {
-        ControlGroupListLook::from_resolved(&self.resolve_list_style(enabled), &self.resolve_list_style(false))
     }
 
     fn metrics(&self) -> MetricTokens;
