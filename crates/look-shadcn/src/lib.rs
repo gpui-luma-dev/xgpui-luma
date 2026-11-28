@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 mod action;
 mod look_context;
 pub mod catalog;
@@ -46,7 +45,7 @@ pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
 pub use look_context::LookContext;
 pub use stylesheet::{StylesheetConfig, embedded_stylesheet};
-pub use elements::{BadgeLook, badge_look};
+
 pub use elements::{Badge, BadgeIconPlacement, BadgeVariant, badge_style};
 pub use controls::{
     Frame, Accordion, Autocomplete, Button, ButtonRadiusPreset, Card, Checkbox, ComboBox, ContextMenu, IconGroup,

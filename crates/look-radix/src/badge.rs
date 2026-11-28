@@ -1,5 +1,4 @@
 //! Non-interactive Radix badge element. Applications supply labels and placement.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 #[cfg(test)]
 use gpui::Hsla;
@@ -103,12 +102,6 @@ impl Badge {
         xgpui_luma::controls::badge::StyledBadge::new(self.binding()).resolve()
     }
 
-    /// The badge from `.lss` (`style/badge.lss`) for this variant, tone, contrast and size.
-    #[deprecated(note = "the badge draws from `resolve()` (#433)")]
-    pub fn look(&self) -> xgpui_luma::controls::badge::BadgeLook {
-        xgpui_luma::controls::badge::StyledBadge::new(self.binding()).look()
-    }
-
     fn binding(&self) -> xgpui_luma::style::StyleBinding {
         let binding = xgpui_luma::style::StyleBinding::new("badge", crate::textfield::live_source(&self.look));
         let binding = match self.variant {
@@ -172,6 +165,7 @@ impl IntoElement for Badge {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::style::PartRead;
     use xgpui_luma::theme::ThemeMode;
     #[test]
     fn sizes_follow_radix_metrics() {
@@ -181,9 +175,20 @@ mod tests {
             (BadgeSize::Two, (12.0, 16.0, 8.0, 4.0, 4.0)),
             (BadgeSize::Three, (14.0, 20.0, 10.0, 4.0, 4.0)),
         ] {
-            let l = Badge::new(&look, "New").size(size).look();
-            assert_eq!((l.typography.size, l.typography.line_height, l.padding_x, l.padding_y, l.radius), want);
-            assert_eq!(l.typography.weight, gpui::FontWeight::MEDIUM);
+            let resolved = Badge::new(&look, "New").size(size).resolve();
+            let l = resolved.root();
+            let typography = l.typography(12.0, 16.0);
+            assert_eq!(
+                (
+                    typography.size,
+                    typography.line_height,
+                    l.number("padding_x"),
+                    l.number("padding_y"),
+                    l.number("radius")
+                ),
+                want
+            );
+            assert_eq!(typography.weight, gpui::FontWeight::MEDIUM);
         }
     }
 

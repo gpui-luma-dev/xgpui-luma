@@ -88,9 +88,17 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             ),
             (180.0, 32.0 * 0.9, 9.0, 14.0)
         );
-        let tooltip = tooltip_theme(&look).resolve();
+        let tooltip = xgpui_luma::controls::tooltip::resolve_tooltip(&tooltip_theme(&look).style());
+        let tooltip = tooltip.root();
+        let text = tooltip.typography(14.0, 20.0);
         assert_eq!(
-            (tooltip.padding, tooltip.padding_y, tooltip.max_width, tooltip.text_size, tooltip.line_height),
+            (
+                tooltip.number("padding_x"),
+                tooltip.number("padding_y"),
+                tooltip.number("max_width"),
+                text.size,
+                text.line_height
+            ),
             (8.0, 4.0, 260.0, 12.0, 16.0)
         );
     }
