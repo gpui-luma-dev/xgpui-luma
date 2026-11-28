@@ -1,7 +1,7 @@
 //! Selectable card: a Luma button drawn as a card. It keeps the button's input,
 //! keyboard focus and accessibility. Selected, hover, press and focus fills come
 //! from the look's interaction colors.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, InteractiveElement, IntoElement, Pixels, SharedString, Styled, prelude::FluentBuilder};

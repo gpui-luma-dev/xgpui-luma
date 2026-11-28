@@ -3,7 +3,7 @@
 //! selectors inside it keep their own `.lss` and stay live, but aren't picked or inspected here (states
 //! that belong to items are #302's to design). The page has no options: the toolbar's focus strategy
 //! is keyboard behavior, not part of its look.
-#![allow(deprecated)] // Item presenters still read the compatibility `ButtonFamilyLook` (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 

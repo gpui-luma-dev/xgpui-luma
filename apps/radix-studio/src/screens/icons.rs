@@ -1,5 +1,5 @@
 //! Icons screen with SDK buttons and popup icon details.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 use gpui::{

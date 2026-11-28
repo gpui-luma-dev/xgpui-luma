@@ -366,7 +366,7 @@ impl MediaPage {
                 let field = radix::TextField::new(format!("media-field-{parameter:?}"))
                     .look(look.as_ref())
                     .surface()
-                    .look_override(crate::screen::value_field_look(&look))
+                    .overrides(crate::screen::value_field_overrides(&look))
                     .full_width(true)
                     .value(parameter.format(value))
                     .select_all_on_tab_focus(true)

@@ -1,4 +1,5 @@
 //! Theme-aware tooltip defaults, bound to the same shared/forked look as the control.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 use xgpui_luma::controls::tooltip::{StyledTooltipTheme, TooltipTheme};
 use crate::Look;
@@ -13,7 +14,6 @@ pub fn tooltip_theme(look: &Look) -> Arc<dyn TooltipTheme> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::SemanticRole;

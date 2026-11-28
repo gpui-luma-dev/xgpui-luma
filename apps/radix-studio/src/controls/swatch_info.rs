@@ -1,5 +1,5 @@
 //! Palette-step details and equivalent alpha colors over the selected background.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

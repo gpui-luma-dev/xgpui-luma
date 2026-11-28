@@ -1,4 +1,5 @@
 //! Radix split actions using the SDK's shared popup engine and independent face states.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::{
@@ -49,7 +50,6 @@ pub fn split_button_builder(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};

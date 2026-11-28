@@ -13,7 +13,7 @@ use crate::{
     lab_controls::{Choice, labels},
     screen::{
         Hero, LabCard, LabMetrics, LabScreen, Legend, Mark, Param, ParametersPanel, PreviewPanel, data,
-        labeled_control, mono_family, value_field_look,
+        labeled_control, mono_family, value_field_overrides,
     },
     theme::ColorVizLookExt,
 };
@@ -134,7 +134,7 @@ impl ChromaticityLab {
                 radix::TextField::new(format!("chroma-rgb-{index}"))
                     .look(&look)
                     .surface()
-                    .look_override(value_field_look(&look))
+                    .overrides(value_field_overrides(&look))
                     .full_width(true)
                     .value(format!("{:.3}", model::PATCHES[0].1[index]))
                     .validator(Arc::new(|text| parse_channel(text).is_some()))

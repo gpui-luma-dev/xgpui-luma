@@ -1,4 +1,5 @@
 //! Radix scrollbar chrome for standalone and composed SDK scrolling controls.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 
 use xgpui_luma::controls::scrollbar::{ScrollbarTemplate, ScrollbarTheme, StyledScrollbarTheme, ThemedScrollbarTemplate};
@@ -38,7 +39,6 @@ pub fn scrollbar_template(look: &Look) -> Arc<dyn ScrollbarTemplate> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};

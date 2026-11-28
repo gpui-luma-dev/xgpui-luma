@@ -15,7 +15,7 @@
 //! Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
-#![allow(deprecated)] // Still reads the look-closure bridge until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::Result;

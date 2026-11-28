@@ -1,6 +1,6 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 // Some baselines read the compatibility Looks, which build from the resolved styles (#433).
-#![allow(deprecated)]
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use super::*;
 use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
 use xgpui_luma::controls::{textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant};

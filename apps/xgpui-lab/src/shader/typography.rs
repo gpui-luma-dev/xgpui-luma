@@ -23,7 +23,7 @@ use crate::{
     lab_controls::{Choice, labels},
     screen::{
         CardWidth, ComparePane, Hero, LabCard, LabScreen, PanelShell, Param, ParametersPanel, TextRole, card_button,
-        labeled_control, properties, text, value_field_look,
+        labeled_control, properties, text, value_field_overrides,
     },
 };
 
@@ -667,7 +667,7 @@ impl TypographyDemo {
         radix::TextField::new(id.to_owned())
             .look(look.as_ref())
             .surface()
-            .look_override(value_field_look(look))
+            .overrides(value_field_overrides(look))
             .full_width(true)
             .value(value.to_owned())
             .select_all_on_tab_focus(true)

@@ -1,4 +1,5 @@
 //! Runtime radix look: mode + dual scale space (color + gray).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::{
     Arc,
@@ -608,7 +609,6 @@ fn mode_from_u8(value: u8) -> ThemeMode {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::color::gpui_bridge;

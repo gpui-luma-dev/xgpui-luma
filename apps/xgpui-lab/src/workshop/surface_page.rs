@@ -2,7 +2,7 @@
 //! from what the control's `.lss` declares, and the control's events, beside the `.lss` inspector in a
 //! resizable split. What differs per control comes from its [`SurfaceControl`]; the page is the same for
 //! every control.
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::Arc;
 

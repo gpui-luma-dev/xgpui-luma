@@ -297,11 +297,18 @@ impl TextFieldControl {
     }
 
     pub fn set_font_family(&mut self, family: SharedString, cx: &mut Context<Self>) {
-        let family = family.clone();
-        self.model.look_override = Some(Arc::new(move |mut look| {
-            look.font_family = family.clone();
-            look
-        }));
+        self.model.overrides = std::mem::take(&mut self.model.overrides).set(
+            PartId::ROOT,
+            Prop::<Arc<str>>::new("font_family"),
+            Arc::<str>::from(family.as_ref()),
+        );
+        self.layout_cache = None;
+        cx.notify();
+    }
+
+    /// Replace this field's style overrides (#433).
+    pub fn set_overrides(&mut self, overrides: Overrides, cx: &mut Context<Self>) {
+        self.model.overrides = overrides;
         self.layout_cache = None;
         cx.notify();
     }
@@ -326,6 +333,7 @@ impl TextFieldControl {
                 .set(PartId::ROOT, Prop::<f32>::new("padding_y"), geometry.compact_textfield_padding_y)
                 .set(PartId::ROOT, Prop::<f32>::new("height"), geometry.compact_textfield_height);
         }
+        overrides = overrides.merge(&self.model.overrides);
         if let Some(override_fn) = &self.model.look_override {
             let before =
                 TextFieldLook::from_resolved(&template.resolve_style(self.state, self.model.enabled, &overrides));

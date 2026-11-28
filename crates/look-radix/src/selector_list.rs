@@ -1,6 +1,5 @@
 //! Shared selector row and panel styling for SDK selection controls.
-
-#![allow(deprecated)] // The panel-look functions are compatibility paths.
+#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
 use xgpui_luma::style::StyleBinding;
@@ -56,7 +55,6 @@ pub fn selector_items_panel_look_for(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::style::ThemeSource;
@@ -111,7 +109,6 @@ mod tests {
 
 /// The panel style draws the border width the old look took from the size's metrics, at every size (#433).
 #[cfg(test)]
-#[allow(deprecated)]
 mod parity_tests {
     use super::*;
     use xgpui_luma::style::PartRead;
