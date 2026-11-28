@@ -5,8 +5,7 @@ use gpui::{
 };
 
 use super::{
-    DockSplitterLook, DockSplitterBuilder, DockSplitterModel, DockSplitterRenderModel, DockSplitterTemplateHandlers,
-    SplitterOrientation,
+    DockSplitterBuilder, DockSplitterModel, DockSplitterRenderModel, DockSplitterTemplateHandlers, SplitterOrientation,
 };
 use crate::infra::state::ControlFocusState;
 use crate::theme::observe_theme_revision;
@@ -111,8 +110,8 @@ impl DockSplitter {
         }
     }
 
-    fn look(&self) -> DockSplitterLook {
-        self.model.theme.resolve(self.model.enabled)
+    fn style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        super::resolve_dock_splitter(&self.model.theme.style(), self.model.enabled)
     }
 
     fn template_handlers(&self, cx: &mut Context<Self>) -> DockSplitterTemplateHandlers {
@@ -244,7 +243,8 @@ impl Render for DockSplitter {
             .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let model = self.render_model(window);
-        let look = self.look();
+        let resolved = self.style();
+        let look = resolved.root();
         let handlers = self.template_handlers(cx);
 
         div()
@@ -252,7 +252,7 @@ impl Render for DockSplitter {
             .on_drag_move(cx.listener(Self::handle_drag_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::handle_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::handle_mouse_up))
-            .child(self.model.template.render(&model, &look, handlers, window, cx))
+            .child(self.model.template.render(&model, look, handlers, window, cx))
             .into_any_element()
     }
 }

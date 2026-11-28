@@ -112,7 +112,12 @@ pub fn progress_template(
     if variant == ProgressVariant::Surface {
         let look = look.clone();
         Arc::new(template.with_modifier(move |root, model| {
-            let height = theme.resolve(model.enabled).track_height;
+            let height = {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::progress::resolve_progress(&theme.style(), model.enabled)
+                    .root()
+                    .number("track_height")
+            };
             root.child(div().absolute().inset_0().rounded(px(progress_radius_for_height(height, radius))).shadow(vec![
                 BoxShadow {
                     offset: point(px(0.0), px(0.0)),
@@ -129,6 +134,7 @@ pub fn progress_template(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;
@@ -182,6 +188,7 @@ mod tests {
 }
 
 #[cfg(all(test, feature = "test-support"))]
+#[allow(deprecated)]
 mod render_tests {
     use super::*;
     use gpui::{Context, Render, TestAppContext, Window};

@@ -6,8 +6,10 @@ pub(crate) use plot::SdkCartesianStyle;
 
 use std::sync::Arc;
 
-use gpui::{Edges, Styled, px};
-use xgpui_luma::controls::frame::{FrameBuilder, FrameLook};
+use gpui::{Styled, px};
+use xgpui_luma::controls::frame::FrameBuilder;
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+use xgpui_luma::style::{StyleBinding, lss_color};
 use xgpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography};
 mod live;
 pub(crate) use live::AppTheme;
@@ -32,19 +34,24 @@ pub(crate) fn chrome(look: &AppTheme) -> LumaChrome {
 /// Fixed host surface for the app's scroll viewport.
 pub(crate) fn scroll_surface(look: &AppTheme) -> FrameBuilder {
     let look = look.clone();
-    FrameBuilder::new("plot-viz-scroll-surface")
-        .look_provider(move |_| FrameLook { background: look.tokens().palette.app.background, ..FrameLook::default() })
+    FrameBuilder::new("plot-viz-scroll-surface").style_source(move |_| {
+        let background = lss_color(look.tokens().palette.app.background);
+        StyleBinding::sdk("frame").overrides(Overrides::new().set(PartId::ROOT, Prop::new("background"), background))
+    })
 }
 
 /// General decorated frame; content owns its own rendering and presentation.
 pub(crate) fn panel_frame(look: &AppTheme, id: &'static str) -> FrameBuilder {
     let look = look.clone();
-    FrameBuilder::new(id).look_provider(move |_| FrameLook {
-        background: look.tokens().palette.surface.panel.background,
-        border_color: look.tokens().palette.border.default,
-        border_widths: Edges::all(px(1.0)),
-        radius: px(8.0),
-        ..FrameLook::default()
+    FrameBuilder::new(id).style_source(move |_| {
+        let (root, palette) = (PartId::ROOT, &look.tokens().palette);
+        StyleBinding::sdk("frame").overrides(
+            Overrides::new()
+                .set(root, Prop::new("background"), lss_color(palette.surface.panel.background))
+                .set(root, Prop::new("border"), lss_color(palette.border.default))
+                .set(root, Prop::<f32>::new("border_width"), 1.0)
+                .set(root, Prop::<f32>::new("radius"), 8.0),
+        )
     })
 }
 

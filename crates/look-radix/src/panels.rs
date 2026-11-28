@@ -43,10 +43,14 @@ pub fn slide_panel_state(look: &Look, anchor: SlidePanelTopAnchor, size: SlidePa
         .handle_metrics(resizable_panels_theme(look).resize_handle_metrics())
         .motion_defaults(look.motion_defaults().slide_panel)
 }
-/// Resolve live Radix drawer resize chrome shared with Resizable Panels.
-pub fn slide_panel_look(look: &Look) -> ResizablePanelsLook {
-    resizable_panels_theme(look).resolve(Default::default())
+/// Live Radix drawer resize chrome shared with Resizable Panels: its resolved style (#433).
+pub fn slide_panel_style(look: &Look) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    xgpui_luma::controls::resizable_panels::resolve_resizable_panels(
+        &resizable_panels_theme(look).style(),
+        Default::default(),
+    )
 }
+
 /// Render a Radix drawer through the SDK window overlay; state and handlers stay app-owned.
 pub fn render_slide_panel_overlay(
     look: &Look,
@@ -58,7 +62,7 @@ pub fn render_slide_panel_overlay(
 ) -> AnyElement {
     xgpui_luma::controls::slide_panel::render_slide_panel_overlay(
         look.resolve_role(SemanticRole::Surface).hsla(),
-        &slide_panel_look(look),
+        &slide_panel_style(look),
         state,
         viewport,
         content,
@@ -77,7 +81,7 @@ pub fn render_slide_panel_surface(
 ) -> AnyElement {
     xgpui_luma::controls::slide_panel::render_slide_panel_surface(
         look.resolve_role(SemanticRole::Surface).hsla(),
-        &slide_panel_look(look),
+        &slide_panel_style(look),
         state,
         viewport,
         content,
@@ -94,7 +98,7 @@ pub fn render_slide_panel_inset(
     resize: SlidePanelResizeHandlers,
 ) -> AnyElement {
     xgpui_luma::controls::slide_panel::render_slide_panel_inset(
-        &slide_panel_look(look),
+        &slide_panel_style(look),
         state,
         content,
         look.resolve_role(SemanticRole::Surface).hsla(),
@@ -104,6 +108,7 @@ pub fn render_slide_panel_inset(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::theme::InteractionState;
@@ -129,7 +134,13 @@ mod tests {
                 crate::control_group::assert_close(normal.grip_emphasis, role(SemanticRole::Focus));
                 crate::control_group::assert_close(disabled.grip_emphasis, role(SemanticRole::MutedForeground));
                 assert_eq!((disabled.opacity, normal.opacity), (1.0, 1.0), "colors, no fade");
-                assert_eq!(slide_panel_look(&look).divider, normal.divider);
+                assert_eq!(
+                    {
+                        use xgpui_luma::style::PartRead;
+                        slide_panel_style(&look).root().color("divider")
+                    },
+                    normal.divider
+                );
                 let sizes = crate::RadixSize::ALL
                     .map(|size| resizable_panels_theme(&look.with_size(size)).resize_handle_metrics());
                 assert!(sizes[0].hit_target_px < sizes[1].hit_target_px);

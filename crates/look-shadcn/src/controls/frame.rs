@@ -3,8 +3,8 @@
 //! `Frame::new` uses general panel tokens. `Frame::sidebar` explicitly selects
 //! sidebar tokens. GPUI's `Styled` methods override either preset, including
 //! border widths per edge, asymmetric padding, min/max bounds, and flex layout.
-use gpui::{App, Context, Edges, Entity, IntoElement, SharedString, Stateful, Div, StyleRefinement, Styled, px};
-use xgpui_luma::controls::frame::{FrameBuilder, FrameControl, FrameLook};
+use gpui::{App, Context, Entity, IntoElement, SharedString, Stateful, Div, StyleRefinement, Styled, px};
+use xgpui_luma::controls::frame::{FrameBuilder, FrameControl};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::ShadcnRadius;
 use super::sidebar::sidebar_container_look;
@@ -39,12 +39,12 @@ impl Frame {
     /// Bind the look handle now, while resolving its current colors every render.
     pub fn into_sdk_builder(self, cx: &App) -> FrameBuilder {
         let look = resolve_look_from(self.look.as_ref(), cx);
-        self.builder.look_provider(move |_| frame_look(&look, self.sidebar))
+        self.builder.style_source(move |_| frame_style(&look, self.sidebar))
     }
     pub fn render(&self, cx: &App) -> Stateful<Div> {
         let look = resolve_look_from(self.look.as_ref(), cx);
         let sidebar = self.sidebar;
-        self.builder.clone().look_provider(move |_| frame_look(&look, sidebar)).render(cx)
+        self.builder.clone().style_source(move |_| frame_style(&look, sidebar)).render(cx)
     }
     pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> Entity<FrameControl> {
         self.into_sdk_builder(cx).spawn(cx)
@@ -56,20 +56,25 @@ impl Styled for Frame {
     }
 }
 
-fn frame_look(look: &ShadcnLook, sidebar: bool) -> FrameLook {
+/// The frame's style: the SDK `frame` with this look's panel or sidebar surface set over it (#433).
+fn frame_style(look: &ShadcnLook, sidebar: bool) -> xgpui_luma::style::StyleBinding {
+    use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+    use xgpui_luma::style::lss_color;
     let (background, border_color, radius) = if sidebar {
         let container = sidebar_container_look(look.mode_tokens().as_ref());
         (container.background, container.border, px(container.radius))
     } else {
         (look.chrome().panel_background, look.chrome().border, px(look.radius(ShadcnRadius::Lg)))
     };
-    FrameLook {
-        background,
-        border_color,
-        radius,
-        padding: Edges::all(px(if sidebar { 8.0 } else { 0.0 })),
-        ..FrameLook::default()
-    }
+    let (root, padding) = (PartId::ROOT, if sidebar { 8.0 } else { 0.0 });
+    xgpui_luma::style::StyleBinding::sdk("frame").overrides(
+        Overrides::new()
+            .set(root, Prop::new("background"), lss_color(background))
+            .set(root, Prop::new("border"), lss_color(border_color))
+            .set(root, Prop::<f32>::new("radius"), f32::from(radius))
+            .set(root, Prop::<f32>::new("padding_x"), padding)
+            .set(root, Prop::<f32>::new("padding_y"), padding),
+    )
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -80,6 +85,8 @@ mod tests {
 
     #[test]
     fn generic_and_sidebar_presets_resolve_independently_after_theme_changes() {
+        // Frame colors pass through an `.lss` color, as the style draws them (#433).
+        let lss = |color: gpui::Hsla| gpui::Hsla::from(xgpui_luma::style::lss_color(color));
         let app = TestAppContext::single();
         let look = crate::test_support::fallback_look();
         let panel = app.update(|cx| Frame::new("panel").look(&look).into_sdk_builder(cx));
@@ -90,11 +97,11 @@ mod tests {
                 let mut panel_root = panel.render(cx);
                 let mut sidebar_root = sidebar.render(cx);
                 let sidebar_defaults = sidebar_container_look(look.mode_tokens().as_ref());
-                assert_eq!(panel_root.style().background, Some(look.chrome().panel_background.into()));
-                assert_eq!(sidebar_root.style().background, Some(sidebar_defaults.background.into()));
+                assert_eq!(panel_root.style().background, Some(lss(look.chrome().panel_background).into()));
+                assert_eq!(sidebar_root.style().background, Some(lss(sidebar_defaults.background).into()));
                 assert_ne!(panel_root.style().background, sidebar_root.style().background);
-                assert_eq!(panel_root.style().border_color, Some(look.chrome().border));
-                assert_eq!(sidebar_root.style().border_color, Some(sidebar_defaults.border));
+                assert_eq!(panel_root.style().border_color, Some(lss(look.chrome().border)));
+                assert_eq!(sidebar_root.style().border_color, Some(lss(sidebar_defaults.border)));
                 assert_eq!(panel_root.style().corner_radii.top_left, Some(px(look.radius(ShadcnRadius::Lg)).into()));
             });
         }

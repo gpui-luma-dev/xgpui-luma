@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
@@ -99,8 +100,10 @@ impl ScrollbarTemplate for ModifiedTemplate<dyn ScrollbarTemplate> {
 }
 
 impl ScrollbarTemplate for ThemedScrollbarTemplate {
-    fn min_thumb_length(&self, orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {
-        self.theme.resolve(Default::default(), orientation, style).min_thumb_length
+    fn min_thumb_length(&self, _orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {
+        super::resolve_scrollbar(&self.theme.state_style(Default::default()), Default::default(), style)
+            .root()
+            .number("min_thumb_length")
     }
 
     fn render(
@@ -120,16 +123,17 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             drag_move,
             scroll_wheel,
         } = handlers;
-        let look = self.theme.resolve(model.state, model.orientation, model.style);
+        let resolved = super::resolve_scrollbar(&self.theme.state_style(model.state), model.state, model.style);
+        let look = resolved.root();
         let percentage = model.percentage.clamp(0.0, 1.0);
         let thumb_fraction = model.thumb_fraction.clamp(0.05, 1.0);
-        let thickness = if look.thickness.is_finite() && look.thickness >= 0.0 {
-            look.thickness
+        let thickness = if look.number("thickness").is_finite() && look.number("thickness") >= 0.0 {
+            look.number("thickness")
         } else {
             crate::style::sdk_number("scrollbar", "thickness")
         };
-        let track_thickness = clamped_thickness(look.track_thickness, 0.0, thickness);
-        let thumb_thickness = clamped_thickness(look.thumb_thickness, 0.0, thickness);
+        let track_thickness = clamped_thickness(look.number("track_thickness"), 0.0, thickness);
+        let thumb_thickness = clamped_thickness(look.number("thumb_thickness"), 0.0, thickness);
         let track_cross_offset = (thickness - track_thickness) * 0.5;
         let thumb_cross_offset = (thickness - thumb_thickness) * 0.5;
 
@@ -146,8 +150,8 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             thumb_top,
         ) = match model.orientation {
             ScrollbarOrientation::Horizontal => {
-                let length = model.length.unwrap_or(look.length);
-                let thumb_length = (length * thumb_fraction).clamp(look.min_thumb_length.min(length), length);
+                let length = model.length.unwrap_or_else(|| super::scrollbar_length(&resolved, model.orientation));
+                let thumb_length = (length * thumb_fraction).clamp(look.number("min_thumb_length").min(length), length);
                 let thumb_left = ((length - thumb_length).max(0.0) * percentage).clamp(0.0, length);
 
                 (
@@ -164,8 +168,8 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
                 )
             }
             ScrollbarOrientation::Vertical => {
-                let length = model.length.unwrap_or(look.length);
-                let thumb_length = (length * thumb_fraction).clamp(look.min_thumb_length.min(length), length);
+                let length = model.length.unwrap_or_else(|| super::scrollbar_length(&resolved, model.orientation));
+                let thumb_length = (length * thumb_fraction).clamp(look.number("min_thumb_length").min(length), length);
                 let thumb_top = ((length - thumb_length).max(0.0) * percentage).clamp(0.0, length);
 
                 (
@@ -190,10 +194,10 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             .top(px(track_top))
             .w(px(track_width))
             .h(px(track_height))
-            .bg(look.track_background)
-            .rounded(px(look.radius))
-            .when(look.track_border_width > 0.0, |track| {
-                track.border(px(look.track_border_width)).border_color(look.track_border)
+            .bg(look.color("background"))
+            .rounded(px(look.number("radius")))
+            .when(look.number("border_width") > 0.0, |track| {
+                track.border(px(look.number("border_width"))).border_color(look.color("border"))
             });
 
         let thumb = div()
@@ -203,8 +207,8 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             .top(px(thumb_top))
             .w(px(thumb_width))
             .h(px(thumb_height))
-            .bg(look.thumb_background)
-            .rounded(px(look.radius))
+            .bg(look.color("thumb"))
+            .rounded(px(look.number("radius")))
             .child(canvas(move |bounds, window, cx| thumb_bounds(&bounds, window, cx), |_, _, _, _| {}).size_full());
 
         let mut root = div()
@@ -233,7 +237,7 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
         if model.enabled {
             root = root.cursor_pointer();
         }
-        root = crate::style::fade(root, look.opacity);
+        root = crate::style::fade(root, look.opacity());
 
         self.modifiers.apply(root, model)
     }

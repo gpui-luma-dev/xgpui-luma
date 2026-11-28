@@ -197,7 +197,9 @@ struct Cell {
 fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
     // The cell's Radix size selects the resize handle size.
     let theme = radix::resizable_panels_theme(&look.with_size(cell.size));
-    let resolved = theme.resolve(cell.state);
+    use xgpui_luma::style::PartRead;
+    let style = xgpui_luma::controls::resizable_panels::resolve_resizable_panels(&theme.style(), cell.state);
+    let resolved = style.root();
     let orientation = if cell.variant == 0 {
         ResizablePanelsOrientation::Horizontal
     } else {
@@ -210,7 +212,7 @@ fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
         })
     });
     let extent = if cell.variant == 0 { 160.0 } else { 96.0 };
-    let seam = (extent - 2.0 * resolved.border_width) / 2.0;
+    let seam = (extent - 2.0 * resolved.number("border_width")) / 2.0;
     let sizes = [seam, seam];
     let model = ResizablePanelsRenderModel {
         id,
@@ -231,10 +233,10 @@ fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
         measured_size: None,
     };
     let handle_selector = format!("{id}-handle");
-    let handle = render_resizable_panels_handle(0, &model, &resolved, seam, cell.state.focused)
+    let handle = render_resizable_panels_handle(0, &model, resolved, seam, cell.state.focused)
         .debug_selector(move || handle_selector.clone())
         .into_any_element();
-    render_resizable_panels_surface(&model, &resolved, [handle]).into_any_element()
+    render_resizable_panels_surface(&model, resolved, [handle]).into_any_element()
 }
 
 #[cfg(all(test, feature = "test-support"))]

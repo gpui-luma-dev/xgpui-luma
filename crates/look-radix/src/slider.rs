@@ -119,6 +119,7 @@ pub fn slider_template(look: &Look, variant: SliderVariant) -> Arc<dyn SliderTem
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::scale::ScaleFamily;
@@ -215,6 +216,7 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod track_border_tests {
     /// Radix tracks keep no outline although the SDK's have one (#397).
     #[test]

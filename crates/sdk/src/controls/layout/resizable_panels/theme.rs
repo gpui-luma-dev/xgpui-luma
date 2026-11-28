@@ -1,9 +1,14 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
 use crate::theme::InteractionState;
 
+#[deprecated(
+    note = "resizable panels draw from `ResizablePanelsTheme::style()`; resolve it with `resolve_resizable_panels` (#433)"
+)]
 #[derive(Clone, Debug)]
 pub struct ResizablePanelsLook {
     pub border: Hsla,
@@ -24,7 +29,17 @@ pub trait ResizablePanelsTheme: Send + Sync {
         super::ResizeHandleMetrics::default()
     }
 
-    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook;
+    /// The panels' style (#433): the binding the template resolves (see
+    /// [`resolve_resizable_panels`](super::resolve_resizable_panels)) and draws from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("resizable_panels")
+    }
+
+    /// The panels' look, built from [`Self::style`] for code that still reads a [`ResizablePanelsLook`].
+    #[deprecated(note = "the template draws from `style()`; resolve it with `resolve_resizable_panels` (#433)")]
+    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
+        ResizablePanelsLook::from_resolved(&super::resolve_resizable_panels(&self.style(), state))
+    }
 }
 
 pub fn default_resizable_panels_theme() -> Arc<dyn ResizablePanelsTheme> {

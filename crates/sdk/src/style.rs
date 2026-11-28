@@ -93,6 +93,7 @@ sdk_sources! {
         "controls/layout/dock_splitter/dock_splitter.lss",
         "controls/layout/resizable_panels/resizable_panels.lss",
         "controls/layout/split_view/split_view.lss",
+        "controls/layout/frame.lss",
         "controls/display/avatar.lss",
         "controls/display/badge.lss",
         "controls/display/card.lss",

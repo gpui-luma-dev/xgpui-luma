@@ -608,6 +608,7 @@ fn mode_from_u8(value: u8) -> ThemeMode {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use xgpui_luma::color::gpui_bridge;

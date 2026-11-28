@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xgpui_luma::controls::progress::{ProgressTheme, ThemedLinearProgressTemplate, ThemedProgressTemplate};
 
-use crate::controls::progress::progress_look;
+use crate::controls::progress::progress_style;
 use crate::look::ShadcnLook;
 
 struct ShadcnProgressTheme {
@@ -10,10 +10,8 @@ struct ShadcnProgressTheme {
 }
 
 impl ProgressTheme for ShadcnProgressTheme {
-    fn resolve(&self, enabled: bool) -> xgpui_luma::controls::progress::ProgressLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        progress_look(tokens.as_ref(), enabled, size)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        progress_style(self.theme.mode_tokens().as_ref(), self.theme.size())
     }
 }
 

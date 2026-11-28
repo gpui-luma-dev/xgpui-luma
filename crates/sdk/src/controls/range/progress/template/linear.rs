@@ -1,3 +1,4 @@
+use crate::style::PartRead;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, Hsla, Stateful, Window, div, hsla, px, relative, prelude::*};
@@ -47,10 +48,11 @@ pub fn default_linear_progress_template() -> Arc<dyn ProgressTemplate> {
 
 impl ProgressTemplate for LinearProgressTemplate {
     fn render(&self, model: &ProgressRenderModel<'_>, _window: &mut Window, _cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled);
+        let look = super::super::resolve_progress(&self.theme.style(), model.enabled);
+        let geometry = crate::theme::stylesheet::ProgressGeometry::from_resolved(&look);
         let percentage = model.percentage.clamp(0.0, 1.0);
-        let track_height = look.track_height;
-        let thumb_size = look.thumb_size;
+        let track_height = look.root().number("track_height");
+        let thumb_size = look.root().number("thumb_size");
         let track_radius = px(self
             .track_radius
             .as_ref()
@@ -72,7 +74,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                 let track_node = div()
                     .absolute()
                     .rounded(track_radius)
-                    .bg(look.track_color)
+                    .bg(look.part(xgpui_luma_style::PartId::new("track")).color("background"))
                     .left_0()
                     .right_0()
                     .top(px(track_inset))
@@ -85,15 +87,15 @@ impl ProgressTemplate for LinearProgressTemplate {
                         track_inset,
                         track_height,
                         track_radius,
-                        look.progress_color,
-                        &look.geometry,
+                        look.part(xgpui_luma_style::PartId::new("fill")).color("background"),
+                        &geometry,
                     )
                 } else {
                     match model.direction {
                         ProgressDirection::LeftToRight => div()
                             .absolute()
                             .rounded(track_radius)
-                            .bg(look.progress_color)
+                            .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"))
                             .left_0()
                             .top(px(track_inset))
                             .h(px(track_height))
@@ -101,7 +103,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                         ProgressDirection::RightToLeft => div()
                             .absolute()
                             .rounded(track_radius)
-                            .bg(look.progress_color)
+                            .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"))
                             .right_0()
                             .top(px(track_inset))
                             .h(px(track_height))
@@ -124,8 +126,11 @@ impl ProgressTemplate for LinearProgressTemplate {
                     .child(outline_node);
 
                 if model.show_thumb && !model.indeterminate {
-                    let thumb_node =
-                        div().absolute().size(px(thumb_size)).rounded(px(thumb_radius)).bg(look.thumb_color);
+                    let thumb_node = div()
+                        .absolute()
+                        .size(px(thumb_size))
+                        .rounded(px(thumb_radius))
+                        .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"));
                     let thumb_node = match model.direction {
                         ProgressDirection::LeftToRight => thumb_node.left(relative(percentage)).ml(px(thumb_offset)),
                         ProgressDirection::RightToLeft => thumb_node.right(relative(percentage)).mr(px(thumb_offset)),
@@ -140,7 +145,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                 let track_node = div()
                     .absolute()
                     .rounded(track_radius)
-                    .bg(look.track_color)
+                    .bg(look.part(xgpui_luma_style::PartId::new("track")).color("background"))
                     .top_0()
                     .bottom_0()
                     .left(px(track_inset))
@@ -153,15 +158,15 @@ impl ProgressTemplate for LinearProgressTemplate {
                         track_inset,
                         track_height,
                         track_radius,
-                        look.progress_color,
-                        &look.geometry,
+                        look.part(xgpui_luma_style::PartId::new("fill")).color("background"),
+                        &geometry,
                     )
                 } else {
                     match model.direction {
                         ProgressDirection::BottomToTop => div()
                             .absolute()
                             .rounded(track_radius)
-                            .bg(look.progress_color)
+                            .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"))
                             .left(px(track_inset))
                             .bottom_0()
                             .w(px(track_height))
@@ -169,7 +174,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                         ProgressDirection::TopToBottom => div()
                             .absolute()
                             .rounded(track_radius)
-                            .bg(look.progress_color)
+                            .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"))
                             .left(px(track_inset))
                             .top_0()
                             .w(px(track_height))
@@ -191,8 +196,11 @@ impl ProgressTemplate for LinearProgressTemplate {
                     .child(outline_node);
 
                 if model.show_thumb && !model.indeterminate {
-                    let thumb_node =
-                        div().absolute().size(px(thumb_size)).rounded(px(thumb_radius)).bg(look.thumb_color);
+                    let thumb_node = div()
+                        .absolute()
+                        .size(px(thumb_size))
+                        .rounded(px(thumb_radius))
+                        .bg(look.part(xgpui_luma_style::PartId::new("fill")).color("background"));
                     let thumb_node = match model.direction {
                         ProgressDirection::BottomToTop => thumb_node.bottom(relative(percentage)).mb(px(thumb_offset)),
                         ProgressDirection::TopToBottom => thumb_node.top(relative(percentage)).mt(px(thumb_offset)),
@@ -300,8 +308,13 @@ fn render_vertical_shimmer(
 
 /// An outline the track's shape (place it like the track), drawn over the fill; empty when the look's
 /// track border width is zero.
-fn track_outline(look: &crate::controls::progress::ProgressLook, radius: gpui::Pixels) -> Div {
-    div().absolute().rounded(radius).when(look.track_border_width > 0.0, |outline| {
-        outline.border(px(look.track_border_width)).border_color(look.track_border)
-    })
+fn track_outline(look: &xgpui_luma_style::Resolved, radius: gpui::Pixels) -> Div {
+    div().absolute().rounded(radius).when(
+        look.part(xgpui_luma_style::PartId::new("track")).number("border_width") > 0.0,
+        |outline| {
+            outline
+                .border(px(look.part(xgpui_luma_style::PartId::new("track")).number("border_width")))
+                .border_color(look.part(xgpui_luma_style::PartId::new("track")).color("border"))
+        },
+    )
 }

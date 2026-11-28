@@ -81,7 +81,10 @@ impl SliderControl {
     }
 
     pub(super) fn thumb_size_px(&self) -> f32 {
-        self.model.template.resolve_look(Default::default()).thumb_size
+        {
+            use crate::style::PartRead;
+            self.model.template.resolve_style(Default::default()).root().number("thumb_size")
+        }
     }
 
     pub(super) fn handle_track_bounds(

@@ -10,6 +10,7 @@ use xgpui_luma_style::PartId;
 use crate::style::StyleBinding;
 
 /// The track behind the segments.
+#[deprecated(note = "read the track from `StyledSegmented::resolve_track` (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SegmentedLook {
     pub background: Hsla,
@@ -17,6 +18,7 @@ pub struct SegmentedLook {
 }
 
 /// One segment in one state.
+#[deprecated(note = "read a segment from `StyledSegmented::resolve_segment` (#433)")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SegmentLook {
     pub background: Hsla,
@@ -56,31 +58,41 @@ impl StyledSegmented {
         Self::new(StyleBinding::sdk("segmented"))
     }
 
-    pub fn track(&self) -> SegmentedLook {
-        let resolved = self.binding.resolve(&[], 1.0);
-        let root = resolved.root();
-        SegmentedLook { background: root.color("background"), radius: root.number("radius") }
+    /// The track's style (#433): read its root.
+    pub fn resolve_track(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
     }
 
-    pub fn segment(&self, state: SegmentState) -> SegmentLook {
-        // The focus ring is drawn from `focus_visible` below, not a style state.
+    /// A segment's style in `state` (#433): read its `item` part, and while focus is visible the root's
+    /// `focus_border` for its edge (see [`segment_border`]).
+    pub fn resolve_segment(&self, state: SegmentState) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        // The focus ring is drawn from `focus_visible`, not a style state.
         let interaction = InteractionState {
             hovered: state.hovered,
             pressed: state.pressed,
             disabled: state.disabled,
             ..InteractionState::default()
         };
-        let states = StyleStates::new(interaction).selected(state.selected);
-        let resolved = self.binding.resolve_states(states, 1.0);
-        let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
+        self.binding.resolve_states(StyleStates::new(interaction).selected(state.selected), 1.0)
+    }
+
+    #[deprecated(note = "read the track from `resolve_track()` (#433)")]
+    #[allow(deprecated)]
+    pub fn track(&self) -> SegmentedLook {
+        let resolved = self.resolve_track();
+        let root = resolved.root();
+        SegmentedLook { background: root.color("background"), radius: root.number("radius") }
+    }
+
+    #[deprecated(note = "read a segment from `resolve_segment()` (#433)")]
+    #[allow(deprecated)]
+    pub fn segment(&self, state: SegmentState) -> SegmentLook {
+        let resolved = self.resolve_segment(state);
+        let item = resolved.part(PartId::new("item"));
         SegmentLook {
             background: item.color("background"),
             foreground: item.color("foreground"),
-            border: if state.focus_visible {
-                root.color("focus_border")
-            } else {
-                item.color("border")
-            },
+            border: segment_border(&resolved, state),
             radius: item.number("radius"),
             height: item.number("height"),
             padding_x: item.number("padding_x"),
@@ -90,7 +102,18 @@ impl StyledSegmented {
     }
 }
 
+/// A segment's edge in `state`, from its resolved style (see [`StyledSegmented::resolve_segment`]): the focus
+/// ring while focus is visible, else the `item` part's border.
+pub fn segment_border(resolved: &xgpui_luma_style::Resolved, state: SegmentState) -> Hsla {
+    if state.focus_visible {
+        resolved.root().color("focus_border")
+    } else {
+        resolved.part(PartId::new("item")).color("border")
+    }
+}
+
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

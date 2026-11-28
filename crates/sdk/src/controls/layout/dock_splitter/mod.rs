@@ -10,8 +10,10 @@ pub use model::{
 pub use template::{
     DockSplitterTemplate, DockSplitterTemplateHandlers, ThemedDockSplitterTemplate, default_dock_splitter_template,
 };
-pub use theme::{DockSplitterLook, DockSplitterTheme, default_dock_splitter_theme};
+#[allow(deprecated)]
+pub use theme::DockSplitterLook;
+pub use theme::{DockSplitterTheme, default_dock_splitter_theme};
 
 mod callback;
 pub use callback::DockSplitterEventExt;
-pub use super::styled::StyledDockSplitterTheme;
+pub use super::styled::{StyledDockSplitterTheme, resolve_dock_splitter};

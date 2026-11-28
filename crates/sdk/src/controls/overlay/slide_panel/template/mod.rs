@@ -3,7 +3,7 @@ use gpui::{
     prelude::*, px, transparent_black,
 };
 
-use crate::controls::resizable_panels::ResizablePanelsLook;
+use crate::style::PartRead;
 
 mod handle;
 mod resize;
@@ -26,7 +26,7 @@ pub struct SlidePanelOverlayHandlers {
 
 pub fn render_slide_panel_overlay(
     panel_background: Hsla,
-    panels_look: &ResizablePanelsLook,
+    panels_look: &xgpui_luma_style::Resolved,
     state: &SlidePanelState,
     viewport: Size<gpui::Pixels>,
     panel_content: AnyElement,
@@ -56,7 +56,7 @@ pub fn render_slide_panel_overlay(
 /// Uses the same drawer/resize chrome as the window overlay; handlers remain owner-supplied.
 pub fn render_slide_panel_surface(
     panel_background: Hsla,
-    panels_look: &ResizablePanelsLook,
+    panels_look: &xgpui_luma_style::Resolved,
     state: &SlidePanelState,
     viewport: Size<gpui::Pixels>,
     panel_content: AnyElement,
@@ -154,7 +154,7 @@ pub fn render_slide_panel_surface(
 }
 
 pub fn render_slide_panel_inset(
-    panels_look: &ResizablePanelsLook,
+    panels_look: &xgpui_luma_style::Resolved,
     state: &SlidePanelState,
     panel_content: AnyElement,
     panel_background: Hsla,
@@ -190,8 +190,8 @@ pub fn render_slide_panel_inset(
         .top_0()
         .bottom_0()
         .w(panel_width)
-        .border_l(px(panels_look.divider_width))
-        .border_color(panels_look.divider)
+        .border_l(px(panels_look.root().number("divider_width")))
+        .border_color(panels_look.root().color("divider"))
         .bg(panel_background)
         .on_key_down(handlers.key_down)
         .child(panel_content)

@@ -193,7 +193,10 @@ mod tests {
         let mut app = TestAppContext::single();
         let (_, cx) = open_surface(&mut app, "avatar");
         let row = cx.debug_bounds("workshop-sdk-avatar").expect("the avatars are drawn");
-        let diameter = StyledAvatar::sdk().look().diameter;
+        let diameter = {
+            use xgpui_luma::style::PartRead;
+            StyledAvatar::sdk().resolve().root().number("height")
+        };
         assert_eq!(row.size.height, px(diameter), "a row of SDK avatars, one diameter tall");
 
         let mut app = TestAppContext::single();

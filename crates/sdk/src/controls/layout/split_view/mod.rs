@@ -11,10 +11,12 @@ pub use template::{
     SplitViewTemplate, SplitViewTemplateModifier, SplitViewTemplateHandlers, ThemedSplitViewTemplate,
     default_split_view_template,
 };
-pub use theme::{SplitViewLook, SplitViewTheme, default_split_view_theme};
+#[allow(deprecated)]
+pub use theme::SplitViewLook;
+pub use theme::{SplitViewTheme, default_split_view_theme};
 
 mod callback;
 pub use callback::SplitViewEventExt;
 
 pub use model::SplitViewMotion;
-pub use super::styled::StyledSplitViewTheme;
+pub use super::styled::{StyledSplitViewTheme, resolve_split_view};

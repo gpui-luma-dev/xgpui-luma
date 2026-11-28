@@ -4,7 +4,9 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
 
-use super::{DockSplitterLook, DockSplitterDrag, DockSplitterRenderModel, SplitterOrientation};
+use crate::style::PartRead;
+use xgpui_luma_style::PartView;
+use super::{DockSplitterDrag, DockSplitterRenderModel, SplitterOrientation};
 
 pub type DockSplitterHoverHandler = Box<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
 pub type DockSplitterMouseDownHandler = Box<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + 'static>;
@@ -23,7 +25,7 @@ pub trait DockSplitterTemplate: Send + Sync {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         _window: &mut Window,
         _cx: &mut App,
@@ -79,7 +81,7 @@ impl DockSplitterTemplate for ModifiedTemplate<dyn DockSplitterTemplate> {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         window: &mut Window,
         cx: &mut App,
@@ -93,7 +95,7 @@ impl DockSplitterTemplate for ThemedDockSplitterTemplate {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
-        look: &DockSplitterLook,
+        look: PartView<'_>,
         handlers: DockSplitterTemplateHandlers,
         _window: &mut Window,
         _cx: &mut App,
@@ -105,23 +107,23 @@ impl DockSplitterTemplate for ThemedDockSplitterTemplate {
 
 fn render_splitter(
     model: &DockSplitterRenderModel<'_>,
-    look: &DockSplitterLook,
+    look: PartView<'_>,
     handlers: DockSplitterTemplateHandlers,
     show_thumb: bool,
 ) -> Stateful<Div> {
     let DockSplitterTemplateHandlers { hover, mouse_down, mouse_up, mouse_up_out, key_down } = handlers;
     let line_color = if model.dragging || model.hovered || model.focused {
-        look.hover_color
+        look.color("hover_line")
     } else {
-        look.line_color
+        look.color("line")
     };
-    let half_inset = ((look.hit_target_px - look.visible_line_px) * 0.5).max(0.0);
+    let half_inset = ((look.number("hit_target") - look.number("visible_line")) * 0.5).max(0.0);
 
     let mut root = div().id((model.id.clone(), 0usize)).relative().flex_shrink_0();
 
     root = match model.orientation {
-        SplitterOrientation::Vertical => root.w(px(look.visible_line_px)).h_full(),
-        SplitterOrientation::Horizontal => root.h(px(look.visible_line_px)).w_full(),
+        SplitterOrientation::Vertical => root.w(px(look.number("visible_line"))).h_full(),
+        SplitterOrientation::Horizontal => root.h(px(look.number("visible_line"))).w_full(),
     };
 
     let drag_payload = DockSplitterDrag { id: model.id.clone() };
@@ -132,7 +134,7 @@ fn render_splitter(
             .left(px(-half_inset))
             .top(px(0.0))
             .bottom(px(0.0))
-            .w(px(look.hit_target_px))
+            .w(px(look.number("hit_target")))
             .track_focus(model.focus_handle)
             .tab_index(if model.enabled { 0 } else { -1 })
             .on_hover(hover)
@@ -154,7 +156,7 @@ fn render_splitter(
                     .left(px(half_inset))
                     .top(px(0.0))
                     .bottom(px(0.0))
-                    .w(px(look.visible_line_px))
+                    .w(px(look.number("visible_line")))
                     .bg(line_color),
             ),
         SplitterOrientation::Horizontal => div()
@@ -163,7 +165,7 @@ fn render_splitter(
             .top(px(-half_inset))
             .left(px(0.0))
             .right(px(0.0))
-            .h(px(look.hit_target_px))
+            .h(px(look.number("hit_target")))
             .track_focus(model.focus_handle)
             .tab_index(if model.enabled { 0 } else { -1 })
             .on_hover(hover)
@@ -182,7 +184,7 @@ fn render_splitter(
                     .top(px(half_inset))
                     .left(px(0.0))
                     .right(px(0.0))
-                    .h(px(look.visible_line_px))
+                    .h(px(look.number("visible_line")))
                     .bg(line_color),
             ),
     };
@@ -191,14 +193,14 @@ fn render_splitter(
         hit_target = hit_target.child(
             div().absolute().inset_0().flex().justify_center().items_center().child(
                 div()
-                    .rounded(px(look.geometry.thumb_radius))
+                    .rounded(px(look.number("thumb_radius")))
                     .bg(if model.hovered || model.dragging || model.focused {
-                        look.thumb_color
+                        look.color("thumb")
                     } else {
-                        look.thumb_color.opacity(look.geometry.thumb_rest_opacity)
+                        look.color("thumb").opacity(look.number("thumb_rest_opacity"))
                     })
-                    .w(px(look.geometry.thumb_width))
-                    .h(px(look.geometry.thumb_height)),
+                    .w(px(look.number("thumb_width")))
+                    .h(px(look.number("thumb_height"))),
             ),
         );
     }

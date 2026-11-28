@@ -1,3 +1,5 @@
+use crate::style::PartRead;
+use xgpui_luma_style::PartView;
 use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
@@ -11,7 +13,6 @@ use super::{
         PanelSize, ResizeHandleMetrics, ResizeHandleVisibility, ResizablePanelSpec, ResizablePanelsOrientation,
         ResizablePanelsRenderModel,
     },
-    theme::ResizablePanelsLook,
 };
 
 pub type ResizablePanelsTemplateModifier =
@@ -21,7 +22,7 @@ pub trait ResizablePanelsTemplate: Send + Sync {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
@@ -76,7 +77,7 @@ impl ResizablePanelsTemplate for ModifiedTemplate<dyn ResizablePanelsTemplate> {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
@@ -90,7 +91,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
     fn render(
         &self,
         model: &ResizablePanelsRenderModel<'_>,
-        look: &ResizablePanelsLook,
+        look: PartView<'_>,
         handle_focuses: &[FocusHandle],
         window: &mut Window,
         cx: &mut Context<ResizablePanels>,
@@ -145,7 +146,7 @@ impl ResizablePanelsTemplate for ThemedResizablePanelsTemplate {
 /// This presentation helper does not bind control events or measure the owner.
 pub fn render_resizable_panels_surface(
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     handles: impl IntoIterator<Item = AnyElement>,
 ) -> Stateful<Div> {
     paint_surface(div(), model, look, handles)
@@ -154,7 +155,7 @@ pub fn render_resizable_panels_surface(
 fn paint_surface(
     root: Div,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     handles: impl IntoIterator<Item = AnyElement>,
 ) -> Stateful<Div> {
     let provisional_weight_layout = provisional_weight_layout(model);
@@ -167,7 +168,7 @@ fn paint_surface(
     };
 
     if model.show_border {
-        root = root.border(px(look.border_width)).border_color(look.border);
+        root = root.border(px(look.number("border_width"))).border_color(look.color("border"));
     }
 
     let mut track = div().relative().flex_1().min_h_0().min_w_0().w_full();
@@ -238,7 +239,7 @@ fn render_panel(
 fn render_overlay_handle(
     index: usize,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     focus: &FocusHandle,
     handle_metrics: &ResizeHandleMetrics,
     split_px: f32,
@@ -293,7 +294,7 @@ fn overlay_handle_lane(index: usize, model: &ResizablePanelsRenderModel<'_>, foc
 pub fn render_resizable_panels_handle(
     index: usize,
     model: &ResizablePanelsRenderModel<'_>,
-    look: &ResizablePanelsLook,
+    look: PartView<'_>,
     split_px: f32,
     focused: bool,
 ) -> Stateful<Div> {
@@ -306,7 +307,7 @@ pub fn render_resizable_panels_handle(
     let mut handle = div()
         .id(handle_id)
         .absolute()
-        .map(|this| crate::style::fade(this, look.opacity))
+        .map(|this| crate::style::fade(this, look.opacity()))
         .when(enabled && orientation == ResizablePanelsOrientation::Horizontal, |this| this.cursor_col_resize());
 
     handle = match orientation {
@@ -322,9 +323,9 @@ pub fn render_resizable_panels_handle(
     };
 
     let grip_color = if model.handle_grip {
-        look.grip_emphasis
+        look.color("grip_emphasis")
     } else {
-        look.grip
+        look.color("grip")
     };
 
     let divider = match orientation {
@@ -333,15 +334,15 @@ pub fn render_resizable_panels_handle(
             .left(px(divider_local_px))
             .top(px(0.0))
             .bottom(px(0.0))
-            .w(px(look.divider_width))
-            .bg(look.divider),
+            .w(px(look.number("divider_width")))
+            .bg(look.color("divider")),
         ResizablePanelsOrientation::Vertical => div()
             .absolute()
             .top(px(divider_local_px))
             .left(px(0.0))
             .right(px(0.0))
-            .h(px(look.divider_width))
-            .bg(look.divider),
+            .h(px(look.number("divider_width")))
+            .bg(look.color("divider")),
     };
 
     handle = handle.child(divider);

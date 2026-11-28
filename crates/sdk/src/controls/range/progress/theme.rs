@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -18,6 +20,7 @@ pub struct ProgressGeometry {
     pub shimmer_core_width: f32,
 }
 
+#[deprecated(note = "progress templates draw from `ProgressTheme::style()`; resolve it with `resolve_progress` (#433)")]
 #[derive(Clone, Debug)]
 pub struct ProgressLook {
     /// Resolved sweep and shimmer appearance, independent of phase/timing.
@@ -35,7 +38,17 @@ pub struct ProgressLook {
 }
 
 pub trait ProgressTheme: Send + Sync {
-    fn resolve(&self, enabled: bool) -> ProgressLook;
+    /// Progress's style (#433): the binding templates resolve (see [`resolve_progress`](super::resolve_progress))
+    /// and draw from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("progress")
+    }
+
+    /// Progress's look, built from [`Self::style`] for code that still reads a [`ProgressLook`].
+    #[deprecated(note = "templates draw from `style()`; resolve it with `resolve_progress` (#433)")]
+    fn resolve(&self, enabled: bool) -> ProgressLook {
+        ProgressLook::from_resolved(&super::styled::resolve_progress(&self.style(), enabled))
+    }
 }
 
 pub fn default_progress_theme() -> Arc<dyn ProgressTheme> {

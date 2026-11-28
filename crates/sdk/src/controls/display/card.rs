@@ -8,6 +8,7 @@ use crate::style::StyleBinding;
 use crate::theme::LumaTextStyle;
 
 /// A card's surface, text and spacing.
+#[deprecated(note = "the card draws from `StyledCard::resolve` (#433)")]
 #[derive(Clone, Debug)]
 pub struct CardLook {
     /// The surface fill, when it has color.
@@ -54,9 +55,15 @@ impl StyledCard {
         Self::new(StyleBinding::sdk("card"))
     }
 
-    /// The card for the binding's attributes and states.
+    /// The card's style for the binding's attributes and states (#433): the card draws from its parts.
+    pub fn resolve(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        self.binding.resolve(&[], 1.0)
+    }
+
+    #[deprecated(note = "the card draws from `resolve()` (#433)")]
+    #[allow(deprecated)]
     pub fn look(&self) -> CardLook {
-        let resolved = self.binding.resolve(&[], 1.0);
+        let resolved = self.resolve();
         let root = resolved.root();
         let (title, description) = (resolved.part(PartId::new("title")), resolved.part(PartId::new("description")));
         CardLook {
@@ -143,31 +150,45 @@ impl IntoElement for Card {
     type Element = Div;
 
     fn into_element(self) -> Div {
-        let look = self.styled.look();
+        let look = self.styled.resolve();
         let header = (self.title.is_some() || self.description.is_some()).then(|| {
             div()
                 .flex()
                 .flex_col()
-                .gap(px(look.header_gap))
-                .children(self.title.map(|t| text_block(t, look.title_color, &look.title)))
-                .children(self.description.map(|d| text_block(d, look.description_color, &look.description)))
+                .gap(px(look.root().number("header_gap")))
+                .children(self.title.map(|t| {
+                    text_block(
+                        t,
+                        look.part(PartId::new("title")).color("foreground"),
+                        &look.part(PartId::new("title")).typography(14.0, 20.0),
+                    )
+                }))
+                .children(self.description.map(|d| {
+                    text_block(
+                        d,
+                        look.part(PartId::new("description")).color("foreground"),
+                        &look.part(PartId::new("description")).typography(14.0, 20.0),
+                    )
+                }))
         });
-        let body =
-            (!self.children.is_empty()).then(|| div().flex().flex_col().gap(px(look.body_gap)).children(self.children));
+        let body = (!self.children.is_empty())
+            .then(|| div().flex().flex_col().gap(px(look.root().number("body_gap"))).children(self.children));
         div()
             .flex()
             .flex_col()
-            .gap(px(look.section_gap))
-            .p(px(look.padding))
-            .rounded(px(look.radius))
-            .when_some(look.background, |card, background| card.bg(background))
-            .when_some(look.border, |card, border| card.border(px(look.border_width)).border_color(border))
-            .shadow(look.shadow.clone())
-            .when(!look.font_family.is_empty(), |card| card.font_family(look.font_family.clone()))
-            .text_color(look.body_color)
-            .text_size(px(look.body.size))
-            .line_height(px(look.body.line_height))
-            .font_weight(look.body.weight)
+            .gap(px(look.root().number("section_gap")))
+            .p(px(look.root().number("padding_x")))
+            .rounded(px(look.root().number("radius")))
+            .when_some(look.root().painted("background"), |card, background| card.bg(background))
+            .when_some(look.root().painted("border"), |card, border| {
+                card.border(px(look.root().number("border_width"))).border_color(border)
+            })
+            .shadow(look.root().box_shadow())
+            .when(!look.root().font_family_name().is_empty(), |card| card.font_family(look.root().font_family_name()))
+            .text_color(look.root().color("foreground"))
+            .text_size(px(look.root().typography(14.0, 20.0).size))
+            .line_height(px(look.root().typography(14.0, 20.0).line_height))
+            .font_weight(look.root().typography(14.0, 20.0).weight)
             .children(header)
             .children(body)
     }
@@ -179,9 +200,16 @@ mod tests {
 
     #[test]
     fn sdk_card_is_an_edged_panel_with_header_text() {
-        let look = StyledCard::sdk().look();
-        assert!(look.background.is_some() && look.border.is_some());
-        assert!(look.title.size > look.description.size);
-        assert!(look.padding > 0.0 && look.section_gap > 0.0 && look.header_gap >= 2.0);
+        let look = StyledCard::sdk().resolve();
+        assert!(look.root().painted("background").is_some() && look.root().painted("border").is_some());
+        assert!(
+            look.part(PartId::new("title")).typography(14.0, 20.0).size
+                > look.part(PartId::new("description")).typography(14.0, 20.0).size
+        );
+        assert!(
+            look.root().number("padding_x") > 0.0
+                && look.root().number("section_gap") > 0.0
+                && look.root().number("header_gap") >= 2.0
+        );
     }
 }

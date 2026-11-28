@@ -13,8 +13,10 @@ pub use template::{
     ThemedScrollbarTemplate, default_scrollbar_template,
 };
 
-pub use theme::{ScrollbarLook, ScrollbarTheme, default_scrollbar_theme};
+#[allow(deprecated)]
+pub use theme::ScrollbarLook;
+pub use theme::{ScrollbarTheme, default_scrollbar_theme};
 
 mod callback;
 pub use callback::ScrollbarEventExt;
-pub use super::styled::StyledScrollbarTheme;
+pub use super::styled::{StyledScrollbarTheme, resolve_scrollbar, scrollbar_length};
