@@ -12,7 +12,6 @@ pub use template::{
     default_split_view_template,
 };
 #[allow(deprecated)]
-pub use theme::SplitViewLook;
 pub use theme::{SplitViewTheme, default_split_view_theme};
 
 mod callback;

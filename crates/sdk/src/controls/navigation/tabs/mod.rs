@@ -156,7 +156,6 @@ pub use template::{
 };
 
 #[allow(deprecated)]
-pub use theme::{TabsItemLook, TabsListLook};
 pub use theme::{TabsBaseline, TabsTheme, default_tabs_theme};
 
 pub use crate::infra::state::{CompositeItemState as TabsItemState, ControlFocusState};

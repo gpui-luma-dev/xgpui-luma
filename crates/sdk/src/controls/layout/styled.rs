@@ -11,10 +11,10 @@ use crate::style::StyleStates;
 use crate::style::PartRead;
 use xgpui_luma_style::Resolved;
 
-use super::dock_splitter::{DockSplitterLook, DockSplitterTheme};
-use super::resizable_panels::{ResizablePanelsLook, ResizablePanelsTheme, ResizeHandleMetrics};
+use super::dock_splitter::DockSplitterTheme;
+use super::resizable_panels::{ResizablePanelsTheme, ResizeHandleMetrics};
 use super::scrollbar::{ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme};
-use super::split_view::{SplitViewLook, SplitViewTheme};
+use super::split_view::SplitViewTheme;
 use crate::style::StyleBinding;
 use crate::theme::stylesheet::{DockSplitterGeometry, SplitViewGeometry};
 use crate::theme::{InteractionState, MetricTokens};
@@ -85,23 +85,6 @@ impl DockSplitterGeometry {
     }
 }
 
-impl DockSplitterLook {
-    /// The look `resolved` (see [`resolve_dock_splitter`]) describes: the compatibility path for code that still
-    /// reads a `DockSplitterLook` (#433).
-    pub fn from_resolved(resolved: &Resolved) -> Self {
-        let root = resolved.root();
-        let geometry = DockSplitterGeometry::from_resolved(resolved);
-        DockSplitterLook {
-            line_color: root.color("line"),
-            hover_color: root.color("hover_line"),
-            thumb_color: root.color("thumb"),
-            hit_target_px: geometry.hit_target,
-            visible_line_px: geometry.visible_line,
-            geometry,
-        }
-    }
-}
-
 /// The dock splitter from `dock_splitter.lss`.
 pub struct StyledDockSplitterTheme(StyleBinding);
 
@@ -126,23 +109,6 @@ impl DockSplitterTheme for StyledDockSplitterTheme {
 /// its root.
 pub fn resolve_resizable_panels(binding: &StyleBinding, state: InteractionState) -> Arc<Resolved> {
     binding.resolve_states(StyleStates::new(state), 1.0)
-}
-
-impl ResizablePanelsLook {
-    /// The look `resolved` (see [`resolve_resizable_panels`]) describes: the compatibility path for code that still
-    /// reads a `ResizablePanelsLook` (#433).
-    pub fn from_resolved(resolved: &Resolved) -> Self {
-        let root = resolved.root();
-        ResizablePanelsLook {
-            border: root.color("border"),
-            border_width: root.number("border_width"),
-            divider_width: root.number("divider_width"),
-            divider: root.color("divider"),
-            grip: root.color("grip"),
-            grip_emphasis: root.color("grip_emphasis"),
-            opacity: root.opacity(),
-        }
-    }
 }
 
 /// Resizable panels from `resizable_panels.lss`, handle sizes included.
@@ -189,19 +155,6 @@ impl SplitViewGeometry {
             cue_radius: root.number("cue_radius"),
             cue_width: root.number("cue_width"),
             cue_hovered_width: root.number("cue_hovered_width"),
-        }
-    }
-}
-
-impl SplitViewLook {
-    /// The look `resolved` (see [`resolve_split_view`]) describes: the compatibility path for code that still reads
-    /// a `SplitViewLook` (#433).
-    pub fn from_resolved(resolved: &Resolved) -> Self {
-        let root = resolved.root();
-        SplitViewLook {
-            geometry: SplitViewGeometry::from_resolved(resolved),
-            separator: root.color("separator"),
-            separator_hover: root.color("separator_hover"),
         }
     }
 }

@@ -1,5 +1,4 @@
 //! Radix panel and drawer chrome over the SDK layout and overlay engines.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{AnyElement, Pixels, SharedString, Size};
 use xgpui_luma::controls::{resizable_panels::*, slide_panel::*};
@@ -112,6 +111,8 @@ pub fn render_slide_panel_inset(
 mod tests {
     use super::*;
     use xgpui_luma::theme::InteractionState;
+    use xgpui_luma::controls::resizable_panels::resolve_resizable_panels;
+    use xgpui_luma::style::PartRead;
     use crate::{Accent, Gray};
     use xgpui_luma::theme::ThemeMode;
     #[test]
@@ -122,24 +123,31 @@ mod tests {
             look.set_mode(mode);
             for accent in [Accent::Blue, Accent::Lime] {
                 look.set_palettes(accent, Gray::Auto);
-                let normal = theme.resolve(Default::default());
-                let disabled = theme.resolve(InteractionState {
-                    disabled: true,
-                    hovered: true,
-                    pressed: true,
-                    focused: true,
-                    ..Default::default()
-                });
+                let normal = resolve_resizable_panels(&theme.style(), Default::default());
+                let disabled = resolve_resizable_panels(
+                    &theme.style(),
+                    InteractionState {
+                        disabled: true,
+                        hovered: true,
+                        pressed: true,
+                        focused: true,
+                        ..Default::default()
+                    },
+                );
+                let (normal, disabled) = (normal.root(), disabled.root());
                 let role = |r| look.resolve_role(r).hsla();
-                crate::control_group::assert_close(normal.grip_emphasis, role(SemanticRole::Focus));
-                crate::control_group::assert_close(disabled.grip_emphasis, role(SemanticRole::MutedForeground));
-                assert_eq!((disabled.opacity, normal.opacity), (1.0, 1.0), "colors, no fade");
+                crate::control_group::assert_close(normal.color("grip_emphasis"), role(SemanticRole::Focus));
+                crate::control_group::assert_close(
+                    disabled.color("grip_emphasis"),
+                    role(SemanticRole::MutedForeground),
+                );
+                assert_eq!((disabled.opacity(), normal.opacity()), (1.0, 1.0), "colors, no fade");
                 assert_eq!(
                     {
                         use xgpui_luma::style::PartRead;
                         slide_panel_style(&look).root().color("divider")
                     },
-                    normal.divider
+                    normal.color("divider")
                 );
                 let sizes = crate::RadixSize::ALL
                     .map(|size| resizable_panels_theme(&look.with_size(size)).resize_handle_metrics());
