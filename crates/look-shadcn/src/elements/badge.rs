@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use gpui::Div;
 use gpui::IntoElement;
 use gpui::SharedString;
@@ -47,8 +46,6 @@ pub struct Badge {
     icon: Option<IconSource>,
     icon_placement: BadgeIconPlacement,
 }
-
-pub use xgpui_luma::controls::badge::BadgeLook;
 
 impl Badge {
     pub fn new(look: ShadcnLook, label: impl Into<SharedString>) -> Self {
@@ -116,12 +113,6 @@ pub fn badge_style(
     xgpui_luma::controls::badge::StyledBadge::new(binding)
 }
 
-/// The badge from `.lss` (`style/badge.lss`) for `variant` at `size`.
-#[deprecated(note = "the badge draws from `badge_style` (#433)")]
-pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
-    badge_style(theme, variant, size).look()
-}
-
 impl IntoElement for Badge {
     type Element = Div;
 
@@ -183,6 +174,7 @@ impl ShadcnLook {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::style::PartRead;
     use crate::tokens::ShadcnToken;
 
     fn sample_look() -> ShadcnLook {
@@ -192,41 +184,51 @@ mod tests {
     #[test]
     fn default_badge_uses_primary_tokens() {
         let shadcn = sample_look();
-        let look = badge_look(&shadcn, BadgeVariant::Default, ShadcnSize::Md);
+        let resolved = badge_style(&shadcn, BadgeVariant::Default, ShadcnSize::Md).resolve();
+        let look = resolved.root();
 
-        crate::assert_close(look.background, shadcn.color(ShadcnToken::Primary));
-        crate::assert_close(look.foreground, shadcn.color(ShadcnToken::PrimaryForeground));
+        crate::assert_close(look.color("background"), shadcn.color(ShadcnToken::Primary));
+        crate::assert_close(look.color("foreground"), shadcn.color(ShadcnToken::PrimaryForeground));
     }
 
     #[test]
     fn outline_badge_uses_border_in_dark_mode() {
         let shadcn = sample_look();
         shadcn.set_mode(xgpui_luma::theme::ThemeMode::Dark);
-        let look = badge_look(&shadcn, BadgeVariant::Outline, ShadcnSize::Md);
+        let resolved = badge_style(&shadcn, BadgeVariant::Outline, ShadcnSize::Md).resolve();
+        let look = resolved.root();
 
-        crate::assert_close(look.foreground, shadcn.color(ShadcnToken::Foreground));
-        crate::assert_close(look.border.expect("outline border"), shadcn.token_color("input").expect("input"));
+        crate::assert_close(look.color("foreground"), shadcn.color(ShadcnToken::Foreground));
+        crate::assert_close(
+            look.painted("border").expect("outline border"),
+            shadcn.token_color("input").expect("input"),
+        );
     }
 
     #[test]
     fn ghost_badge_is_transparent() {
         let shadcn = sample_look();
-        let look = badge_look(&shadcn, BadgeVariant::Ghost, ShadcnSize::Md);
+        let resolved = badge_style(&shadcn, BadgeVariant::Ghost, ShadcnSize::Md).resolve();
+        let look = resolved.root();
 
-        assert_eq!(look.background.a, 0.0);
-        assert!(look.border.is_none());
+        assert_eq!(look.color("background").a, 0.0);
+        assert!(look.painted("border").is_none());
     }
 
     #[test]
     fn badge_size_resolves_button_typography() {
         let shadcn = sample_look();
-        let small = badge_look(&shadcn, BadgeVariant::Secondary, ShadcnSize::Sm);
-        let medium = badge_look(&shadcn, BadgeVariant::Secondary, ShadcnSize::Md);
-        let large = badge_look(&shadcn, BadgeVariant::Secondary, ShadcnSize::Lg);
+        let small = badge_style(&shadcn, BadgeVariant::Secondary, ShadcnSize::Sm).resolve();
+        let small = small.root();
+        let medium = badge_style(&shadcn, BadgeVariant::Secondary, ShadcnSize::Md).resolve();
+        let medium = medium.root();
+        let large = badge_style(&shadcn, BadgeVariant::Secondary, ShadcnSize::Lg).resolve();
+        let large = large.root();
 
-        assert!(small.typography.size < medium.typography.size);
-        assert!(medium.typography.size < large.typography.size);
-        assert_eq!(small.icon_size, small.typography.size);
-        assert_eq!(large.icon_size, large.typography.size);
+        let size = |badge: xgpui_luma::style::lss::PartView<'_>| badge.typography(12.0, 16.0).size;
+        assert!(size(small) < size(medium));
+        assert!(size(medium) < size(large));
+        assert_eq!(small.number("icon_size"), size(small));
+        assert_eq!(large.number("icon_size"), size(large));
     }
 }

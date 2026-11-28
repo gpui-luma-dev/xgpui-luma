@@ -1,5 +1,4 @@
 //! Tooltip presentation bound to the control's mutable Shadcn look.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use xgpui_luma::controls::tooltip::{StyledTooltipTheme, TooltipTheme};
 use crate::ShadcnLook;
@@ -16,18 +15,23 @@ pub fn tooltip_theme(look: &ShadcnLook) -> Arc<dyn TooltipTheme> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::style::PartRead;
     use crate::ShadcnToken;
     use xgpui_luma::theme::ThemeMode;
     #[test]
     fn tooltip_tracks_bound_look_mode() {
         let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS");
         let theme = tooltip_theme(&look);
-        let light = theme.resolve();
+        let root = |theme: &Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme>| {
+            xgpui_luma::controls::tooltip::resolve_tooltip(&theme.style())
+        };
+        let light = root(&theme);
         look.set_mode(ThemeMode::Dark);
-        let dark = theme.resolve();
-        assert_ne!(light.background, dark.background);
-        crate::assert_close(dark.background, look.color(ShadcnToken::Foreground));
-        crate::assert_close(dark.foreground, look.color(ShadcnToken::Background));
+        let dark = root(&theme);
+        let (light, dark) = (light.root(), dark.root());
+        assert_ne!(light.color("background"), dark.color("background"));
+        crate::assert_close(dark.color("background"), look.color(ShadcnToken::Foreground));
+        crate::assert_close(dark.color("foreground"), look.color(ShadcnToken::Background));
     }
 }
 
