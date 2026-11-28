@@ -39,9 +39,7 @@ impl ListBoxTemplate for ShadcnListBoxTemplate {
             marker_color: color,
             marker_width: 2.0,
             surface_color: Some(color),
-            // The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
-            #[allow(deprecated)]
-            preview: crate::tooltip_theme(&self.look).resolve(),
+            preview: xgpui_luma::controls::tooltip::resolve_tooltip(&crate::tooltip_theme(&self.look).style()),
         }
     }
     fn motion_defaults(&self) -> ListBoxMotion {

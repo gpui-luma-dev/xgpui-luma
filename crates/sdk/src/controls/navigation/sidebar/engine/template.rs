@@ -461,7 +461,7 @@ fn render_node(
         binding
             .bind(
                 div().id(gpui::SharedString::from(format!("{id}-drag-row"))).w_full().child(row),
-                theme.resolve_drag(),
+                theme.drag_style(),
                 cx,
             )
             .into_any_element()

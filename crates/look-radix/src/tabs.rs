@@ -177,8 +177,8 @@ struct TabsThemeAdapter {
 }
 
 impl TabsTheme for TabsThemeAdapter {
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        crate::navigation::drag_look(&self.look, self.look.size())
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        crate::navigation::drag_style(&self.look, self.look.size())
     }
     /// The `.lss` tabs with the look-wide [`TabsStyle`] tuning set over them (#433).
     fn style(&self) -> xgpui_luma::style::StyleBinding {
@@ -465,21 +465,29 @@ mod tests {
 
 #[cfg(test)]
 mod drag_tests {
+    use xgpui_luma::style::PartRead;
     use super::*;
     #[test]
     fn drag_surfaces_follow_semantic_roles_in_both_modes() {
         let look = Look::built_in();
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
-            let drag = tabs_theme(&look).resolve_drag();
-            crate::control_group::assert_close(drag.background, look.resolve_role(crate::SemanticRole::Surface).hsla());
+            let drag = tabs_theme(&look).drag_style();
+            let drag = drag.root();
             crate::control_group::assert_close(
-                drag.foreground,
+                drag.color("background"),
+                look.resolve_role(crate::SemanticRole::Surface).hsla(),
+            );
+            crate::control_group::assert_close(
+                drag.color("foreground"),
                 look.resolve_role(crate::SemanticRole::Foreground).hsla(),
             );
-            crate::control_group::assert_close(drag.valid_marker, look.resolve_role(crate::SemanticRole::Focus).hsla());
             crate::control_group::assert_close(
-                drag.invalid_marker,
+                drag.color("valid_marker"),
+                look.resolve_role(crate::SemanticRole::Focus).hsla(),
+            );
+            crate::control_group::assert_close(
+                drag.color("invalid_marker"),
                 look.resolve_role(crate::SemanticRole::Destructive).hsla(),
             );
         }

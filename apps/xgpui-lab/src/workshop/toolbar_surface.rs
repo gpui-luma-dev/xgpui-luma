@@ -11,11 +11,11 @@ use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::selector::SelectorItem;
 use xgpui_luma::controls::toolbar::{
-    StyledToolbarTheme, Toolbar, ToolbarBuilder, ToolbarEvent, ToolbarItem, ToolbarItemKind, ToolbarLook,
-    ToolbarRenderModel, ToolbarRenderedItem, ToolbarTheme, ToolbarValue, ToolbarVariant, toolbar_template_with_theme,
+    StyledToolbarTheme, Toolbar, ToolbarBuilder, ToolbarEvent, ToolbarItem, ToolbarItemKind, ToolbarRenderModel,
+    ToolbarRenderedItem, ToolbarTheme, ToolbarValue, ToolbarVariant, toolbar_template_with_theme,
 };
 use xgpui_luma::infra::menu_item::MenuItem;
-use xgpui_luma::style::lss::Theme;
+use xgpui_luma::style::lss::{Resolved, Theme};
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
@@ -49,8 +49,12 @@ impl PinnedToolbarTheme {
 }
 
 impl ToolbarTheme for PinnedToolbarTheme {
-    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
-        self.base.resolve(self.enabled.unwrap_or(enabled), variant)
+    fn style(&self) -> StyleBinding {
+        self.base.style()
+    }
+
+    fn resolve_style(&self, enabled: bool, variant: ToolbarVariant) -> Arc<Resolved> {
+        self.base.resolve_style(self.enabled.unwrap_or(enabled), variant)
     }
 }
 
@@ -273,6 +277,9 @@ mod tests {
     use gpui::{Entity, TestAppContext, VisualTestContext};
 
     use super::*;
+    use xgpui_luma::controls::toolbar::resolve_toolbar;
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::{Overrides, PartId, Prop};
     use crate::workshop::surface_page::{SurfacePage, WorkMode};
     use crate::workshop::{Sample, Workshop};
 
@@ -331,14 +338,17 @@ mod tests {
         // A base whose enabled and disabled shells differ (the SDK palette's happen to share a fill).
         struct Marked;
         impl ToolbarTheme for Marked {
-            fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
-                let mut look = StyledToolbarTheme::sdk().resolve(true, variant);
-                look.radius = if enabled { 1. } else { 0. };
-                look
+            fn resolve_style(&self, enabled: bool, variant: ToolbarVariant) -> Arc<Resolved> {
+                let radius = if enabled { 1. } else { 0. };
+                let overrides = Overrides::new().set(PartId::ROOT, Prop::<f32>::new("radius"), radius);
+                resolve_toolbar(&self.style().with_overrides(&overrides), true, variant)
             }
         }
         let shell = |enabled: Option<bool>, live: bool| {
-            PinnedToolbarTheme { base: Arc::new(Marked), enabled }.resolve(live, ToolbarVariant::Outline).radius
+            PinnedToolbarTheme { base: Arc::new(Marked), enabled }
+                .resolve_style(live, ToolbarVariant::Outline)
+                .root()
+                .number("radius")
         };
         assert_eq!((shell(None, true), shell(None, false)), (1., 0.), "Test: drawn as the toolbar is");
         assert_eq!(shell(Some(true), false), 1., "Design without :disabled draws enabled though input is off");

@@ -7,7 +7,10 @@ use crate::style::StyleStates;
 use crate::style::PartRead;
 use xgpui_luma_style::{PartId, PartView};
 
-use super::theme::{TableDragLook, TableGeometry, TableLook, TableRowLook, TableRowPalette, TableTheme};
+#[allow(deprecated)]
+use super::theme::TableDragLook;
+use super::theme::{TableGeometry, TableLook, TableRowLook, TableRowPalette, TableTheme};
+#[allow(deprecated)]
 use crate::infra::drag_drop::DragDropLook;
 use crate::style::StyleBinding;
 use crate::theme::{InteractionState, ListRowScale, LumaTextStyle, MetricTokens};
@@ -18,6 +21,8 @@ fn typography(part: PartView<'_>) -> LumaTextStyle {
 
 /// The table's drag preview and insertion feedback: the shared drag preview's colors and radius with the
 /// table's drag `geometry` (offset, width, padding, strokes).
+#[deprecated(note = "use `TableTheme::drag_style` and `drag_geometry` (#433)")]
+#[allow(deprecated)]
 pub fn table_drag_look(preview: DragDropLook, geometry: TableGeometry) -> TableDragLook {
     TableDragLook {
         geometry,
@@ -177,11 +182,8 @@ impl TableTheme for StyledTableTheme {
         self.0.binding.clone()
     }
 
-    fn resolve_drag(&self) -> TableDragLook {
-        table_drag_look(
-            crate::infra::drag_drop::styled_drag_drop_look(&StyleBinding::sdk("drag_preview")),
-            self.0.drag_geometry(),
-        )
+    fn drag_geometry(&self) -> TableGeometry {
+        self.0.drag_geometry()
     }
 
     fn metrics(&self) -> MetricTokens {

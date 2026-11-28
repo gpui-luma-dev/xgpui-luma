@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::table::{StyledTable, TableTheme, table_drag_look, table_template_with_theme};
+use xgpui_luma::controls::table::{StyledTable, TableTheme, table_template_with_theme};
 
 use crate::look::ShadcnLook;
 
@@ -12,8 +12,12 @@ struct ShadcnTableTheme {
 }
 
 impl TableTheme for ShadcnTableTheme {
-    fn resolve_drag(&self) -> xgpui_luma::controls::table::TableDragLook {
-        table_drag_look(super::drag::drag_look(&self.theme), self.styled.drag_geometry())
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        super::drag::drag_style(&self.theme)
+    }
+
+    fn drag_geometry(&self) -> xgpui_luma::controls::table::TableGeometry {
+        self.styled.drag_geometry()
     }
 
     fn style(&self) -> xgpui_luma::style::StyleBinding {

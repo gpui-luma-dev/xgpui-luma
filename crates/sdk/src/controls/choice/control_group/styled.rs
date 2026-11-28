@@ -4,13 +4,41 @@
 use crate::style::PartRead;
 use std::sync::Arc;
 
-use xgpui_luma_style::PartId;
+use xgpui_luma_style::{PartId, Resolved};
 
-use super::theme::{ControlGroupItemPalette, ControlGroupListLook, ControlGroupTheme};
+#[allow(deprecated)]
+use super::theme::ControlGroupListLook;
+use super::theme::{ControlGroupItemPalette, ControlGroupTheme};
 use crate::controls::button::StyledButtonTemplate;
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::style::StyleBinding;
 use crate::theme::{InteractionState, MetricTokens, StandardBoxScale};
+
+/// The control group's style for `binding` (the `control_group` control), enabled or not (#433): templates draw from
+/// its root; a disabled row's opacity is the `item` part's in the disabled style.
+pub fn resolve_control_group(binding: &StyleBinding, enabled: bool) -> Arc<Resolved> {
+    binding.resolve(&[("disabled", !enabled)], 1.0)
+}
+
+#[allow(deprecated)]
+impl ControlGroupListLook {
+    /// The look `resolved` describes, with `disabled` the same group resolved disabled (for the row opacity): the
+    /// compatibility path for code that still reads a `ControlGroupListLook` (#433).
+    pub fn from_resolved(resolved: &Resolved, disabled: &Resolved) -> Self {
+        let root = resolved.root();
+        ControlGroupListLook {
+            background: root.color("background"),
+            border: root.color("border"),
+            radius: root.number("radius"),
+            padding_x: root.number("padding_x"),
+            padding_y: root.number("padding_y"),
+            gap: root.number("gap"),
+            vertical_gap: root.number("vertical_gap"),
+            border_width: root.number("border_width"),
+            item_disabled_opacity: disabled.part(PartId::new("item")).opacity(),
+        }
+    }
+}
 
 /// Supplies the control metrics the rows are laid out with.
 pub type MetricsSource = Arc<dyn Fn() -> MetricTokens + Send + Sync>;
@@ -40,20 +68,8 @@ impl StyledControlGroupTheme {
 }
 
 impl ControlGroupTheme for StyledControlGroupTheme {
-    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook {
-        let resolved = self.binding.resolve(&[("disabled", !enabled)], 1.0);
-        let root = resolved.root();
-        ControlGroupListLook {
-            background: root.color("background"),
-            border: root.color("border"),
-            radius: root.number("radius"),
-            padding_x: root.number("padding_x"),
-            padding_y: root.number("padding_y"),
-            gap: root.number("gap"),
-            vertical_gap: root.number("vertical_gap"),
-            border_width: root.number("border_width"),
-            item_disabled_opacity: self.binding.resolve(&[("disabled", true)], 1.0).part(PartId::new("item")).opacity(),
-        }
+    fn style(&self) -> StyleBinding {
+        self.binding.clone()
     }
 
     fn metrics(&self) -> MetricTokens {
@@ -66,13 +82,14 @@ impl ControlGroupTheme for StyledControlGroupTheme {
         state: InteractionState,
         _scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette {
-        let look = self.rows.look(ButtonFamilyRole::Toggle { selected }, state, 1.0);
+        let face = self.rows.resolve_face(ButtonFamilyRole::Toggle { selected }, state, 1.0);
+        let root = face.root();
         ControlGroupItemPalette {
-            foreground: look.foreground,
-            background: look.background,
-            muted_foreground: look.muted_foreground,
-            typography: look.typography,
-            font_family: look.font_family,
+            foreground: root.color("foreground"),
+            background: root.color("background"),
+            muted_foreground: root.color("muted_foreground"),
+            typography: root.typography(14.0, 20.0),
+            font_family: root.font_family_name(),
         }
     }
 }

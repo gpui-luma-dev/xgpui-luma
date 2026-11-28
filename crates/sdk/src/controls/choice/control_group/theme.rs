@@ -1,6 +1,9 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
+use xgpui_luma_style::Resolved;
+
+use crate::style::StyleBinding;
 
 use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
@@ -15,6 +18,7 @@ pub struct ControlGroupItemVisualContext {
     pub height: f32,
 }
 
+#[deprecated(note = "templates draw from the resolved style; use `ControlGroupTheme::resolve_list_style` (#433)")]
 #[derive(Clone, Copy, Debug)]
 pub struct ControlGroupListLook {
     pub background: Hsla,
@@ -33,7 +37,22 @@ pub struct ControlGroupListLook {
 }
 
 pub trait ControlGroupTheme: Send + Sync {
-    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook;
+    /// The `control_group` binding the frame is read from.
+    fn style(&self) -> StyleBinding {
+        StyleBinding::sdk("control_group")
+    }
+
+    /// The frame's resolved style, enabled or not (#433): the root, and the `item` part for a disabled row's
+    /// opacity.
+    fn resolve_list_style(&self, enabled: bool) -> Arc<Resolved> {
+        super::styled::resolve_control_group(&self.style(), enabled)
+    }
+
+    #[deprecated(note = "templates draw from the resolved style; use `resolve_list_style` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook {
+        ControlGroupListLook::from_resolved(&self.resolve_list_style(enabled), &self.resolve_list_style(false))
+    }
 
     fn metrics(&self) -> MetricTokens;
 

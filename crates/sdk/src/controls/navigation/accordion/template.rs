@@ -34,8 +34,8 @@ pub trait AccordionTemplate: Send + Sync {
     }
 
     /// Appearance used by SDK native handles and previews.
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        default_accordion_theme().resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        default_accordion_theme().drag_style()
     }
 
     fn render(
@@ -75,8 +75,8 @@ impl AccordionTemplate for ModifiedTemplate<dyn AccordionTemplate> {
         self.base.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        self.base.resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        self.base.drag_style()
     }
 
     fn render(
@@ -112,8 +112,8 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         self.theme.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        self.theme.resolve_drag()
+    fn drag_style(&self) -> Arc<xgpui_luma_style::Resolved> {
+        self.theme.drag_style()
     }
 
     fn render(

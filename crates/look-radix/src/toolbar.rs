@@ -2,9 +2,8 @@
 
 use std::sync::Arc;
 
-use xgpui_luma::controls::toolbar::{
-    ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant, toolbar_template_with_theme,
-};
+use xgpui_luma::controls::toolbar::{ToolbarTemplate, ToolbarTheme, toolbar_template_with_theme};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
 
 use crate::Look;
 
@@ -49,19 +48,24 @@ struct RadixToolbarTheme {
 }
 
 impl ToolbarTheme for RadixToolbarTheme {
-    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
-        let mut resolved = xgpui_luma::controls::toolbar::styled_toolbar_look(&self.binding, enabled, variant);
-        if let Some(style) = self.style {
-            resolved.padding_x = style.padding_x;
-            resolved.padding_y = style.padding_y;
-            resolved.gap = style.gap;
-            if let Some(radius) = style.radius {
-                resolved.radius = radius;
-            }
-            resolved.separator_height =
-                self.look.control_sizes().for_size(self.look.size()).height * style.separator_height_ratio;
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        let Some(style) = self.style else {
+            return self.binding.clone();
+        };
+        let root = PartId::ROOT;
+        let mut overrides = Overrides::new()
+            .set(root, Prop::<f32>::new("padding_x"), style.padding_x)
+            .set(root, Prop::<f32>::new("padding_y"), style.padding_y)
+            .set(root, Prop::<f32>::new("gap"), style.gap)
+            .set(
+                root,
+                Prop::<f32>::new("separator_height"),
+                self.look.control_sizes().for_size(self.look.size()).height * style.separator_height_ratio,
+            );
+        if let Some(radius) = style.radius {
+            overrides = overrides.set(root, Prop::<f32>::new("radius"), radius);
         }
-        resolved
+        self.binding.clone().with_overrides(&overrides)
     }
 }
 
@@ -99,6 +103,8 @@ pub fn toolbar_template(look: &Look) -> Arc<dyn ToolbarTemplate> {
 mod tests {
     use super::*;
     use crate::ScaleFamily;
+    use xgpui_luma::controls::toolbar::ToolbarVariant;
+    use xgpui_luma::style::PartRead;
     use xgpui_luma::theme::ThemeMode;
 
     #[test]
@@ -108,12 +114,13 @@ mod tests {
         let normal = toolbar_theme(&look);
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let custom = custom.resolve(true, ToolbarVariant::Outline);
-            let normal = normal.resolve(true, ToolbarVariant::Outline);
-            assert_eq!(custom.gap, 12.0);
-            assert_eq!(custom.padding_x, 9.0);
-            assert_eq!(normal.gap, 6.0);
-            assert_eq!(custom.background, normal.background);
+            let custom = custom.resolve_style(true, ToolbarVariant::Outline);
+            let normal = normal.resolve_style(true, ToolbarVariant::Outline);
+            let (custom, normal) = (custom.root(), normal.root());
+            assert_eq!(custom.number("gap"), 12.0);
+            assert_eq!(custom.number("padding_x"), 9.0);
+            assert_eq!(normal.number("gap"), 6.0);
+            assert_eq!(custom.color("background"), normal.color("background"));
         }
     }
 
@@ -121,13 +128,13 @@ mod tests {
     fn toolbar_tracks_mode_and_preserves_ghost_transparency() {
         let look = Look::built_in();
         let theme = toolbar_theme(&look);
-        let light = theme.resolve(true, ToolbarVariant::Outline);
+        let light = theme.resolve_style(true, ToolbarVariant::Outline);
         look.set_mode(ThemeMode::Dark);
-        let dark = theme.resolve(true, ToolbarVariant::Outline);
-        assert_ne!(light.background, dark.background);
-        crate::control_group::assert_close(dark.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
-        let ghost = theme.resolve(true, ToolbarVariant::Ghost);
-        assert_eq!(ghost.background.a, 0.0);
-        assert_eq!(ghost.border.a, 0.0);
+        let dark = theme.resolve_style(true, ToolbarVariant::Outline);
+        assert_ne!(light.root().color("background"), dark.root().color("background"));
+        crate::control_group::assert_close(dark.root().color("border"), look.resolve_step(ScaleFamily::Gray, 6).hsla());
+        let ghost = theme.resolve_style(true, ToolbarVariant::Ghost);
+        assert_eq!(ghost.root().color("background").a, 0.0);
+        assert_eq!(ghost.root().color("border").a, 0.0);
     }
 }

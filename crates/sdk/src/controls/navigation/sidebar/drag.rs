@@ -445,7 +445,7 @@ impl SidebarControl {
         &self,
         mut surface: Stateful<Div>,
         id: &SharedString,
-        look: crate::infra::drag_drop::DragDropLook,
+        style: std::sync::Arc<xgpui_luma_style::Resolved>,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let Some(config) = &self.model.drag_drop else {
@@ -477,7 +477,7 @@ impl SidebarControl {
             if item.draggable
                 && let Some(drag) = SidebarDrag::new(scope, scope, vec![id.clone()])
             {
-                let preview_look = look.clone();
+                let preview_style = style.clone();
                 let owner = cx.weak_entity();
                 let label = item.label.clone();
                 surface = bind_drag_source(
@@ -492,7 +492,7 @@ impl SidebarControl {
                         cx.new(|_| crate::infra::drag_drop::DragPreview {
                             label: label.clone(),
                             offset,
-                            look: preview_look.clone(),
+                            style: preview_style.clone(),
                             selector: "sidebar-drag-preview",
                         })
                     },
@@ -528,7 +528,7 @@ impl SidebarControl {
                     edge: edge.unwrap_or(DropEdge::Before),
                     item_extent: px(0.),
                     following_gap: px(0.),
-                    marker_width: px(look.geometry.drag_marker_width),
+                    marker_width: px(crate::theme::stylesheet::SharedGeometry::sdk().drag_marker_width),
                 };
                 let target = match edge {
                     Some(edge) => {
@@ -546,7 +546,7 @@ impl SidebarControl {
                     }
                     None => div()
                         .id("sidebar-into")
-                        .border(px(look.geometry.drag_border_width))
+                        .border(px(crate::theme::stylesheet::SharedGeometry::sdk().drag_border_width))
                         .absolute()
                         .top(gpui::relative(0.25))
                         .h(gpui::relative(0.5))
@@ -556,7 +556,7 @@ impl SidebarControl {
                 let destination = location.clone();
                 let target = crate::infra::drag_drop::bind_feedback(
                     target,
-                    look.clone(),
+                    style.clone(),
                     scope,
                     move |drag: &SidebarDrag, app| {
                         drag.accepts(scope)
@@ -593,11 +593,11 @@ impl SidebarItemDragBinding {
     pub fn bind(
         &self,
         surface: Stateful<Div>,
-        look: crate::infra::drag_drop::DragDropLook,
+        style: std::sync::Arc<xgpui_luma_style::Resolved>,
         cx: &mut gpui::App,
     ) -> Stateful<Div> {
         self.owner
-            .update(cx, |sidebar, cx| sidebar.bind_item(surface, &self.id, look, cx))
+            .update(cx, |sidebar, cx| sidebar.bind_item(surface, &self.id, style, cx))
             .unwrap_or_else(|_| div().id("released-sidebar-row"))
     }
 }

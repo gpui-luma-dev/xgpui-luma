@@ -5,31 +5,36 @@ use gpui::{
 };
 use crate::infra::drag_drop::{DropEdge, DropZone, KeyedDropTarget, bind_drag_source};
 use super::{TableControl, reorder::RowDrag};
-use super::super::theme::TableDragLook;
+use super::super::theme::TableGeometry;
+use crate::style::PartRead;
+use xgpui_luma_style::Resolved;
 
 struct RowPreview {
     label: SharedString,
     offset: Point<Pixels>,
-    look: TableDragLook,
+    style: std::sync::Arc<Resolved>,
+    geometry: TableGeometry,
 }
 impl Render for RowPreview {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         // GPUI positions the preview at pointer - native grab offset. Compensate
         // so a compact preview stays beside the pointer even on very wide rows.
+        let root = self.style.root();
+        let geometry = &self.geometry;
         div().relative().child(
             div()
                 .debug_selector(|| "table-row-drag-preview".to_string())
                 .relative()
-                .left(self.offset.x + px(self.look.geometry.drag_offset))
-                .top(self.offset.y + px(self.look.geometry.drag_offset))
-                .w(px(self.look.geometry.drag_width))
-                .px(px(self.look.geometry.drag_padding_x))
-                .py(px(self.look.geometry.drag_padding_y))
-                .rounded(px(self.look.radius))
-                .bg(self.look.background)
-                .text_color(self.look.foreground)
-                .border(px(self.look.geometry.drag_border_width))
-                .border_color(self.look.valid_marker)
+                .left(self.offset.x + px(geometry.drag_offset))
+                .top(self.offset.y + px(geometry.drag_offset))
+                .w(px(geometry.drag_width))
+                .px(px(geometry.drag_padding_x))
+                .py(px(geometry.drag_padding_y))
+                .rounded(px(root.number("radius")))
+                .bg(root.color("background"))
+                .text_color(root.color("foreground"))
+                .border(px(geometry.drag_border_width))
+                .border_color(root.color("valid_marker"))
                 .truncate()
                 .child(self.label.clone()),
         )
@@ -46,7 +51,8 @@ impl<T: 'static> TableControl<T> {
             } else {
                 format!("{} rows", drag.keys().len()).into()
             };
-            let look = self.model.theme.resolve_drag();
+            let style = self.model.theme.drag_style();
+            let geometry = self.model.theme.drag_geometry();
             row = bind_drag_source(
                 row,
                 drag,
@@ -57,7 +63,7 @@ impl<T: 'static> TableControl<T> {
                         table.schedule_drag_scroll(window, cx, None);
                         cx.notify();
                     });
-                    app.new(|_| RowPreview { label: label.clone(), offset, look: look.clone() })
+                    app.new(|_| RowPreview { label: label.clone(), offset, style: style.clone(), geometry })
                 },
                 cx,
                 Self::handle_row_drag_event,
@@ -66,13 +72,14 @@ impl<T: 'static> TableControl<T> {
         if self.active_row_drag.as_ref().is_some_and(|drag| drag.accepts(scope)) {
             for (edge, gap) in [(DropEdge::Before, index), (DropEdge::After, index + 1)] {
                 let before = self.row_keys.get(gap).cloned();
-                let look = self.model.theme.resolve_drag();
+                let drag_style = self.model.theme.drag_style();
+                let geometry = self.model.theme.drag_geometry();
                 let zone = DropZone {
                     axis: Axis::Vertical,
                     edge,
                     item_extent: px(0.0),
                     following_gap: px(0.0),
-                    marker_width: px(look.geometry.drag_marker_width),
+                    marker_width: px(geometry.drag_marker_width),
                 };
                 let owner = cx.entity().downgrade();
                 let highlight_before = before.clone();
@@ -102,7 +109,7 @@ impl<T: 'static> TableControl<T> {
                             );
                         }
                     }))
-                    .drag_over::<RowDrag>(move |style, drag, window, app| {
+                    .drag_over::<RowDrag>(move |style_, drag, window, app| {
                         let valid = owner.upgrade().is_some_and(|owner| {
                             let table = owner.read(app);
                             drag.propose(scope, scope, highlight_before.clone())
@@ -126,7 +133,7 @@ impl<T: 'static> TableControl<T> {
                                 app.set_active_drag_cursor_style(cursor, window);
                             }
                         });
-                        style.border_color(if valid { look.valid_marker } else { look.invalid_marker })
+                        style_.border_color(crate::infra::drag_drop::drag_marker_color(&drag_style, valid))
                     });
                 row = row.child(KeyedDropTarget::new(scope, scope, before).bind(surface, cx, Self::handle_row_drop));
             }

@@ -68,7 +68,9 @@
 //! table. Custom header templates own their interactions and get no handles.
 
 mod styled;
-pub use styled::{StyledTable, StyledTableTheme, TableRowLayout, table_drag_look};
+#[allow(deprecated)]
+pub use styled::table_drag_look;
+pub use styled::{StyledTable, StyledTableTheme, TableRowLayout};
 mod control;
 mod column_template;
 mod layout;
@@ -102,7 +104,10 @@ pub use template::{
     DefaultTableShellTemplate, TableTemplate, TableTemplateModifier, default_table_template, table_template_with_theme,
 };
 #[allow(deprecated)]
-pub use theme::{TableDragLook, TableLook, TableRowLook, TableRowPalette, TableTheme, default_table_theme};
+pub use theme::TableDragLook;
+#[allow(deprecated)]
+pub use theme::{TableLook, TableRowLook, TableRowPalette};
+pub use theme::{TableGeometry, TableTheme, default_table_theme};
 
 use gpui::{Entity, SharedString};
 

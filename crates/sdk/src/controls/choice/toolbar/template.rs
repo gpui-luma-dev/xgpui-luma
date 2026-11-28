@@ -2,8 +2,10 @@ use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
+use crate::style::PartRead;
 use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
 
+use xgpui_luma_style::PartId;
 use super::model::{ToolbarItem, ToolbarItemKind, ToolbarItemRenderModel, ToolbarRenderModel, fallback_item};
 use super::theme::{ToolbarTheme, ToolbarVariant, default_toolbar_theme};
 use crate::controls::control_group::{ControlGroupItemLike, ControlGroupRenderModel, ControlGroupTemplate};
@@ -57,29 +59,30 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.variant);
+        let style = self.theme.resolve_style(model.enabled, model.variant);
+        let look = style.root();
         let mut root = div()
             .id(model.id.clone())
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(look.gap))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background);
+            .gap(px(look.number("gap")))
+            .px(px(look.number("padding_x")))
+            .py(px(look.number("padding_y")))
+            .rounded(px(look.number("radius")))
+            .bg(look.color("background"));
 
         if model.variant == ToolbarVariant::Outline {
-            root = root.border(px(look.border_width)).border_color(look.border);
+            root = root.border(px(look.number("border_width"))).border_color(look.color("border"));
         }
 
         for item in items {
             let child = match item.kind {
                 ToolbarItemKind::Separator => div()
-                    .w(px(look.separator_width))
-                    .h(px(look.separator_height))
+                    .w(px(look.number("separator_width")))
+                    .h(px(look.number("separator_height")))
                     .flex_none()
-                    .bg(look.separator)
+                    .bg(style.part(PartId::new("separator")).color("background"))
                     .into_any_element(),
                 ToolbarItemKind::Hosted => item.element,
             };

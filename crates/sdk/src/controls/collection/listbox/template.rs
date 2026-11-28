@@ -1,9 +1,8 @@
 //! Look-owned chrome for shared listbox composition.
-// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
-#![allow(deprecated)]
 
 use gpui::{App, Div, ElementId, Hsla, Stateful};
-use crate::controls::tooltip::TooltipLook;
+use std::sync::Arc;
+use xgpui_luma_style::Resolved;
 use super::{ListBoxItemState, ListBoxLayout, ListBoxMotion};
 
 /// Surface state supplied to a listbox template. Geometry is authored by the caller.
@@ -30,7 +29,9 @@ pub struct ListBoxDragLook {
     pub marker_width: f32,
     /// Optional outline while an accepted drag is over the whole surface.
     pub surface_color: Option<Hsla>,
-    pub preview: TooltipLook,
+    /// The theme's tooltip, resolved (see [`resolve_tooltip`](crate::controls::tooltip::resolve_tooltip)): the floating
+    /// label's chrome.
+    pub preview: Arc<Resolved>,
 }
 
 /// Content-free chrome, using the same render-model/template contract as other

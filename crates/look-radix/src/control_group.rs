@@ -1,4 +1,5 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
+use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
@@ -70,16 +71,17 @@ fn icon_group_shell(look: &Look) -> StyledControlGroupTheme {
 pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
     let shell = icon_group_shell(look);
     let template = control_group_item_layout_template(move |items, model, _, _| {
-        let frame = shell.resolve_list(model.enabled);
+        let style = shell.resolve_list_style(model.enabled);
+        let frame = style.root();
         div()
             .relative()
             .flex()
             .items_center()
             .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
-            .rounded(px(frame.radius))
-            .bg(frame.background)
-            .border(px(frame.border_width))
-            .border_color(frame.border)
+            .rounded(px(frame.number("radius")))
+            .bg(frame.color("background"))
+            .border(px(frame.number("border_width")))
+            .border_color(frame.color("border"))
             .children(items.into_elements().map(|item| div().flex_none().child(item)))
     });
     Arc::new(move |model, handlers, window, cx| template(model, handlers, window, cx).flex().items_start())
@@ -304,10 +306,11 @@ mod tests {
         let look = Look::built_in();
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
-            let frame = icon_group_shell(&look).resolve_list(true);
-            assert_eq!((frame.border_width, frame.radius), (1.0, 4.0), "{mode:?}");
-            assert_close(frame.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
-            assert_close(frame.background, look.resolve_role(SemanticRole::Surface).hsla());
+            let style = icon_group_shell(&look).resolve_list_style(true);
+            let frame = style.root();
+            assert_eq!((frame.number("border_width"), frame.number("radius")), (1.0, 4.0), "{mode:?}");
+            assert_close(frame.color("border"), look.resolve_step(ScaleFamily::Gray, 6).hsla());
+            assert_close(frame.color("background"), look.resolve_role(SemanticRole::Surface).hsla());
         }
     }
 

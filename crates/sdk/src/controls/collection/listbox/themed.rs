@@ -3,14 +3,12 @@
 //! ([`StyledListBox`]): fill, border and focus ring for selected, hover, pressed, focused and disabled, and the text
 //! style text content inherits. The focus ring is the drop marker, and the theme's tooltip the drag preview. Looks can still supply their
 //! own [`ListBoxTemplate`]; this is what a listbox draws without one ([`super::ListBoxBuilder::build_default`]).
-// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
-#![allow(deprecated)]
 
 use crate::style::PartRead;
 use gpui::{App, Div, Stateful, div, prelude::*};
 
 use super::{ListBoxDragLook, ListBoxMotion, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxTemplate, StyledListBox};
-use crate::controls::tooltip::styled_tooltip_look;
+use crate::controls::tooltip::resolve_tooltip;
 use crate::style::{StyleBinding, ThemeSource};
 
 /// Listbox chrome drawn from a theme's `listbox.lss`.
@@ -62,7 +60,7 @@ impl ListBoxTemplate for ThemedListBoxTemplate {
             marker_color: self.styled.resolve_surface(true, true).root().color("border"),
             marker_width: 2.,
             surface_color: None,
-            preview: styled_tooltip_look(&self.tooltip),
+            preview: resolve_tooltip(&self.tooltip),
         }
     }
 

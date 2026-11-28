@@ -18,8 +18,11 @@ impl TableTheme for TableThemeAdapter {
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
     }
-    fn resolve_drag(&self) -> TableDragLook {
-        table_drag_look(crate::navigation::drag_look(&self.look, self.look.size()), self.styled.drag_geometry())
+    fn drag_style(&self) -> Arc<xgpui_luma::style::lss::Resolved> {
+        crate::navigation::drag_style(&self.look, self.look.size())
+    }
+    fn drag_geometry(&self) -> xgpui_luma::controls::table::TableGeometry {
+        self.styled.drag_geometry()
     }
 }
 struct TableTemplateAdapter {
@@ -161,8 +164,8 @@ mod tests {
         fork.set_mode(ThemeMode::Dark);
         assert_ne!(frame_background(&theme), original);
         assert_eq!(frame_background(&table_theme(&base)), original);
-        let drag = theme.resolve_drag();
-        assert_close(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
-        assert_close(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
+        let drag = theme.drag_style();
+        assert_close(drag.root().color("valid_marker"), fork.resolve_role(SemanticRole::Focus).hsla());
+        assert_close(drag.root().color("invalid_marker"), fork.resolve_role(SemanticRole::Destructive).hsla());
     }
 }

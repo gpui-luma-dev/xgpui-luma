@@ -93,21 +93,32 @@ pub trait SidebarTheme: Send + Sync {
     fn geometry(&self) -> crate::theme::stylesheet::SidebarGeometry {
         crate::theme::stylesheet::SidebarGeometry::sdk()
     }
-    /// Appearance of native drag previews and insertion feedback.
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default());
+    /// Appearance of native drag previews and insertion feedback (#433): the SDK's `drag_preview` with the
+    /// sidebar's colors, corner and text set over it.
+    fn drag_style(&self) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        let base = crate::infra::drag_drop::resolve_drag_preview(&crate::infra::drag_drop::sdk_drag_preview());
+        let base = base.root();
         let row = resolve_sidebar_row(&self.style(), true, InteractionState { focused: true, ..Default::default() });
         let item = row.part(PartId::new("item"));
         let foreground = item.color("foreground");
         let invalid =
             resolve_sidebar_row(&self.style(), false, InteractionState { invalid: true, ..Default::default() });
-        drag.background = item.painted("background").unwrap_or(drag.background);
-        drag.foreground = foreground;
-        drag.valid_marker = item.painted("focus_border").unwrap_or(foreground);
-        drag.invalid_marker = invalid.part(PartId::new("item")).color("foreground");
-        drag.radius = item.number("radius");
-        drag.typography = item.typography(12.5, 18.0);
-        drag
+        crate::infra::drag_drop::drag_preview_over(
+            item.painted("background").unwrap_or(base.color("background")),
+            foreground,
+            item.painted("focus_border").unwrap_or(foreground),
+            invalid.part(PartId::new("item")).color("foreground"),
+            item.number("radius"),
+            item.typography(12.5, 18.0),
+            None,
+        )
+    }
+
+    /// Appearance of native drag previews and insertion feedback.
+    #[deprecated(note = "templates draw from the resolved style; use `drag_style` (#433)")]
+    #[allow(deprecated)]
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        crate::infra::drag_drop::DragDropLook::from_resolved(&self.drag_style())
     }
     /// The rows' text color at rest.
     fn foreground(&self) -> Hsla {
