@@ -8,7 +8,6 @@
 //! | Item hover bg | `accent`                           |
 //! | Item hover fg | `accent-foreground`                |
 //! | Item disabled | `muted-foreground`               |
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::ThemeMode;
@@ -46,13 +45,14 @@ mod tests {
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
     use super::floating_menu_binding;
+    use xgpui_luma::style::PartRead;
 
     fn floating_menu_look(
         mode: &ShadcnModeTokens,
         theme_mode: xgpui_luma::theme::ThemeMode,
         size: ShadcnSize,
-    ) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
-        xgpui_luma::controls::floating_menu::styled_floating_menu_look(&floating_menu_binding(mode, theme_mode, size))
+    ) -> xgpui_luma::controls::floating_menu::MenuStyle {
+        xgpui_luma::controls::floating_menu::MenuStyle::resolve(&floating_menu_binding(mode, theme_mode, size))
     }
 
     fn sample_catalog() -> CssTokenMap {
@@ -82,7 +82,7 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
         let look = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
 
-        assert!(!look.shadow.is_empty());
+        assert!(!look.panel().box_shadow().is_empty());
     }
 
     #[test]
@@ -91,10 +91,16 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let look = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
 
-        crate::assert_close(look.background, catalog.color("popover").expect("popover"));
-        crate::assert_close(look.foreground, catalog.color("popover-foreground").expect("popover-foreground"));
-        crate::assert_close(look.item_hover_background, catalog.color("accent").expect("accent"));
-        crate::assert_close(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
+        crate::assert_close(look.panel().color("background"), catalog.color("popover").expect("popover"));
+        crate::assert_close(
+            look.panel().color("foreground"),
+            catalog.color("popover-foreground").expect("popover-foreground"),
+        );
+        crate::assert_close(look.row_colors().hover_background, catalog.color("accent").expect("accent"));
+        crate::assert_close(
+            look.row_colors().hover_foreground,
+            catalog.color("accent-foreground").expect("accent-foreground"),
+        );
     }
 
     #[test]
@@ -104,10 +110,10 @@ mod tests {
         let md = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
         let lg = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Lg);
 
-        assert!((sm.item_typography.size - 12.0).abs() < f32::EPSILON);
-        assert!((md.item_typography.size - 14.0).abs() < f32::EPSILON);
-        assert!((lg.item_typography.size - 16.0).abs() < f32::EPSILON);
-        assert!(sm.item_typography.size < md.item_typography.size);
-        assert!(md.item_typography.size < lg.item_typography.size);
+        assert!((sm.item().typography(14.0, 20.0).size - 12.0).abs() < f32::EPSILON);
+        assert!((md.item().typography(14.0, 20.0).size - 14.0).abs() < f32::EPSILON);
+        assert!((lg.item().typography(14.0, 20.0).size - 16.0).abs() < f32::EPSILON);
+        assert!(sm.item().typography(14.0, 20.0).size < md.item().typography(14.0, 20.0).size);
+        assert!(md.item().typography(14.0, 20.0).size < lg.item().typography(14.0, 20.0).size);
     }
 }

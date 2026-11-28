@@ -1,5 +1,4 @@
 //! Radix split actions using the SDK's shared popup engine and independent face states.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::{
@@ -97,8 +96,9 @@ mod tests {
                             crate::control_group::assert_close(foreground, Tone::Accent.contrast(&fork));
                         }
                         crate::control_group::assert_close(
-                            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&theme.menu())
-                                .item_hover_background,
+                            xgpui_luma::controls::floating_menu::MenuStyle::resolve(&theme.menu())
+                                .row_colors()
+                                .hover_background,
                             Tone::Accent.step(&fork, 9),
                         );
                     }

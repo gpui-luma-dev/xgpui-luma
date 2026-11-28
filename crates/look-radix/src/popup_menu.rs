@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use xgpui_luma::controls::floating_menu::FloatingMenuLook;
 use xgpui_luma::controls::popup_menu::{PopupMenuTemplate, PopupMenuTheme, StyledPopupMenuTheme, ThemedPopupMenuTemplate};
 
 use crate::look::Look;
@@ -21,20 +20,8 @@ pub enum PopupMenuVariant {
     Soft,
 }
 
-/// Resolve shared Radix menu panel, row, and separator styling for SDK composition.
-///
-/// Pass the result to the SDK floating-menu renderer. This is a resolved snapshot:
-/// resolve again during render after changing the supplied Look, and notify the owner.
-/// Explicit and forked Looks are used directly; no ambient Look is consulted.
-/// Uses the existing Radix menu size (`"2"`) and its shared stylesheet overrides.
-#[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
-pub fn floating_menu_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> FloatingMenuLook {
-    floating_menu_look_for(look, variant, tone, crate::RadixSize::Two)
-}
-
-/// Size-aware shared menu chrome. Size keys are Radix `1`, `2`, and `3`.
-/// Like [`floating_menu_look`], this resolves a snapshot from the supplied Look.
 /// The size-aware Radix menu style (the `floating_menu` control): what menu templates resolve and draw from (#433).
+/// Size keys are Radix `1`, `2`, and `3`.
 pub fn floating_menu_binding_for(
     look: &Look,
     variant: PopupMenuVariant,
@@ -51,27 +38,14 @@ pub fn floating_menu_binding_for(
     } else {
         binding
     };
-    let binding = if size != crate::RadixSize::Two {
+    if size != crate::RadixSize::Two {
         binding.attr("size", size.key())
     } else {
         binding
-    };
-    binding
+    }
 }
 
-/// Size-aware shared menu chrome as a look snapshot, from [`floating_menu_binding_for`].
-#[deprecated(note = "menus draw from `floating_menu_binding_for`; read it through `MenuStyle` (#433)")]
-pub fn floating_menu_look_for(
-    look: &Look,
-    variant: PopupMenuVariant,
-    tone: Tone,
-    size: crate::RadixSize,
-) -> FloatingMenuLook {
-    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&floating_menu_binding_for(
-        look, variant, tone, size,
-    ))
-}
-
+/// Resolve shared Radix menu panel, row, and separator styling for SDK composition.
 pub fn popup_menu_theme(look: &Look, variant: PopupMenuVariant, tone: Tone) -> Arc<dyn PopupMenuTheme> {
     styled_popup_menu_theme(look, variant, tone, look.size())
 }
@@ -122,6 +96,7 @@ pub fn popup_menu_template_with_menu_size(
 
 #[cfg(test)]
 mod tests {
+    use xgpui_luma::controls::floating_menu::MenuStyle;
     use super::*;
     use crate::control_group::assert_close;
     use crate::semantic::SemanticRole;
@@ -160,11 +135,19 @@ mod tests {
     #[test]
     fn solid_variant_highlights_items_with_the_solid_accent() {
         let look = Look::built_in();
-        let menu = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
+        let menu = MenuStyle::resolve(&floating_menu_binding_for(
+            &look,
+            PopupMenuVariant::Solid,
+            Tone::Accent,
+            crate::RadixSize::Two,
+        ));
 
-        crate::control_group::assert_close(menu.item_hover_background, look.resolve_role(SemanticRole::Primary).hsla());
         crate::control_group::assert_close(
-            menu.item_hover_foreground,
+            menu.row_colors().hover_background,
+            look.resolve_role(SemanticRole::Primary).hsla(),
+        );
+        crate::control_group::assert_close(
+            menu.row_colors().hover_foreground,
             look.resolve_role(SemanticRole::PrimaryForeground).hsla(),
         );
     }
@@ -172,25 +155,45 @@ mod tests {
     #[test]
     fn soft_variant_tints_items_and_keeps_the_panel_text() {
         let look = Look::built_in();
-        let solid = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
-        let soft = floating_menu_look(&look, PopupMenuVariant::Soft, Tone::Accent);
+        let solid = MenuStyle::resolve(&floating_menu_binding_for(
+            &look,
+            PopupMenuVariant::Solid,
+            Tone::Accent,
+            crate::RadixSize::Two,
+        ));
+        let soft = MenuStyle::resolve(&floating_menu_binding_for(
+            &look,
+            PopupMenuVariant::Soft,
+            Tone::Accent,
+            crate::RadixSize::Two,
+        ));
 
         crate::control_group::assert_close(
-            soft.item_hover_foreground,
+            soft.row_colors().hover_foreground,
             look.resolve_role(SemanticRole::Foreground).hsla(),
         );
-        assert!(soft.item_hover_background.l > solid.item_hover_background.l);
-        assert_eq!(soft.background, solid.background);
+        assert!(soft.row_colors().hover_background.l > solid.row_colors().hover_background.l);
+        assert_eq!(soft.panel().color("background"), solid.panel().color("background"));
     }
 
     #[test]
     fn gray_tone_keeps_the_panel_and_only_swaps_the_highlight() {
         let look = Look::built_in();
-        let accent = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
-        let gray = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Gray);
+        let accent = MenuStyle::resolve(&floating_menu_binding_for(
+            &look,
+            PopupMenuVariant::Solid,
+            Tone::Accent,
+            crate::RadixSize::Two,
+        ));
+        let gray = MenuStyle::resolve(&floating_menu_binding_for(
+            &look,
+            PopupMenuVariant::Solid,
+            Tone::Gray,
+            crate::RadixSize::Two,
+        ));
 
-        crate::control_group::assert_close(gray.item_hover_background, Tone::Gray.step(&look, 9));
-        assert_ne!(gray.item_hover_background, accent.item_hover_background);
-        assert_eq!(gray.background, accent.background);
+        crate::control_group::assert_close(gray.row_colors().hover_background, Tone::Gray.step(&look, 9));
+        assert_ne!(gray.row_colors().hover_background, accent.row_colors().hover_background);
+        assert_eq!(gray.panel().color("background"), accent.panel().color("background"));
     }
 }
