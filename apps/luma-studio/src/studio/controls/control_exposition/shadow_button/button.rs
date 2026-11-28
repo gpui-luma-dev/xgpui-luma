@@ -187,7 +187,7 @@ impl ButtonTemplate<()> for PrototypeShadowButtonTemplate {
 impl PrototypeShadowButtonTemplate {
     fn resolve_face(&self, model: &ButtonRenderModel<()>) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
         use xgpui_luma::controls::button::StyledButtonTemplate;
-        if model.look.is_some() {
+        if !model.overrides.is_empty() {
             StyledButtonTemplate::<()>::sdk().resolve_model_face(model, 1.0)
         } else {
             self.look.button_face_style(

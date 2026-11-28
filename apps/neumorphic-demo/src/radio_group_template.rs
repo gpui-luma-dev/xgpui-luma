@@ -108,10 +108,12 @@ impl ButtonTemplate<bool> for NeumorphicSegmentedButtonTemplate {
             ButtonContentFace {
                 background,
                 foreground: text_color,
+                muted_foreground: text_color,
                 border: Some(border),
                 typography: LumaTextStyle { size: 11.0, line_height: 12.0, weight: FontWeight::MEDIUM },
                 font_family: "System UI".into(),
                 radius: 17.0,
+                gap: 0.0,
                 height: 34.0,
                 icon_size: 14.0,
             },
@@ -202,7 +204,6 @@ where
             radius_override: Cell::new(None),
             elevation: true,
             compact: false,
-            look: None,
             ..Default::default()
         };
 

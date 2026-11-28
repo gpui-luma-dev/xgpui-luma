@@ -1,5 +1,4 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};
@@ -213,7 +212,7 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             self.size,
         )
         .variant("icon_group");
-        let height = template.look(model.role, model.state, window.scale_factor()).height;
+        let height = template.resolve_face(model.role, model.state, window.scale_factor()).root().number("height");
         let model = ButtonRenderModel {
             id: model.id.clone(),
             data: model.data,

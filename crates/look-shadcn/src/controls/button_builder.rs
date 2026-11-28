@@ -1,5 +1,4 @@
 //! Look-owned button builder. Spawn synthesizes the SDK [`xgpui_luma::controls::button::Button`].
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
 use xgpui_luma::controls::button::{
@@ -313,6 +312,7 @@ pub(crate) fn template_for<D: xgpui_luma::controls::button::ButtonData>(
 
 #[cfg(test)]
 mod tests {
+    use xgpui_luma::style::PartRead;
     use super::*;
 
     /// A radius preset reaches the button as the `.lss` attribute: the spawned button's template draws
@@ -332,17 +332,23 @@ mod tests {
         ] {
             for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon] {
                 let state = InteractionState::default();
-                let drawn = template_for::<()>(&look, ShadcnButtonStyle::Outline, Some(preset)).look(role, state, 1.0);
-                let face = look.button_face(ShadcnButtonStyle::Outline, role, ShadcnSize::Md, Some(preset), state);
-                assert_eq!(drawn.radius, face.radius, "{preset:?} {role:?}");
-                assert_eq!(drawn.background, face.background, "{preset:?} {role:?}");
+                let drawn =
+                    template_for::<()>(&look, ShadcnButtonStyle::Outline, Some(preset)).resolve_face(role, state, 1.0);
+                let face =
+                    look.button_face_style(ShadcnButtonStyle::Outline, role, ShadcnSize::Md, Some(preset), state);
+                let (drawn, face) = (drawn.root(), face.root());
+                for name in ["radius", "icon_radius"] {
+                    assert_eq!(drawn.number(name), face.number(name), "{preset:?} {role:?} {name}");
+                }
+                assert_eq!(drawn.color("background"), face.color("background"), "{preset:?} {role:?}");
             }
         }
         let full = template_for::<()>(&look, ShadcnButtonStyle::Outline, Some(ButtonRadiusPreset::Full));
         let none = template_for::<()>(&look, ShadcnButtonStyle::Outline, Some(ButtonRadiusPreset::None));
         let state = InteractionState::default();
         assert!(
-            full.look(ButtonFamilyRole::Text, state, 1.0).radius > none.look(ButtonFamilyRole::Text, state, 1.0).radius
+            full.resolve_face(ButtonFamilyRole::Text, state, 1.0).root().number("radius")
+                > none.resolve_face(ButtonFamilyRole::Text, state, 1.0).root().number("radius")
         );
     }
     use xgpui_luma::controls::button::HasPresenter;

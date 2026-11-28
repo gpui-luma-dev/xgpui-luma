@@ -1,6 +1,5 @@
-#![allow(deprecated)] // Reads and builds the compatibility `ButtonFamilyLook` until its callers move to style overrides (#433).
 use super::*;
-use crate::{controls::button_family::*, perf_measure::measure, theme::*};
+use crate::{perf_measure::measure, theme::*};
 
 struct ShadowButtons {
     buttons: Vec<gpui::Entity<Button>>,
@@ -16,20 +15,27 @@ impl Render for ShadowButtons {
 #[ignore = "manual headless performance measurement"]
 fn measure_shadow_controls() {
     for layers in [0, 1, 2, 8] {
-        let mut look = crate::controls::button::StyledButtonTemplate::<()>::sdk().look(
-            ButtonFamilyRole::Text,
-            InteractionState::default(),
-            2.0,
-        );
         let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
-        look.shadow = Some(vec![layer; layers]);
-        let source: super::super::model::ButtonLookSource<()> = Arc::new(move |_| look.clone());
+        let shadow = crate::style::lss::ShadowLayer {
+            x: f32::from(layer.offset.x),
+            y: f32::from(layer.offset.y),
+            blur: f32::from(layer.blur_radius),
+            spread: f32::from(layer.spread_radius),
+            color: crate::style::lss_color(layer.color),
+            inset: layer.inset,
+        };
+        let layers_value: Arc<[crate::style::lss::ShadowLayer]> = vec![shadow; layers].into();
+        let source = crate::style::lss::Overrides::new().set(
+            crate::style::lss::PartId::ROOT,
+            crate::style::lss::Prop::<Arc<[crate::style::lss::ShadowLayer]>>::new("shadow"),
+            layers_value,
+        );
         let mut app = gpui::TestAppContext::single();
         let (page, cx) = app.add_window_view(|_, cx| ShadowButtons {
             buttons: (0..100)
                 .map(|index| {
                     let mut builder = ButtonBuilder::new(format!("button-{index}"));
-                    builder.model.look = Some(source.clone());
+                    builder.model.overrides = source.clone();
                     builder.spawn(cx)
                 })
                 .collect(),
@@ -48,7 +54,7 @@ fn measure_shadow_controls() {
         measure(&format!("Button/construct entity/{layers} layers"), 100, || {
             cx.update(|_, app| {
                 let mut builder = ButtonBuilder::new("cold-button");
-                builder.model.look = Some(source.clone());
+                builder.model.overrides = source.clone();
                 page.update(app, |_, cx| builder.spawn(cx))
             })
         });

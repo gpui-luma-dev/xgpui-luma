@@ -1,6 +1,5 @@
 //! Isolated headless costs, not application frame times. Run with:
 //! `cargo bench -p xgpui-luma --bench render_hot_paths -- --measure`
-#![allow(deprecated)] // The bench measures the compatibility `ButtonFamilyLook` path (#433).
 use std::{collections::HashMap, hint::black_box, rc::Rc, sync::Arc};
 
 #[path = "../src/perf_measure.rs"]
@@ -9,10 +8,8 @@ use perf_measure::measure;
 
 use gpui::{BoxShadow, ElementId, SharedString};
 use xgpui_luma::{
-    controls::{
-        button_family::ButtonFamilyRole, sidebar::SidebarPanelTemplateHandlers, tree_view::TreeViewTemplateHandlers,
-    },
-    theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeTokens},
+    controls::{sidebar::SidebarPanelTemplateHandlers, tree_view::TreeViewTemplateHandlers},
+    theme::{MetricTokens, StandardBoxScale, ThemeTokens},
 };
 use smallvec::SmallVec;
 
@@ -80,19 +77,11 @@ fn main() {
         });
     }
 
-    let mut look = xgpui_luma::controls::button::StyledButtonTemplate::<()>::sdk().look(
-        ButtonFamilyRole::Text,
-        InteractionState::default(),
-        2.0,
-    );
-    measure("Button look/no shadows clone", iterations, || black_box(&look).clone());
     let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
     for count in [0, 1, 2, 8] {
         let shadows = vec![layer.clone(); count];
-        look.shadow = Some(shadows.clone());
         let inline: SmallVec<[BoxShadow; 2]> = shadows.iter().cloned().collect();
         let shared: Arc<[BoxShadow]> = shadows.clone().into();
-        measure(&format!("Button look/Vec clone/{count}"), iterations, || black_box(&look).clone());
         measure(&format!("Shadow/Vec construct/{count}"), iterations, || black_box(&shadows).to_vec());
         measure(&format!("Shadow/SmallVec construct/{count}"), iterations, || {
             black_box(&shadows).iter().cloned().collect::<SmallVec<[BoxShadow; 2]>>()

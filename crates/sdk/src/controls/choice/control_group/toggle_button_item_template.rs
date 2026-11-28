@@ -49,7 +49,6 @@ where
             radius_override: std::cell::Cell::new(None),
             elevation: true,
             compact: false,
-            look: None,
             ..Default::default()
         };
 
