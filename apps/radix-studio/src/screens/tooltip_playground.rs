@@ -1,5 +1,4 @@
 //! Tooltip options exercised against one retained preview.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
 use xgpui_luma::controls::switch::SwitchEventExt;
@@ -301,7 +300,7 @@ fn reset_button<M: 'static>(id: &'static str, help: &'static str, look: &Look, c
         .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
         .content(|model, _| {
             icon_named("reset")
-                .map(|icon| react_icon(icon, model.look.foreground, 15.0))
+                .map(|icon| react_icon(icon, model.foreground(), 15.0))
                 .unwrap_or_else(|| div().into_any_element())
         })
         .with_template_modifier(move |root, _| root.flex_none().debug_selector(move || id.into()))

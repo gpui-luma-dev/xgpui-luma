@@ -1,5 +1,5 @@
 //! Progress — accent track + accent-foreground fill.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use crate::size::ShadcnSize;
 

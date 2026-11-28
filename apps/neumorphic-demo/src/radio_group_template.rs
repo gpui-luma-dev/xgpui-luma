@@ -1,12 +1,10 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, FontWeight, MouseButton, Stateful, Window, div, hsla, px, prelude::*};
 use xgpui_luma::controls::button_family::{ButtonFamilyRole};
 use xgpui_luma::infra::ElementExt;
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
-use xgpui_luma::controls::button_family::ButtonFamilyLook;
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, ButtonContentFace, button_content_context_painted};
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupRenderModel, ControlGroupTemplateHandlers};
 use xgpui_luma::controls::radio_group::RadioGroupTemplate;
@@ -105,23 +103,17 @@ impl ButtonTemplate<bool> for NeumorphicSegmentedButtonTemplate {
             Vec::new()
         };
 
-        let content_model = button_content_context(
+        let content_model = button_content_context_painted(
             model,
-            ButtonFamilyLook {
-                focus_border: gpui::transparent_black(),
+            ButtonContentFace {
                 background,
                 foreground: text_color,
-                muted_foreground: text_color,
                 border: Some(border),
                 typography: LumaTextStyle { size: 11.0, line_height: 12.0, weight: FontWeight::MEDIUM },
                 font_family: "System UI".into(),
                 radius: 17.0,
-                padding_x: 0.0,
-                padding_y: 0.0,
-                gap: 0.0,
                 height: 34.0,
                 icon_size: 14.0,
-                shadow: None,
             },
         );
 

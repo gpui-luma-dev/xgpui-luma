@@ -1,5 +1,4 @@
 //! Lab shell composition: window setup, toolbar layout, controls and callbacks.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 #[cfg(target_os = "macos")]
 mod native_appearance;
 use std::collections::HashMap;
@@ -159,8 +158,8 @@ fn open_configured_shell_window(
                                                 };
                                                 xgpui_luma::infra::icon::lucide_icon(
                                                     icon,
-                                                    model.look.foreground,
-                                                    model.look.icon_size,
+                                                    model.foreground(),
+                                                    model.icon_size(),
                                                 )
                                             }
                                         })
@@ -227,9 +226,7 @@ pub(super) fn titlebar_compartment_width(sidebar_width: Pixels, content_origin: 
 fn icon_button(id: &'static str, icon: Icon, look: &Look) -> xgpui_luma_look_radix::Button {
     xgpui_luma_look_radix::Button::new(id)
         .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
-        .content(move |model, _| {
-            xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
-        })
+        .content(move |model, _| xgpui_luma::infra::icon::lucide_icon(icon, model.foreground(), model.icon_size()))
         .look(look)
         .content_only()
         .size(xgpui_luma_look_radix::ButtonSize::Two)

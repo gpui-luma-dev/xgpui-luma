@@ -1,5 +1,4 @@
 //! Palette-step details and equivalent alpha colors over the selected background.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -285,12 +284,24 @@ pub(crate) fn swatch<M: 'static>(
     color: impl Fn() -> Hsla + Send + Sync + 'static,
     cx: &mut Context<M>,
 ) -> Entity<Button> {
-    let geometry = radix::button_look_for(
+    use xgpui_luma::style::lss::{Color, Overrides, PartId, Prop};
+    let clear = xgpui_luma::style::lss_color(gpui::transparent_black());
+    let root = PartId::ROOT;
+    let face = radix::button_cell_template::<()>(
         look,
         radix::ButtonVariant::GhostQuiet,
         radix::Paint::accent(),
         radix::ButtonSize::Two,
         radix::Radius::None,
+    )
+    .with_overrides(
+        &Overrides::new()
+            .set(root, Prop::<Color>::new("background"), clear)
+            .set(root, Prop::<Color>::new("border"), clear)
+            .set(root, Prop::<f32>::new("radius"), 0.0)
+            .set(root, Prop::<f32>::new("height"), height)
+            .set(root, Prop::<f32>::new("padding_x"), 0.0)
+            .set(root, Prop::<f32>::new("padding_y"), 0.0),
     );
     let swatch_look = look.clone();
     let color = Arc::new(color);
@@ -298,17 +309,7 @@ pub(crate) fn swatch<M: 'static>(
     let debug_id = id.clone();
     let preview_id = format!("{id}-preview");
     Button::new(id.clone())
-        .template(radix::button_template(look, radix::ButtonVariant::GhostQuiet, radix::Paint::accent()))
-        .with_look(move |model| {
-            let mut look = geometry(model);
-            look.background = gpui::transparent_black();
-            look.border = None;
-            look.radius = 0.0;
-            look.height = height;
-            look.padding_x = 0.0;
-            look.padding_y = 0.0;
-            look
-        })
+        .template(Arc::new(face))
         .content(move |_, _| {
             let color = content_color();
             div()

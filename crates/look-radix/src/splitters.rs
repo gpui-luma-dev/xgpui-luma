@@ -1,5 +1,5 @@
 //! Radix resize chrome over the SDK splitter and split-view engines.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::{SharedString, px};
 use xgpui_luma::controls::{dock_splitter::*, split_view::*};

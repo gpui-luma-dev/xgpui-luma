@@ -1,5 +1,5 @@
 //! Radix-owned button variants: `.lss` templates (`style/button.lss`) and the native palette behind [`button_look_for`].
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -58,7 +58,50 @@ impl Paint {
     }
 }
 
-/// Full look resolver for a Radix size × radius cell (All Sizes matrix / previews).
+/// The `.lss` template for a Radix variant × paint × size × radius cell (All Sizes matrix / previews, and every
+/// button with its own size and radius): its faces carry the cell's box. Classic (the look's classic radius)
+/// and page (a pill) take the corner of the solid cell instead.
+pub fn button_cell_template<D: ButtonData>(
+    look: &Look,
+    variant: ButtonVariant,
+    paint: Paint,
+    size: ButtonSize,
+    radius: Radius,
+) -> StyledButtonTemplate<D> {
+    fn with_radius<T: ButtonData>(template: StyledButtonTemplate<T>, radius: Radius) -> StyledButtonTemplate<T> {
+        // Medium is the base radius.
+        if radius != Radius::Medium {
+            template.attr("radius", radius.as_str())
+        } else {
+            template
+        }
+    }
+    let template = with_radius(styled_button_template::<D>(look, variant, paint, size), radius);
+    if matches!(variant, ButtonVariant::Classic | ButtonVariant::Page) {
+        use xgpui_luma::controls::button_family::ButtonFamilyRole;
+        use xgpui_luma::style::PartRead;
+        use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+        let solid = with_radius(styled_button_template::<()>(look, ButtonVariant::Solid, paint, size), radius);
+        let corner = |role| {
+            solid.resolve_face(role, Default::default(), 1.0).root().number(if role == ButtonFamilyRole::Icon {
+                "icon_radius"
+            } else {
+                "radius"
+            })
+        };
+        return template.overrides(
+            Overrides::new().set(PartId::ROOT, Prop::<f32>::new("radius"), corner(ButtonFamilyRole::Text)).set(
+                PartId::ROOT,
+                Prop::<f32>::new("icon_radius"),
+                corner(ButtonFamilyRole::Icon),
+            ),
+        );
+    }
+    template
+}
+
+/// Full look resolver for a Radix size × radius cell.
+#[deprecated(note = "use `button_cell_template` and read its faces (#433)")]
 pub fn button_look_for<D: 'static>(
     look: &Look,
     variant: ButtonVariant,
@@ -66,26 +109,8 @@ pub fn button_look_for<D: 'static>(
     size: ButtonSize,
     radius: Radius,
 ) -> xgpui_luma::controls::button::ButtonLookSource<D> {
-    let with_radius = |template: StyledButtonTemplate<()>| {
-        // Medium is the base radius.
-        if radius != Radius::Medium {
-            template.attr("radius", radius.as_str())
-        } else {
-            template
-        }
-    };
-    let template = with_radius(styled_button_template::<()>(look, variant, paint, size));
-    // A cell keeps its own size and radius: classic (the look's classic radius) and page (a pill) take
-    // the corner of the solid cell instead.
-    let corner = matches!(variant, ButtonVariant::Classic | ButtonVariant::Page)
-        .then(|| with_radius(styled_button_template::<()>(look, ButtonVariant::Solid, paint, size)));
-    Arc::new(move |model| {
-        let mut face = template.look(model.role, model.state, 1.0);
-        if let Some(corner) = &corner {
-            face.radius = corner.look(model.role, model.state, 1.0).radius;
-        }
-        face
-    })
+    let template = button_cell_template::<()>(look, variant, paint, size, radius);
+    Arc::new(move |model| template.look(model.role, model.state, 1.0))
 }
 
 /// Tunable geometry for the [`Classic`](ButtonVariant::Classic) button.

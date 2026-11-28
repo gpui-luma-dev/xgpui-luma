@@ -1,12 +1,12 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use xgpui_luma::style::PartRead;
 use std::sync::Arc;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::controls::control_group::*;
-use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 use crate::{ButtonVariant, Look, ScaleFamily, SemanticRole};
 
@@ -17,13 +17,13 @@ fn item_look(
     state: InteractionState,
     size: crate::RadixSize,
     scale_factor: f32,
-) -> ButtonFamilyLook {
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
     let size = match size {
         crate::RadixSize::One => crate::ButtonSize::One,
         crate::RadixSize::Two => crate::ButtonSize::Two,
         crate::RadixSize::Three => crate::ButtonSize::Three,
     };
-    crate::button::styled_button_template::<()>(look, ButtonVariant::Ghost, crate::Paint::accent(), size).look(
+    crate::button::styled_button_template::<()>(look, ButtonVariant::Ghost, crate::Paint::accent(), size).resolve_face(
         ButtonFamilyRole::Toggle { selected },
         state,
         scale_factor,
@@ -96,7 +96,11 @@ fn item_template<T: ControlGroupItemLike + 'static>(
     Arc::new(move |item, custom, window, cx| {
         let scale = StandardBoxScale::compute(&look.metrics_for(size), window.scale_factor());
         let state = InteractionState { focused: item.state.focus_visible, ..item.state.interaction_state() };
-        let palette = item_look(&look, item.selected, state, size, window.scale_factor());
+        let face = item_look(&look, item.selected, state, size, window.scale_factor());
+        let palette = face.root();
+        let typography = palette.typography(14.0, 20.0);
+        let foreground = palette.color("foreground");
+        let height = palette.number("height");
         let content = match custom {
             Some(custom) => {
                 let content_model = ControlGroupItemRenderModel {
@@ -112,7 +116,7 @@ fn item_template<T: ControlGroupItemLike + 'static>(
                     enabled: item.enabled,
                     state: item.state,
                     selection_mode: item.selection_mode,
-                    foreground: Some(palette.foreground),
+                    foreground: Some(foreground),
                 };
                 custom(&content_model, window, cx)
             }
@@ -122,25 +126,25 @@ fn item_template<T: ControlGroupItemLike + 'static>(
         div()
             .id((item.item.id().clone(), 0usize))
             .relative()
-            .h(px(palette.height))
-            .min_h(px(palette.height))
+            .h(px(height))
+            .min_h(px(height))
             .flex()
             .items_center()
             .justify_center()
-            .px(px(palette.padding_x))
+            .px(px(palette.number("padding_x")))
             .rounded(px(radius))
-            .bg(palette.background)
-            .text_color(palette.foreground)
-            .font_family(palette.font_family)
-            .text_size(px(palette.typography.size))
-            .line_height(px(palette.typography.line_height))
-            .font_weight(palette.typography.weight)
+            .bg(palette.color("background"))
+            .text_color(foreground)
+            .font_family(palette.font_family_name())
+            .text_size(px(typography.size))
+            .line_height(px(typography.line_height))
+            .font_weight(typography.weight)
             .border_1()
-            .border_color(palette.border.unwrap_or_else(gpui::transparent_black))
+            .border_color(palette.painted("border").unwrap_or_else(gpui::transparent_black))
             .when(!item.state.disabled, |row| row.cursor_pointer())
             .child(content)
             .child(xgpui_luma::infra::focus_adorner::FocusAdorner::new(look.metrics().focus).overlay(
-                palette.focus_border,
+                palette.color("focus_border"),
                 item.state.focus_visible && !item.state.disabled,
                 radius,
                 true,

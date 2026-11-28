@@ -1,5 +1,5 @@
 //! Radix split actions using the SDK's shared popup engine and independent face states.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
+#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::{

@@ -1,5 +1,4 @@
 //! Look-owned button builder. Spawn synthesizes the SDK [`xgpui_luma::controls::button::Button`].
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
 use xgpui_luma::controls::button::{
@@ -8,7 +7,8 @@ use xgpui_luma::controls::button::{
 };
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
-use crate::button::{Paint, ButtonVariant, button_look_for, button_template};
+use crate::button::{Paint, ButtonVariant, button_cell_template};
+use xgpui_luma::controls::button::{ButtonTemplate, StyledButtonTemplate};
 use crate::button_layout::{ButtonSize, Radius};
 use crate::look::{Look, resolve_look};
 use crate::tone::Tone;
@@ -282,27 +282,28 @@ impl<D: Clone + 'static> Button<D> {
         resolve_look(self.look.as_ref(), cx.try_global::<Look>())
     }
 
-    fn look_source(&self, look: &Look) -> xgpui_luma::controls::button::ButtonLookSource<D> {
-        let geometry = button_look_for(look, self.variant, self.paint, self.size, self.radius);
-        let icon_size = self.icon_size;
-        std::sync::Arc::new(move |model| {
-            let mut resolved = geometry(model);
-            if let Some(size) = icon_size {
-                resolved.icon_size = size;
-            }
-            resolved
-        })
+    /// The cell's template: its variant, paint, size and radius, with an explicit icon size over it.
+    fn cell_template(&self, look: &Look) -> StyledButtonTemplate<D> {
+        use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+        let template = button_cell_template::<D>(look, self.variant, self.paint, self.size, self.radius);
+        let Some(size) = self.icon_size else {
+            return template;
+        };
+        // The cell's own corner overrides (classic, page) stay; the icon size is set over them.
+        template.with_overrides(&Overrides::new().set(PartId::ROOT, Prop::<f32>::new("icon_size"), size).set(
+            PartId::ROOT,
+            Prop::<f32>::new("text_icon_size"),
+            size,
+        ))
     }
 
     fn into_sdk_builder(self, look: Look) -> ButtonBuilder<D> {
         let look = look.with_size(self.size.control_size());
-        let template = button_template(&look, self.variant, self.paint);
-        let geometry = self.look_source(&look);
+        let template: std::sync::Arc<dyn ButtonTemplate<D>> = std::sync::Arc::new(self.cell_template(&look));
         let mut builder = xgpui_luma::controls::button::Button::new(self.id)
             .typed(self.data)
             .with_callbacks(self.callbacks)
             .template(template)
-            .with_look(move |model| geometry(model))
             .role(self.role)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop);
@@ -331,6 +332,7 @@ impl<D: 'static> HasPresenter<ButtonContentContext<D>> for Button<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::style::PartRead;
     use crate::button_layout::button_box_for;
     use crate::look::resolve_look;
     use xgpui_luma::controls::button::HasPresenter;
@@ -353,15 +355,12 @@ mod tests {
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for focused in [false, true] {
-                let model = ButtonRenderModel::<()> {
-                    role: ButtonFamilyRole::Icon,
-                    state: xgpui_luma::theme::InteractionState { focused, ..Default::default() },
-                    ..Default::default()
-                };
-                let resolved = button.look_source(&look)(&model);
-                assert_eq!(resolved.icon_size, 20.0);
-                assert_eq!(resolved.height, 24.0);
-                assert!(resolved.border.is_none());
+                let state = xgpui_luma::theme::InteractionState { focused, ..Default::default() };
+                let face = button.cell_template(&look).resolve_face(ButtonFamilyRole::Icon, state, 1.0);
+                let root = face.root();
+                assert_eq!(root.number("icon_size"), 20.0);
+                assert_eq!(root.number("height"), 24.0);
+                assert!(root.painted("border").is_none());
             }
         }
     }
@@ -413,10 +412,8 @@ mod tests {
     fn bind_geometry_uses_size_and_radius() {
         let look = Look::built_in();
         let button = Button::new("sized").size(ButtonSize::Four).radius(Radius::None);
-        let geometry = button_look_for::<()>(&look, button.variant, button.paint, button.size, button.radius);
-        let model = ButtonRenderModel::<()>::default();
-        let family = geometry(&model);
-        assert_eq!(family.radius, button_box_for(ButtonSize::Four, Radius::None).radius);
+        let face = button.cell_template(&look).resolve_face(ButtonFamilyRole::Text, Default::default(), 1.0);
+        assert_eq!(face.root().number("radius"), button_box_for(ButtonSize::Four, Radius::None).radius);
     }
 
     #[test]

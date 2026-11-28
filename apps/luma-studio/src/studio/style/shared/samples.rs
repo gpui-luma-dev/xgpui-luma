@@ -1,4 +1,3 @@
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 use std::sync::Arc;
 
 use gpui::{SharedString, div, prelude::*};
@@ -38,8 +37,8 @@ impl ButtonTemplateVariant {
         match self {
             Self::TextButton => Arc::new(move |_, _| div().child(label.clone()).into_any_element()),
             Self::IconButton => Arc::new(move |model, _| {
-                let icon_size = model.look.icon_size;
-                render_lucide_icon(LucideIcon::Heart, model.look.foreground, icon_size)
+                let icon_size = model.icon_size();
+                render_lucide_icon(LucideIcon::Heart, model.foreground(), icon_size)
             }),
         }
     }

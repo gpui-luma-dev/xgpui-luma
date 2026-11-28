@@ -136,6 +136,12 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         look_from(resolved.root(), resolved.root(), role)
     }
 
+    /// `overrides` set over any values already set on this instance (#433).
+    pub fn with_overrides(mut self, overrides: &Overrides) -> Self {
+        self.overrides = self.overrides.merge(overrides);
+        self
+    }
+
     /// Values set on this instance.
     pub fn overrides(mut self, overrides: Overrides) -> Self {
         self.overrides = overrides;
@@ -226,6 +232,28 @@ fn look_from(root: PartView<'_>, colors: PartView<'_>, role: ButtonFamilyRole) -
 }
 
 impl<D: ButtonData> StyledButtonTemplate<D> {
+    /// The face a render draws: the settled style, and the colors (blended for on/off data), with any model look
+    /// closure (#433) bridged to the style language: what it changes are overrides.
+    fn resolve_with_bridge(&self, model: &ButtonRenderModel<D>, scale: f32) -> (Arc<Resolved>, Resolved) {
+        let (mut settled, mut colors) = self.resolve(model, scale, &Overrides::new());
+        if let Some(source) = &model.look {
+            let before = look_from(settled.root(), colors.root(), model.role);
+            let extra = ButtonFamilyLook::overrides_between(&before, &source(model), model.role);
+            if !extra.is_empty() {
+                (settled, colors) = self.resolve(model, scale, &extra);
+            }
+        }
+        (settled, colors)
+    }
+
+    /// The settled face for a button `model` at `scale`, with its template overrides and any model look closure
+    /// applied (#433): for a custom template that draws the face itself.
+    pub fn resolve_model_face(&self, model: &ButtonRenderModel<D>, scale: f32) -> Arc<Resolved> {
+        self.resolve_with_bridge(model, scale).0
+    }
+}
+
+impl<D: ButtonData> StyledButtonTemplate<D> {
     /// The face for a render: the settled style, and the colors (blended for on/off data).
     fn resolve(&self, model: &ButtonRenderModel<D>, scale: f32, extra: &Overrides) -> (Arc<Resolved>, Resolved) {
         let theme = self.theme();
@@ -278,16 +306,7 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
     }
 
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let scale = window.scale_factor();
-        let (mut settled, mut colors) = self.resolve(model, scale, &Overrides::new());
-        // A model look closure (#433) is bridged to the style language: what it changes are overrides.
-        if let Some(source) = &model.look {
-            let before = look_from(settled.root(), colors.root(), model.role);
-            let extra = ButtonFamilyLook::overrides_between(&before, &source(model), model.role);
-            if !extra.is_empty() {
-                (settled, colors) = self.resolve(model, scale, &extra);
-            }
-        }
+        let (settled, colors) = self.resolve_with_bridge(model, window.scale_factor());
         let root = settled.root();
         let look = look_from(root, colors.root(), model.role);
         let presenter_model = button_content_context(model, look.clone());

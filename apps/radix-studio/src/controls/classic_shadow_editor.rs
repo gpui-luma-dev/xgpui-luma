@@ -3,7 +3,6 @@
 //! Every slider writes straight into [`Look::set_classic_params`], so the
 //! whole app retunes as you drag. The readout under the preview is the literal to paste
 //! back into `ClassicButtonParams::default` once the numbers look right.
-#![allow(deprecated)] // Still reads a deprecated Look until its family has a style-override replacement (#433).
 
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
@@ -341,7 +340,7 @@ impl ClassicShadowEditor {
             .look(look)
             .ghost_quiet()
             .content(move |model, _| {
-                let color = model.look.foreground;
+                let color = model.foreground();
                 let name = if copy_state.load(Ordering::Relaxed) {
                     "check"
                 } else {
