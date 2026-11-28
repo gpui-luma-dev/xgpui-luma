@@ -489,8 +489,8 @@ fn disabled_control_ignores_input_and_gives_up_focus() {
 /// Background a builder's resolved theme gives a resting, enabled field.
 fn resolved_background(builder: &ParleyTextFieldBuilder, cx: &App) -> Hsla {
     let theme = builder.resolve_theme(cx);
-    let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
-    theme.resolve_look(TextFieldState::default(), true, &scale).background
+    use xgpui_luma::style::PartRead;
+    theme.resolve_style(TextFieldState::default(), true).root().color("background")
 }
 
 #[test]
