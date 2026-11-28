@@ -1,5 +1,7 @@
 //! The popup-menu trigger read from `.lss` (issue #285): `popup_menu.lss`, which extends the button. The
 //! menu is supplied separately (a floating menu, which has its own `.lss`).
+// Builds the compatibility `PopupMenuLook` (#433).
+#![allow(deprecated)]
 
 use crate::style::StyleStates;
 use crate::style::PartRead;

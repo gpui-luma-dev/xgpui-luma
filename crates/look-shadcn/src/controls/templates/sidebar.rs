@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::sidebar::{SidebarPanelTemplate, SidebarTheme, StyledSidebar, ThemedSidebarPanelTemplate};
-use xgpui_luma::theme::{InteractionState};
 
 use super::floating_menu::floating_menu_theme;
 use crate::look::ShadcnLook;
@@ -45,20 +44,8 @@ impl SidebarTheme for ShadcnSidebarTheme {
         super::drag::drag_look(&self.theme)
     }
 
-    fn foreground(&self) -> gpui::Hsla {
-        self.styled.foreground()
-    }
-
-    fn resolve_section(&self) -> xgpui_luma::controls::sidebar::SidebarSectionLook {
-        self.styled.section()
-    }
-
-    fn resolve_branch(&self, state: InteractionState) -> xgpui_luma::controls::sidebar::SidebarItemLook {
-        self.styled.branch(state)
-    }
-
-    fn resolve_item(&self, selected: bool, state: InteractionState) -> xgpui_luma::controls::sidebar::SidebarItemLook {
-        self.styled.item(selected, state)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.styled.binding()
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {

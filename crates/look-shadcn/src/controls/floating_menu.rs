@@ -35,6 +35,7 @@ pub fn floating_menu_binding(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
 
     use std::collections::BTreeMap;

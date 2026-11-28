@@ -450,6 +450,7 @@ fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla, size: f32) -> AnyElem
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use gpui::{Anchor, Bounds, point, px, size};
 

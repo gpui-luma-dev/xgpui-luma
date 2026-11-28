@@ -115,6 +115,13 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
+/// `color` as an `.lss` color, for setting a computed color through [`Overrides`](xgpui_luma_style::Overrides)
+/// (#433).
+pub fn lss_color(color: gpui::Hsla) -> xgpui_luma_style::Color {
+    let rgba = gpui::Rgba::from(color);
+    xgpui_luma_style::Color::srgb(rgba.r, rgba.g, rgba.b, rgba.a)
+}
+
 /// Applies a resolved part opacity ([`PartRead::opacity`]) to `element`, leaving it untouched when opaque. The one
 /// place templates apply a state fade.
 pub(crate) fn fade<E: gpui::Styled>(element: E, opacity: f32) -> E {
@@ -442,9 +449,15 @@ impl StyleBinding {
         self
     }
 
-    /// Values set on this instance.
+    /// Values set on this instance, replacing any set before.
     pub fn overrides(mut self, overrides: xgpui_luma_style::Overrides) -> Self {
         self.overrides = overrides;
+        self
+    }
+
+    /// `overrides` set over any values set before (#433): for a theme that adjusts another theme's style.
+    pub fn with_overrides(mut self, overrides: &xgpui_luma_style::Overrides) -> Self {
+        self.overrides = self.overrides.merge(overrides);
         self
     }
 

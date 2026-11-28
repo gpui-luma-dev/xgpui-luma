@@ -1,6 +1,8 @@
 //! Studio navigation uses SDK tabs with a look-backed selected chip.
 use std::sync::Arc;
-use xgpui_luma::controls::tabs::{TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
+use xgpui_luma::style::{StyleBinding, lss_color};
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::Look;
 use crate::theme::ColorVizLookExt;
@@ -11,37 +13,47 @@ struct StudioTabsTheme {
 }
 
 impl TabsTheme for StudioTabsTheme {
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        let mut list = xgpui_luma_look_radix::tabs_theme(&self.look).resolve_list(enabled);
-        list.background = None;
-        list.border = None;
-        list.padding = if self.segmented { 3.0 } else { 0.0 };
-        list.radius = 5.0;
-        list.gap = if self.segmented { 2.0 } else { 8.0 };
-        list
+    /// The Radix tabs with an unboxed list (#433).
+    fn style(&self) -> StyleBinding {
+        let list = PartId::new("list");
+        let clear = lss_color(gpui::transparent_black());
+        xgpui_luma_look_radix::tabs_theme(&self.look).style().with_overrides(
+            &Overrides::new()
+                .set(list, Prop::new("background"), clear)
+                .set(list, Prop::new("border"), clear)
+                .set(list, Prop::<f32>::new("padding"), if self.segmented { 3.0 } else { 0.0 })
+                .set(list, Prop::<f32>::new("radius"), 5.0)
+                .set(list, Prop::<f32>::new("gap"), if self.segmented { 2.0 } else { 8.0 }),
+        )
     }
 
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let mut item = xgpui_luma_look_radix::tabs_theme(&self.look).resolve_item(active, state);
+    /// A look-backed chip with no indicator: its fill and label follow the look's interaction colors.
+    fn item_style(&self, active: bool, state: InteractionState) -> StyleBinding {
         let chrome = self.look.chrome();
-        if !self.segmented {
-            item.label_typography.size = 14.0;
-            item.label_typography.line_height = 20.0;
-        }
-        item.indicator = None;
-        item.indicator_height = 0.0;
-        item.background = self.look.interaction_colors().background(active, state);
-        item.label_color = if state.disabled {
-            chrome.muted_text
-        } else if active {
+        let (root, item) = (PartId::ROOT, PartId::new("item"));
+        let label = if !state.disabled && active {
             chrome.body_text
         } else {
             chrome.muted_text
         };
-        item.radius = 4.0;
-        item.padding_x = 14.0;
-        item.height = if self.segmented { 26.0 } else { 32.0 };
-        item
+        let background =
+            self.look.interaction_colors().background(active, state).unwrap_or_else(gpui::transparent_black);
+        let mut overrides = Overrides::new()
+            .set(root, Prop::new("indicator"), lss_color(gpui::transparent_black()))
+            .set(root, Prop::<f32>::new("indicator_height"), 0.0)
+            .set(item, Prop::new("background"), lss_color(background))
+            .set(item, Prop::new("foreground"), lss_color(label))
+            .set(item, Prop::<f32>::new("radius"), 4.0)
+            .set(item, Prop::<f32>::new("padding_x"), 14.0)
+            .set(item, Prop::<f32>::new("height"), if self.segmented { 26.0 } else { 32.0 });
+        if !self.segmented {
+            overrides = overrides.set(item, Prop::<f32>::new("font_size"), 14.0).set(
+                item,
+                Prop::<f32>::new("line_height"),
+                20.0,
+            );
+        }
+        self.style().with_overrides(&overrides)
     }
 
     fn font_family(&self) -> gpui::SharedString {

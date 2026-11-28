@@ -1,37 +1,28 @@
 //! The overlay window read from `.lss` (issue #285): `overlay_window.lss`.
 
-use crate::style::PartRead;
+use std::sync::Arc;
 
 use super::OverlayWindowMode;
-use super::theme::{OverlayWindowLook, OverlayWindowTheme};
+#[allow(deprecated)]
+use super::theme::OverlayWindowLook;
+use super::theme::OverlayWindowTheme;
 use crate::style::StyleBinding;
 
-/// The overlay window for `binding` (the `overlay_window` control) in `mode`.
-pub fn styled_overlay_window_look(binding: &StyleBinding, mode: OverlayWindowMode) -> OverlayWindowLook {
+/// The overlay window's style for `binding` (the `overlay_window` control) in `mode` (#433): the control places and
+/// draws the window from its root.
+pub fn resolve_overlay_window(binding: &StyleBinding, mode: OverlayWindowMode) -> Arc<xgpui_luma_style::Resolved> {
     let attrs: &[(&str, &str)] = match mode {
         OverlayWindowMode::Modal => &[("variant", "modal")],
         _ => &[],
     };
-    let resolved = binding.resolve_for(attrs, &[], 1.0);
-    let root = resolved.root();
-    OverlayWindowLook {
-        viewport_padding: root.number("viewport_padding"),
-        window_margin: root.number("window_margin"),
-        drag_header_height: root.number("drag_header_height"),
-        border_width: root.number("border_width"),
-        background: root.color("background"),
-        border: root.color("border"),
-        foreground: root.color("foreground"),
-        backdrop_background: root.color("backdrop"),
-        shadow: root.box_shadow(),
-        radius: root.number("radius"),
-        padding: root.number("padding"),
-        min_width: root.number("min_width"),
-        max_width: root.number("max_width"),
-        estimated_height: root.number("estimated_height"),
-        body: root.typography(14.0, 20.0),
-        font_family: root.font_family_name(),
-    }
+    binding.resolve_for(attrs, &[], 1.0)
+}
+
+/// The overlay window for `binding` (the `overlay_window` control) in `mode`.
+#[deprecated(note = "the template draws from the resolved style; use `resolve_overlay_window` (#433)")]
+#[allow(deprecated)]
+pub fn styled_overlay_window_look(binding: &StyleBinding, mode: OverlayWindowMode) -> OverlayWindowLook {
+    OverlayWindowLook::from_resolved(&resolve_overlay_window(binding, mode))
 }
 
 /// An overlay-window theme read from `.lss`, resolved on every presentation.
@@ -52,7 +43,7 @@ impl StyledOverlayWindowTheme {
 }
 
 impl OverlayWindowTheme for StyledOverlayWindowTheme {
-    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
-        styled_overlay_window_look(&self.binding, mode)
+    fn style(&self) -> StyleBinding {
+        self.binding.clone()
     }
 }

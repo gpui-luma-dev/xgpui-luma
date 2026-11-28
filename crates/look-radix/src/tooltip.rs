@@ -13,6 +13,7 @@ pub fn tooltip_theme(look: &Look) -> Arc<dyn TooltipTheme> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::SemanticRole;

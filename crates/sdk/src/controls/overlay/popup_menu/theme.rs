@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
@@ -20,6 +22,9 @@ pub struct PopupMenuPalette {
 }
 
 /// Build one with a theme's `resolve_look` or [`compose_popup_menu_look`]; it may gain fields.
+#[deprecated(
+    note = "the popup menu draws from `PopupMenuTheme::style()`; resolve that binding and read its parts (#433)"
+)]
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct PopupMenuLook {

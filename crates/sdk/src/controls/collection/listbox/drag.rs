@@ -1,4 +1,6 @@
 //! Persistent ListBox drag/drop configuration and host-owned transactions.
+// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
+#![allow(deprecated)]
 use std::{hash::Hash, rc::Rc};
 use gpui::{App, Context, Div, EntityId, SharedString, Stateful, WeakEntity, Window, div, prelude::*, px};
 use crate::controls::tooltip::TooltipLook;

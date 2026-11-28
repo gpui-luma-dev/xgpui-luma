@@ -51,12 +51,16 @@
 //! ```
 mod model;
 mod styled;
-pub use styled::{StyledTooltipTheme, styled_tooltip_look};
+#[allow(deprecated)]
+pub use styled::styled_tooltip_look;
+pub use styled::{StyledTooltipTheme, resolve_tooltip};
 mod control;
 mod template;
 pub(crate) mod theme;
 
 pub use model::{TooltipSettings, Tooltip, TooltipPlacement, TooltipDismissal, TooltipEvent};
 pub use template::{TooltipTemplate, bubble};
-pub use theme::{TooltipPlacementGeometry, TooltipLook, TooltipRenderModel, TooltipTheme, default_tooltip_theme};
+#[allow(deprecated)]
+pub use theme::TooltipLook;
+pub use theme::{TooltipPlacementGeometry, TooltipRenderModel, TooltipTheme, default_tooltip_theme};
 pub(crate) use control::Attachment;

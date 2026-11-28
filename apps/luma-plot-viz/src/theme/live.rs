@@ -13,8 +13,8 @@ use xgpui_luma::controls::{
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
     scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
     selector::{SelectorTheme, StyledSelectorTheme},
-    tabs::{StyledTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
-    tooltip::{TooltipLook, TooltipTheme},
+    tabs::{StyledTabsTheme, TabsTheme},
+    tooltip::TooltipTheme,
 };
 use xgpui_luma::style::ThemeSource;
 use xgpui_luma::theme::{InteractionState, MetricTokens, ThemeMode, ThemeTokens};
@@ -24,7 +24,6 @@ struct Snapshot {
     scrollbar: StyledScrollbarTheme,
     selector: StyledSelectorTheme,
     tabs: StyledTabsTheme,
-    tooltip: TooltipLook,
 }
 
 impl Snapshot {
@@ -38,7 +37,6 @@ impl Snapshot {
                 ThemeSource::Fixed(style),
                 Arc::new(|| xgpui_luma::style::StyleBinding::sdk("floating_menu")),
             ),
-            tooltip: TooltipLook::from_tokens(&tokens),
             tokens,
         }
     }
@@ -119,11 +117,8 @@ impl TabsTheme for AppTheme {
         self.current().tabs.resolve_drag()
     }
 
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        self.current().tabs.resolve_list(enabled)
-    }
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        self.current().tabs.resolve_item(active, state)
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        self.current().tabs.style()
     }
     fn font_family(&self) -> SharedString {
         self.current().tabs.font_family()
@@ -157,8 +152,9 @@ impl ScrollbarTheme for AppTheme {
 }
 
 impl TooltipTheme for AppTheme {
-    fn resolve(&self) -> TooltipLook {
-        self.current().tooltip.clone()
+    /// The SDK tooltip in the current mode.
+    fn style(&self) -> xgpui_luma::style::StyleBinding {
+        xgpui_luma::style::StyleBinding::new("tooltip", ThemeSource::Fixed(self.style_theme()))
     }
 }
 
@@ -205,8 +201,13 @@ mod tests {
             let expected = tokens.palette.app.foreground.to_rgb();
             let got = radio_label.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
-            let tab = tabs.resolve_item(true, state);
-            assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
+            let label = |binding: &xgpui_luma::style::StyleBinding| {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::tabs::resolve_tab(binding, true, state)
+                    .part(xgpui_luma::style::lss::PartId::new("item"))
+                    .color("foreground")
+            };
+            assert_eq!(label(&tabs.style()), label(&StyledTabsTheme::new(sdk("tabs")).style()));
             let selector = xgpui_luma::controls::selector::resolve_selector_trigger(
                 &selectors.style(),
                 SelectorTriggerStyle::default(),
@@ -229,15 +230,21 @@ mod tests {
                     .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
                     .thumb_background
             );
-            let tip = tooltip.resolve();
-            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens).background);
+            let tip = {
+                use xgpui_luma::style::PartRead;
+                xgpui_luma::controls::tooltip::resolve_tooltip(&tooltip.style()).root().color("background")
+            };
+            let expected =
+                tokens.stylesheet.recipes.palette("tooltip", &tokens.palette).surface.floating.background.to_rgb();
+            let got = tip.to_rgb();
+            assert!((got.r - expected.r).abs() < 2e-3, "tooltip follows the mode: {got:?} != {expected:?}");
             colors.push([
                 button.foreground,
                 radio_label,
-                tab.label_color,
+                label(&tabs.style()),
                 selector_background,
                 scrollbar.thumb_background,
-                tip.background,
+                tip,
             ]);
         }
         for i in 0..colors[0].len() {

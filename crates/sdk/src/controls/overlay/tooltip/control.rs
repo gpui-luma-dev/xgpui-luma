@@ -383,24 +383,12 @@ impl Controller {
     }
 
     fn render_model(&self) -> TooltipRenderModel {
-        let look = self.config.theme.as_ref().unwrap_or(&self.theme).resolve();
-        TooltipRenderModel {
-            placement: look.placement,
-            shortcut_gap: look.shortcut_gap,
-            shortcut_font_size: look.shortcut_font_size,
-            shortcut_opacity: look.shortcut_opacity,
-            text: self.config.text.clone(),
-            shortcut: self.config.shortcut.clone(),
-            background: look.background,
-            foreground: look.foreground,
-            padding: look.padding,
-            padding_y: look.padding_y,
-            radius: look.radius,
-            max_width: look.max_width,
-            text_size: look.text_size,
-            line_height: look.line_height,
-            shadow: look.shadow,
-        }
+        let theme = self.config.theme.as_ref().unwrap_or(&self.theme);
+        TooltipRenderModel::from_resolved(
+            &super::resolve_tooltip(&theme.style()),
+            self.config.text.clone(),
+            self.config.shortcut.clone(),
+        )
     }
 }
 

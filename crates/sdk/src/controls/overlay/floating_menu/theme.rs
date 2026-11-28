@@ -1,9 +1,12 @@
+#![allow(deprecated)]
+
 use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
 use crate::theme::LumaTextStyle;
 
+#[deprecated(note = "menus draw from `FloatingMenuTheme::style()`; read it through `MenuStyle` (#433)")]
 #[derive(Clone, Debug)]
 pub struct FloatingMenuLook {
     /// Shared popup edge margin in logical pixels.

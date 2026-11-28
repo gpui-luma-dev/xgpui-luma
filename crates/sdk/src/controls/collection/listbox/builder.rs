@@ -1,4 +1,6 @@
 //! Shared borrowed listbox builder over persistent SDK state and bindings.
+// The drag preview reads a `TooltipLook` until the drag family draws from its style (#433).
+#![allow(deprecated)]
 
 use std::hash::Hash;
 

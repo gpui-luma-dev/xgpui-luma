@@ -46,7 +46,7 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) motion_enabled: bool,
     pub(super) open_on: crate::infra::trigger::TriggerOpenOn,
     pub(super) measure_trigger: bool,
-    pub(super) panel_look: super::panel::PopoverPanelLook,
+    pub(super) panel_style: crate::style::StyleBinding,
 }
 
 impl<D: Default + 'static> PopoverButtonBuilder<D> {
@@ -96,7 +96,7 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             motion_enabled: true,
             open_on: crate::infra::trigger::TriggerOpenOn::Press,
             measure_trigger: true,
-            panel_look: super::panel::PopoverPanelLook::sdk(),
+            panel_style: crate::style::StyleBinding::sdk("popover"),
         }
     }
 
@@ -148,9 +148,10 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         }
         self
     }
-    /// The panel drawn around the content (a look's `popover.lss` `panel` part); off in the SDK.
-    pub fn panel_look(mut self, look: super::panel::PopoverPanelLook) -> Self {
-        self.panel_look = look;
+    /// The panel drawn around the content: a `popover` style (a look's `popover.lss` `panel` part, #433); off in
+    /// the SDK.
+    pub fn panel_style(mut self, style: crate::style::StyleBinding) -> Self {
+        self.panel_style = style;
         self
     }
     pub fn initial_content_size(mut self, value: gpui::Size<Pixels>) -> Self {

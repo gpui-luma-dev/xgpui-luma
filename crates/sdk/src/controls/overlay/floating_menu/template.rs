@@ -773,6 +773,7 @@ fn submenu_transition_progress(index: usize, open_submenu: Option<usize>, transi
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

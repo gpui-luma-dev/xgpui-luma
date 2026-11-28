@@ -31,6 +31,7 @@ pub fn context_menu_template(look: &Look, variant: ContextMenuVariant, tone: Ton
     Arc::new(ThemedContextMenuTemplate::new(context_menu_theme(look, variant, tone)))
 }
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::SemanticRole;

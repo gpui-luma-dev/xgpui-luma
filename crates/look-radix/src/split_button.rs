@@ -49,6 +49,7 @@ pub fn split_button_builder(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};

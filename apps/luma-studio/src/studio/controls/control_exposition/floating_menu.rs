@@ -107,7 +107,10 @@ fn render_menu_sample(
 ) -> gpui::AnyElement {
     let id = SharedString::from(format!("controls-doc-floating-menu-{}", sample_id(label)));
     let root_count = items.len();
-    let chrome = xgpui_luma::controls::floating_menu::styled_floating_menu_look(style).background;
+    let chrome = {
+        use xgpui_luma::style::PartRead;
+        xgpui_luma::controls::floating_menu::MenuStyle::resolve(style).panel().color("background")
+    };
 
     div()
         .flex()

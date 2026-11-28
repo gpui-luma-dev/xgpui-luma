@@ -2,17 +2,23 @@
 //! layout, typography roles, section font features and drag preview, and delegate the rows to
 //! [`StyledSidebar`].
 
+use std::sync::Arc;
+
 use crate::style::StyleStates;
-use crate::style::PartRead;
 use gpui::Hsla;
-use xgpui_luma_style::{PartId, PartView, Value};
+use xgpui_luma_style::Resolved;
 
-use super::theme::{SidebarItemLook, SidebarSectionLook, SidebarTheme};
+#[allow(deprecated)]
+use super::theme::{SidebarItemLook, SidebarSectionLook};
+use super::theme::SidebarTheme;
 use crate::style::StyleBinding;
-use crate::theme::{InteractionState, LumaTextStyle};
+use crate::theme::InteractionState;
 
-fn typography(part: PartView<'_>) -> LumaTextStyle {
-    part.typography(12.5, 18.0)
+/// A sidebar row's style for `binding` (the `sidebar` control), `selected` (the current page) or not, in `state`
+/// (#433): the template draws rows from its root and `item` part, and section labels from its `section` part
+/// at rest.
+pub fn resolve_sidebar_row(binding: &StyleBinding, selected: bool, state: InteractionState) -> Arc<Resolved> {
+    binding.resolve_states(StyleStates::new(state).selected(selected), 1.0)
 }
 
 /// The sidebar's `.lss` values for one binding (the `sidebar` control).
@@ -31,44 +37,36 @@ impl StyledSidebar {
         Self { binding: StyleBinding::sdk("sidebar") }
     }
 
+    /// The binding the sidebar resolves.
+    pub fn binding(&self) -> StyleBinding {
+        self.binding.clone()
+    }
+
     /// A section label.
+    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
+    #[allow(deprecated)]
     pub fn section(&self) -> SidebarSectionLook {
-        let resolved = self.binding.resolve(&[], 1.0);
-        let section = resolved.part(PartId::new("section"));
-        SidebarSectionLook {
-            label_color: section.color("foreground"),
-            typography: typography(section),
-            height: section.number("height"),
-        }
+        SidebarSectionLook::from_resolved(&resolve_sidebar_row(&self.binding, false, InteractionState::default()))
     }
 
     /// The rows' text color at rest.
     pub fn foreground(&self) -> Hsla {
-        self.binding.resolve(&[], 1.0).part(PartId::new("item")).color("foreground")
+        use crate::style::PartRead;
+        resolve_sidebar_row(&self.binding, false, InteractionState::default())
+            .part(xgpui_luma_style::PartId::new("item"))
+            .color("foreground")
     }
 
     /// A row, selected (the current page) or not, in `state`.
+    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
+    #[allow(deprecated)]
     pub fn item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        let states = StyleStates::new(state).selected(selected);
-        let resolved = self.binding.resolve_states(states, 1.0);
-        let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
-        let foreground = item.color("foreground");
-        SidebarItemLook {
-            background: item.painted("background"),
-            focus_border: item.painted("focus_border"),
-            foreground,
-            icon_color: foreground,
-            typography: typography(item),
-            radius: item.number("radius"),
-            height: item.number("height"),
-            padding_x: item.number("padding_x"),
-            gap: item.number("gap"),
-            icon_size: root.number("item_icon_size"),
-            opacity: item.opacity(),
-        }
+        SidebarItemLook::from_resolved(&resolve_sidebar_row(&self.binding, selected, state))
     }
 
     /// A branch row, which is never the current page.
+    #[deprecated(note = "the template draws from the resolved style; use `resolve_sidebar_row` (#433)")]
+    #[allow(deprecated)]
     pub fn branch(&self, state: InteractionState) -> SidebarItemLook {
         self.item(false, state)
     }
@@ -84,19 +82,7 @@ impl StyledSidebarTheme {
 }
 
 impl SidebarTheme for StyledSidebarTheme {
-    fn foreground(&self) -> Hsla {
-        self.0.foreground()
-    }
-
-    fn resolve_section(&self) -> SidebarSectionLook {
-        self.0.section()
-    }
-
-    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
-        self.0.branch(state)
-    }
-
-    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        self.0.item(selected, state)
+    fn style(&self) -> StyleBinding {
+        self.0.binding()
     }
 }

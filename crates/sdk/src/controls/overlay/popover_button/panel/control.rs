@@ -163,12 +163,10 @@ impl PopoverPanel {
         cx.notify();
     }
 
-    /// Rebind the panel drawn around the content (a look's `popover.lss`).
-    pub fn set_look(&mut self, look: super::PopoverPanelLook, cx: &mut Context<Self>) {
-        if self.model.look != look {
-            self.model.look = look;
-            cx.notify();
-        }
+    /// Rebind the panel drawn around the content: a `popover` style (a look's `popover.lss`, #433).
+    pub fn set_style(&mut self, style: crate::style::StyleBinding, cx: &mut Context<Self>) {
+        self.model.style = style;
+        cx.notify();
     }
 
     pub fn set_window_margin(&mut self, window_margin: Pixels, cx: &mut Context<Self>) {
@@ -288,7 +286,7 @@ impl PopoverPanel {
     /// Record the content's unscrolled size, measured inside the scroll area,
     /// so placement and flipping use the full height even while it scrolls.
     fn handle_natural_content_bounds(&mut self, bounds: Bounds<Pixels>, cx: &mut Context<Self>) {
-        let chrome = px(self.model.look.chrome_height());
+        let chrome = px(super::popover_panel_chrome_height(&super::resolve_popover_panel(&self.model.style)));
         let size = Size { width: bounds.size.width + chrome, height: bounds.size.height + chrome };
         if bounds.size.width <= px(0.0) || self.natural_size == Some(size) {
             return;
@@ -338,6 +336,7 @@ impl Focusable for PopoverPanel {
 
 impl Render for PopoverPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let panel_style = super::resolve_popover_panel(&self.model.style);
         if self.focus_out_subscription.is_none() {
             let focus_handle = self.focus_handle.clone();
             self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
@@ -386,22 +385,23 @@ impl Render for PopoverPanel {
                 panel.update(cx, |panel, cx| panel.handle_content_bounds(bounds, cx));
             })
             .opacity(opacity)
-            .child(
-                self.model.look.wrap(
-                    // Taller than the space on its side, the content scrolls inside the panel (#433).
-                    div()
-                        .id("popover-panel-scroll")
-                        .max_h((placement.max_size.height - px(self.model.look.chrome_height())).max(px(0.0)))
-                        .overflow_y_scroll()
-                        .child(
-                            div()
-                                .on_prepaint(move |bounds, _, cx| {
-                                    natural.update(cx, |panel, cx| panel.handle_natural_content_bounds(bounds, cx));
-                                })
-                                .child(content),
-                        ),
-                ),
-            )
+            .child(super::wrap_popover_panel(
+                &panel_style,
+                // Taller than the space on its side, the content scrolls inside the panel (#433).
+                div()
+                    .id("popover-panel-scroll")
+                    .max_h(
+                        (placement.max_size.height - px(super::popover_panel_chrome_height(&panel_style))).max(px(0.0)),
+                    )
+                    .overflow_y_scroll()
+                    .child(
+                        div()
+                            .on_prepaint(move |bounds, _, cx| {
+                                natural.update(cx, |panel, cx| panel.handle_natural_content_bounds(bounds, cx));
+                            })
+                            .child(content),
+                    ),
+            ))
             .into_any_element();
 
         let overlay = anchored()
@@ -492,7 +492,6 @@ mod height_tests {
     use gpui::{Bounds, Entity, IntoElement, Render, TestAppContext, div, point, px, size};
 
     use super::*;
-    use crate::controls::overlay::popover_button::panel::PopoverPanelLook;
 
     struct Host(Entity<PopoverPanel>);
 
@@ -509,7 +508,7 @@ mod height_tests {
             let panel = PopoverPanelBuilder::new("tall")
                 .content(|_, _, _| div().w(px(120.0)).h(px(5000.0)).into_any_element())
                 .anchor_bounds(Bounds::new(point(px(10.0), px(10.0)), size(px(40.0), px(20.0))))
-                .look(PopoverPanelLook::sdk().shown(true))
+                .style(super::super::show_popover_panel(crate::style::StyleBinding::sdk("popover"), true))
                 .motion_enabled(false)
                 .open(true)
                 .spawn(cx);

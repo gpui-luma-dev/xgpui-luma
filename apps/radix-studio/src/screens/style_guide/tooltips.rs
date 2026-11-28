@@ -24,25 +24,9 @@ impl TooltipExamples {
         let foreground = look.resolve_role(SemanticRole::Foreground).hsla();
         let border = look.resolve_role(SemanticRole::Border).hsla();
         let muted = look.resolve_role(SemanticRole::MutedForeground).hsla();
-        let style = radix::tooltip_theme(look).resolve();
+        let style = xgpui_luma::controls::tooltip::resolve_tooltip(&radix::tooltip_theme(look).style());
         let samples = SAMPLES.iter().map(|(title, text, hint)| {
-            let model = TooltipRenderModel {
-                placement: style.placement,
-                shortcut_gap: style.shortcut_gap,
-                shortcut_font_size: style.shortcut_font_size,
-                shortcut_opacity: style.shortcut_opacity,
-                text: (*text).into(),
-                shortcut: hint.map(Into::into),
-                background: style.background,
-                foreground: style.foreground,
-                padding: style.padding,
-                padding_y: style.padding_y,
-                radius: style.radius,
-                max_width: style.max_width,
-                text_size: style.text_size,
-                line_height: style.line_height,
-                shadow: style.shadow.clone(),
-            };
+            let model = TooltipRenderModel::from_resolved(&style, (*text).into(), hint.map(Into::into));
             div()
                 .w(px(280.0))
                 .max_w_full()

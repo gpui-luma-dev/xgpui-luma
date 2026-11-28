@@ -16,7 +16,9 @@ pub fn pager_theme(look: &Look) -> Arc<dyn PagerTheme> {
     let buttons = look.clone();
     Arc::new(StyledPagerTheme::new(
         binding,
-        Arc::new(move |_: &PagerLook| crate::button_template(&buttons, ButtonVariant::Ghost, Paint::accent())),
+        Arc::new(move |_: xgpui_luma::style::lss::PartView<'_>| {
+            crate::button_template(&buttons, ButtonVariant::Ghost, Paint::accent())
+        }),
     ))
 }
 /// SDK pager template using Radix button and popup chrome.

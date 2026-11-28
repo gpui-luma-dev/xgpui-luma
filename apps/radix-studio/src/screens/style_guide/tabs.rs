@@ -4,9 +4,9 @@ use xgpui_luma::controls::tabs::TabsEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Entity, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use xgpui_luma::controls::tabs::{
-    Tabs, TabsEvent, TabsItem, TabsTheme, TabsListLook, TabsItemLook, TabsBaseline, ThemedTabsTemplate,
-};
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem, TabsTheme, TabsBaseline, ThemedTabsTemplate, resolve_tab};
+use xgpui_luma::style::{PartRead, StyleBinding};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, TabsSize};
 
@@ -130,16 +130,18 @@ struct ContrastTabsTheme {
 }
 
 impl TabsTheme for ContrastTabsTheme {
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        self.base.resolve_list(enabled)
+    fn style(&self) -> StyleBinding {
+        self.base.style()
     }
 
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let mut item = self.base.resolve_item(active, state);
-        if item.indicator.is_some() {
-            item.indicator = Some(self.look.resolve_step(ScaleFamily::Color, 12).hsla());
+    /// The base tab, with an active tab's painted indicator in accent 12.
+    fn item_style(&self, active: bool, state: InteractionState) -> StyleBinding {
+        let base = self.base.item_style(active, state);
+        if !active || resolve_tab(&base, active, state).root().painted("indicator").is_none() {
+            return base;
         }
-        item
+        let accent = xgpui_luma::style::lss_color(self.look.resolve_step(ScaleFamily::Color, 12).hsla());
+        base.with_overrides(&Overrides::new().set(PartId::ROOT, Prop::new("indicator"), accent))
     }
 
     fn content_padding(&self) -> Option<(f32, f32)> {
@@ -186,13 +188,21 @@ mod tests {
             look.set_palettes(accent, Gray::Auto);
             for mode in [ThemeMode::Light, ThemeMode::Dark] {
                 look.set_mode(mode);
-                let normal = base.resolve_item(true, InteractionState::default());
-                let high = contrast.resolve_item(true, InteractionState::default());
-                assert_eq!(high.indicator, Some(look.resolve_step(ScaleFamily::Color, 12).hsla()));
-                assert_ne!(normal.indicator, high.indicator);
-                assert_eq!(normal.label_color, high.label_color);
-                assert_eq!(normal.height, high.height);
-                assert!(contrast.resolve_item(false, InteractionState::default()).indicator.is_none());
+                let state = InteractionState::default();
+                let tab =
+                    |theme: &dyn TabsTheme, active: bool| resolve_tab(&theme.item_style(active, state), active, state);
+                let (normal, high) = (tab(base.as_ref(), true), tab(&contrast, true));
+                let indicator = high.root().painted("indicator").expect("an active indicator");
+                let expected = look.resolve_step(ScaleFamily::Color, 12).hsla().to_rgb();
+                let got = indicator.to_rgb();
+                assert!(
+                    (got.r - expected.r).abs() < 2e-3 && (got.g - expected.g).abs() < 2e-3,
+                    "{got:?} != {expected:?}"
+                );
+                assert_ne!(normal.root().painted("indicator"), high.root().painted("indicator"));
+                let item = PartId::new("item");
+                assert_eq!(normal.part(item).color("foreground"), high.part(item).color("foreground"));
+                assert_eq!(normal.part(item).number("height"), high.part(item).number("height"));
             }
         }
     }

@@ -6,11 +6,15 @@ use std::sync::Arc;
 
 use xgpui_luma_style::PartId;
 
-use super::theme::{FloatingMenuLook, FloatingMenuTheme};
+#[allow(deprecated)]
+use super::theme::FloatingMenuLook;
+use super::theme::FloatingMenuTheme;
 use crate::style::StyleBinding;
 
 /// The floating menu for `binding` (the `floating_menu` control): the panel, a row at rest, hovered and
 /// disabled, and the divider.
+#[deprecated(note = "menus draw from the resolved style; read it through `MenuStyle` (#433)")]
+#[allow(deprecated)]
 pub fn styled_floating_menu_look(binding: &StyleBinding) -> FloatingMenuLook {
     let rest = binding.resolve(&[], 1.0);
     let hover = binding.resolve(&[("hover", true)], 1.0);
@@ -81,6 +85,7 @@ pub fn floating_menu_source(source: crate::style::ThemeSource) -> crate::control
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::style::{ThemeSource, dark_theme};

@@ -761,6 +761,7 @@ impl SurfaceControl for SelectionPanelSurface {
 }
 
 #[cfg(all(test, feature = "test-support"))]
+#[allow(deprecated)]
 mod tests {
     use gpui::{Focusable, TestAppContext};
 
