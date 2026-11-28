@@ -13,7 +13,7 @@ use xgpui_luma_style::Resolved;
 
 use super::dock_splitter::{DockSplitterLook, DockSplitterTheme};
 use super::resizable_panels::{ResizablePanelsLook, ResizablePanelsTheme, ResizeHandleMetrics};
-use super::scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme};
+use super::scrollbar::{ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme};
 use super::split_view::{SplitViewLook, SplitViewTheme};
 use crate::style::StyleBinding;
 use crate::theme::stylesheet::{DockSplitterGeometry, SplitViewGeometry};
@@ -35,27 +35,6 @@ pub fn scrollbar_length(resolved: &Resolved, orientation: ScrollbarOrientation) 
         ScrollbarOrientation::Horizontal => "length_h",
         ScrollbarOrientation::Vertical => "length_v",
     })
-}
-
-impl ScrollbarLook {
-    /// The look `resolved` (see [`resolve_scrollbar`]) describes for `orientation`: the compatibility path for code
-    /// that still reads a `ScrollbarLook` (#433).
-    pub fn from_resolved(resolved: &Resolved, orientation: ScrollbarOrientation) -> Self {
-        let root = resolved.root();
-        ScrollbarLook {
-            opacity: root.opacity(),
-            track_background: root.color("background"),
-            track_border: root.color("border"),
-            track_border_width: root.number("border_width"),
-            thumb_background: root.color("thumb"),
-            length: scrollbar_length(resolved, orientation),
-            thickness: root.number("thickness"),
-            track_thickness: root.number("track_thickness"),
-            thumb_thickness: root.number("thumb_thickness"),
-            min_thumb_length: root.number("min_thumb_length"),
-            radius: root.number("radius"),
-        }
-    }
 }
 
 /// The scrollbar from `scrollbar.lss`; `metrics` are the control metrics the look sizes with.

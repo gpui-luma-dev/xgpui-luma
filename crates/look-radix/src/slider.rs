@@ -4,7 +4,6 @@
 //! - **Surface** — gray track with an inset rim; accent fill; flat thumb ring
 //! - **Classic** — same gray track, raised thumb (shadow-1 style)
 //! - **Soft** — gray tint track; accent-6 fill; softer thumb elevation
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::Arc;
 
@@ -125,6 +124,9 @@ mod tests {
     use crate::scale::ScaleFamily;
     use crate::semantic::SemanticRole;
     use xgpui_luma::theme::InteractionState;
+    use xgpui_luma::controls::slider::resolve_slider;
+    use xgpui_luma::style::PartRead;
+    use xgpui_luma::style::lss::PartId;
 
     #[test]
     fn shared_slider_geometry_preserves_modes_states_and_sizes() {
@@ -146,9 +148,16 @@ mod tests {
                             disabled: bits & 8 != 0,
                             ..Default::default()
                         };
-                        let painted = theme.resolve(state);
+                        let painted = resolve_slider(&theme.style(), state);
+                        let painted = painted.root();
                         assert_eq!(
-                            (painted.width, painted.height, painted.track_height, painted.thumb_size, painted.radius),
+                            (
+                                painted.number("width"),
+                                painted.number("height"),
+                                painted.number("track_height"),
+                                painted.number("thumb_size"),
+                                painted.number("radius")
+                            ),
                             (120.0, height, track, thumb, height / 2.0)
                         );
                     }
@@ -161,7 +170,7 @@ mod tests {
     fn explicit_radix_size_retains_numeric_semantics_at_sdk_boundary() {
         let look = Look::built_in();
         let theme = slider_theme_for(&look, SliderVariant::Surface, SliderSize::One);
-        assert_eq!(theme.resolve(Default::default()).height, 16.0);
+        assert_eq!(resolve_slider(&theme.style(), Default::default()).root().number("height"), 16.0);
     }
 
     #[test]
@@ -177,10 +186,12 @@ mod tests {
                 InteractionState { disabled: true, ..Default::default() },
             ] {
                 look.set_mode(xgpui_luma::theme::ThemeMode::Light);
-                let light = theme.resolve(state);
+                let thumb =
+                    |state| resolve_slider(&theme.style(), state).part(PartId::new("thumb")).color("background");
+                let light = thumb(state);
                 look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
-                let dark = theme.resolve(state);
-                assert_eq!(light.thumb_background, dark.thumb_background);
+                let dark = thumb(state);
+                assert_eq!(light, dark);
             }
         }
     }
@@ -189,18 +200,24 @@ mod tests {
     fn surface_fill_uses_primary() {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Surface);
-        let resolved = theme.resolve(InteractionState::default());
-        crate::control_group::assert_close(resolved.fill_background, look.resolve_role(SemanticRole::Primary).hsla());
+        let resolved = resolve_slider(&theme.style(), InteractionState::default());
+        crate::control_group::assert_close(
+            resolved.part(PartId::new("fill")).color("background"),
+            look.resolve_role(SemanticRole::Primary).hsla(),
+        );
     }
 
     #[test]
     fn soft_uses_gray_track_and_accent_fill() {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Soft);
-        let resolved = theme.resolve(InteractionState::default());
-        crate::control_group::assert_close(resolved.fill_background, look.resolve_step(ScaleFamily::Color, 6).hsla());
+        let resolved = resolve_slider(&theme.style(), InteractionState::default());
+        crate::control_group::assert_close(
+            resolved.part(PartId::new("fill")).color("background"),
+            look.resolve_step(ScaleFamily::Color, 6).hsla(),
+        );
         assert_ne!(
-            resolved.track_background,
+            resolved.part(PartId::new("track")).color("background"),
             look.resolve_step(ScaleFamily::Color, 4).hsla(),
             "soft track is gray, not accent"
         );
@@ -209,22 +226,35 @@ mod tests {
     #[test]
     fn classic_thumb_is_more_elevated_than_surface() {
         let look = Look::built_in();
-        let classic = slider_theme_with(&look, SliderVariant::Classic).resolve(InteractionState::default());
-        let surface = slider_theme_with(&look, SliderVariant::Surface).resolve(InteractionState::default());
-        assert!(classic.thumb_shadow.len() > surface.thumb_shadow.len());
+        let shadows = |variant| {
+            let theme = slider_theme_with(&look, variant);
+            resolve_slider(&theme.style(), InteractionState::default())
+                .part(PartId::new("thumb"))
+                .box_shadow()
+                .len()
+        };
+        assert!(shadows(SliderVariant::Classic) > shadows(SliderVariant::Surface));
     }
 }
 
 #[cfg(test)]
 mod track_border_tests {
+    use xgpui_luma::style::PartRead;
     /// Radix tracks keep no outline although the SDK's have one (#397).
     #[test]
     fn radix_tracks_draw_no_outline() {
         let look = crate::Look::built_in();
         for variant in [super::SliderVariant::Classic, super::SliderVariant::Surface, super::SliderVariant::Soft] {
-            let slider = super::slider_theme_for(&look, variant, super::SliderSize::Two).resolve(Default::default());
-            assert_eq!(slider.track_border_width, 0.0, "{variant:?}");
+            let theme = super::slider_theme_for(&look, variant, super::SliderSize::Two);
+            let slider = xgpui_luma::controls::slider::resolve_slider(&theme.style(), Default::default());
+            assert_eq!(
+                slider.part(xgpui_luma::style::lss::PartId::new("track")).number("border_width"),
+                0.0,
+                "{variant:?}"
+            );
         }
-        assert_eq!(crate::progress::progress_theme(&look).resolve(true).track_border_width, 0.0);
+        let progress =
+            xgpui_luma::controls::progress::resolve_progress(&crate::progress::progress_theme(&look).style(), true);
+        assert_eq!(progress.part(xgpui_luma::style::lss::PartId::new("track")).number("border_width"), 0.0);
     }
 }

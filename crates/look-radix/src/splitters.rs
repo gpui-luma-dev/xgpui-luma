@@ -117,7 +117,8 @@ mod tests {
 
 #[cfg(test)]
 mod lss_tests {
-    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle, resolve_scrollbar, scrollbar_length};
+    use xgpui_luma::style::PartRead;
     use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::control_group::assert_close;
@@ -142,22 +143,31 @@ mod lss_tests {
                     (InteractionState { pressed: true, ..Default::default() }, 10),
                     (InteractionState { disabled: true, ..Default::default() }, 5),
                 ] {
-                    let ghost = scrollbar.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Ghost);
-                    let soft = scrollbar.resolve(state, ScrollbarOrientation::Vertical, ScrollbarStyle::Soft);
-                    assert_close(ghost.thumb_background, gray(step));
-                    assert_eq!(ghost.track_background.a, 0.0);
-                    assert_close(soft.track_background, gray(3));
-                    assert!(ghost.length > 0.0 && soft.length > 0.0);
-                    assert!(ghost.thickness > previous_thickness, "{size:?} is thicker than the size below");
-                    assert!(0.0 < ghost.track_thickness && ghost.track_thickness <= ghost.thickness);
-                    assert!(0.0 < ghost.thumb_thickness && ghost.thumb_thickness <= ghost.thickness);
-                    assert!(ghost.min_thumb_length > ghost.thumb_thickness);
-                    assert!(ghost.radius >= ghost.thickness / 2.0, "a pill");
-                    assert_eq!(ghost.opacity, 1.0, "Radix draws disabled colors without fading");
+                    let ghost_style = resolve_scrollbar(&scrollbar.state_style(state), state, ScrollbarStyle::Ghost);
+                    let soft_style = resolve_scrollbar(&scrollbar.state_style(state), state, ScrollbarStyle::Soft);
+                    let (ghost, soft) = (ghost_style.root(), soft_style.root());
+                    let thickness = ghost.number("thickness");
+                    assert_close(ghost.color("thumb"), gray(step));
+                    assert_eq!(ghost.color("background").a, 0.0);
+                    assert_close(soft.color("background"), gray(3));
+                    assert!(
+                        scrollbar_length(&ghost_style, ScrollbarOrientation::Horizontal) > 0.0
+                            && scrollbar_length(&soft_style, ScrollbarOrientation::Vertical) > 0.0
+                    );
+                    assert!(thickness > previous_thickness, "{size:?} is thicker than the size below");
+                    assert!(0.0 < ghost.number("track_thickness") && ghost.number("track_thickness") <= thickness);
+                    assert!(0.0 < ghost.number("thumb_thickness") && ghost.number("thumb_thickness") <= thickness);
+                    assert!(ghost.number("min_thumb_length") > ghost.number("thumb_thickness"));
+                    assert!(ghost.number("radius") >= thickness / 2.0, "a pill");
+                    assert_eq!(ghost.opacity(), 1.0, "Radix draws disabled colors without fading");
                 }
-                previous_thickness = scrollbar
-                    .resolve(InteractionState::default(), ScrollbarOrientation::Horizontal, ScrollbarStyle::Ghost)
-                    .thickness;
+                previous_thickness = resolve_scrollbar(
+                    &scrollbar.state_style(InteractionState::default()),
+                    InteractionState::default(),
+                    ScrollbarStyle::Ghost,
+                )
+                .root()
+                .number("thickness");
 
                 let panels = crate::resizable_panels_theme(&look);
                 for disabled in [false, true] {

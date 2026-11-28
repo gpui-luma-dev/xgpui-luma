@@ -1,5 +1,4 @@
 //! Radix scrollbar chrome for standalone and composed SDK scrolling controls.
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 use std::sync::Arc;
 
 use xgpui_luma::controls::scrollbar::{ScrollbarTemplate, ScrollbarTheme, StyledScrollbarTheme, ThemedScrollbarTemplate};
@@ -41,7 +40,8 @@ pub fn scrollbar_template(look: &Look) -> Arc<dyn ScrollbarTemplate> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle, resolve_scrollbar, scrollbar_length};
+    use xgpui_luma::style::PartRead;
     use xgpui_luma::theme::InteractionState;
     use crate::ScaleFamily;
     use xgpui_luma::theme::ThemeMode;
@@ -60,12 +60,14 @@ mod tests {
                         (InteractionState { pressed: true, ..Default::default() }, 10),
                         (InteractionState { disabled: true, pressed: true, ..Default::default() }, 5),
                     ] {
-                        let resolved = theme.resolve(state, orientation, ScrollbarStyle::Soft);
+                        let _ = orientation;
+                        let resolved = resolve_scrollbar(&theme.state_style(state), state, ScrollbarStyle::Soft);
+                        let root = resolved.root();
                         let gray = |n| look.resolve_step(ScaleFamily::Gray, n).hsla();
-                        crate::control_group::assert_close(resolved.thumb_background, gray(step));
-                        crate::control_group::assert_close(resolved.track_background, gray(3));
-                        assert!(resolved.min_thumb_length > 0.0);
-                        assert!(resolved.thickness >= resolved.thumb_thickness);
+                        crate::control_group::assert_close(root.color("thumb"), gray(step));
+                        crate::control_group::assert_close(root.color("background"), gray(3));
+                        assert!(root.number("min_thumb_length") > 0.0);
+                        assert!(root.number("thickness") >= root.number("thumb_thickness"));
                     }
                 }
             }
@@ -77,15 +79,18 @@ mod tests {
         let look = Look::built_in();
         let fork = look.fork();
         let theme = scrollbar_theme(&fork);
-        let resolve = || theme.resolve(Default::default(), ScrollbarOrientation::Vertical, ScrollbarStyle::Ghost);
-        let before = resolve();
+        let resolve = |theme: &Arc<dyn ScrollbarTheme>| {
+            resolve_scrollbar(&theme.state_style(Default::default()), Default::default(), ScrollbarStyle::Ghost)
+        };
+        let before = resolve(&theme);
         fork.set_mode(ThemeMode::Dark);
-        let after = resolve();
-        assert_ne!(after.thumb_background, before.thumb_background);
-        let original =
-            scrollbar_theme(&look).resolve(Default::default(), ScrollbarOrientation::Vertical, ScrollbarStyle::Ghost);
-        assert_eq!(original.length, before.length);
-        assert_eq!(original.thumb_background, before.thumb_background);
-        assert_eq!(original.track_background.a, 0.0);
+        let after = resolve(&theme);
+        assert_ne!(after.root().color("thumb"), before.root().color("thumb"));
+        let original = resolve(&scrollbar_theme(&look));
+        let length =
+            |resolved: &xgpui_luma::style::lss::Resolved| scrollbar_length(resolved, ScrollbarOrientation::Vertical);
+        assert_eq!(length(&original), length(&before));
+        assert_eq!(original.root().color("thumb"), before.root().color("thumb"));
+        assert_eq!(original.root().color("background").a, 0.0);
     }
 }
