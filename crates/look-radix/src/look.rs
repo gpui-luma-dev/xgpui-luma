@@ -1,5 +1,4 @@
 //! Runtime radix look: mode + dual scale space (color + gray).
-#![allow(deprecated)] // Compatibility paths and parity tests still read the deprecated Looks (#433).
 
 use std::sync::{
     Arc,
@@ -828,8 +827,8 @@ mod tests {
                             invalid: bits & 16 != 0,
                         };
                         assert_eq!(
-                            format!("{:?}", new_theme.resolve(state)),
-                            format!("{:?}", old_theme.resolve(state)),
+                            format!("{:?}", xgpui_luma::controls::slider::resolve_slider(&new_theme.style(), state)),
+                            format!("{:?}", xgpui_luma::controls::slider::resolve_slider(&old_theme.style(), state)),
                             "{mode:?} {variant:?} {size:?} {state:?}",
                         );
                     }

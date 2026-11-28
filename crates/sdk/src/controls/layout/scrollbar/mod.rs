@@ -14,7 +14,6 @@ pub use template::{
 };
 
 #[allow(deprecated)]
-pub use theme::ScrollbarLook;
 pub use theme::{ScrollbarTheme, default_scrollbar_theme};
 
 mod callback;
